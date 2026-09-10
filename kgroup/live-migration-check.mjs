@@ -1,4 +1,6 @@
-process.env.DATABASE_URL = 'postgresql://neondb_owner:npg_UXJl0qDiKM1m@ep-bitter-silence-ayq89y8b-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL must be set before running this migration check.");
+}
 
 await import('./scripts/migrate.mjs');
 
