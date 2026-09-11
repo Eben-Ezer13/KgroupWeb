@@ -375,6 +375,31 @@ test("signin works, and wrong credentials are indistinguishable", async () => {
   assert.strictEqual(badPass.body.error, noUser.body.error, "no account enumeration");
 });
 
+test("a sale records the perfume name, trimmed, and rejects an over-long one", async () => {
+  const c = await signUpAdmin("perfume@kgroup.test");
+  const rep = await c.call("/api/salespersons", { method: "POST", body: { name: "Amine" } });
+  const base = { customer: "Sofia", product: "Parfum 100 ml", qty: 1, amount: 150, commission: 15,
+                 pay: "Espèces", rep_id: rep.body.id, rep_name: "Amine" };
+
+  const named = await c.call("/api/sales", { method: "POST", body: { ...base, perfume_name: "  Oud Royal  " } });
+  assert.strictEqual(named.status, 201, JSON.stringify(named.body));
+  assert.strictEqual(named.body.perfume_name, "Oud Royal");
+  assert.strictEqual(named.body.product, "Parfum 100 ml", "the catalogue format is kept for commissions and stats");
+
+  const blank = await c.call("/api/sales", { method: "POST", body: { ...base, perfume_name: "   " } });
+  assert.strictEqual(blank.status, 201);
+  assert.strictEqual(blank.body.perfume_name, null, "a blank name is stored as null");
+
+  const legacy = await c.call("/api/sales", { method: "POST", body: base });
+  assert.strictEqual(legacy.status, 201, "older clients that omit the field still work");
+
+  const tooLong = await c.call("/api/sales", { method: "POST", body: { ...base, perfume_name: "x".repeat(121) } });
+  assert.strictEqual(tooLong.status, 400);
+
+  const list = await c.call("/api/sales");
+  assert.ok(list.body.some((s) => s.perfume_name === "Oud Royal"), "the list returns the perfume name");
+});
+
 test("full admin CRUD round-trip", async () => {
   const c = await signUpAdmin("crud@kgroup.test");
 

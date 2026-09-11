@@ -160,7 +160,7 @@ router.get("/clients/:id", requireUser, async (req, res, next) => {
     if (!row) throw new HttpError(404, "Client introuvable.");
 
     const sales = await db.many(
-      `select id, product, qty, amount, commission, pay, rep_name, remarks, created_at
+      `select id, product, perfume_name, qty, amount, commission, pay, rep_name, remarks, created_at
          from public.sales
         where client_id = $1 and team_id = $2
         order by created_at desc limit 100`,

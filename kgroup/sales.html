@@ -46,7 +46,12 @@
             <select class="select" id="rep"></select>
           </div>
 
-          <div class="field full">
+          <div class="field">
+            <label>Nom du parfum <span class="req">*</span></label>
+            <input class="input" id="perfumeName" list="perfumeNames" maxlength="120" placeholder="Ex. : Oud Royal" autocomplete="off" required>
+            <datalist id="perfumeNames"></datalist>
+          </div>
+          <div class="field">
             <label>Product <span class="req">*</span></label>
             <select class="select" id="product"></select>
           </div>
@@ -81,10 +86,6 @@
           <div class="field">
             <label>Date</label>
             <input class="input" id="date" type="date">
-          </div>
-          <div class="field">
-            <label>Reference</label>
-            <input class="input" id="ref" readonly>
           </div>
 
           <div class="field full">
@@ -164,12 +165,17 @@
       }
       $("#product").innerHTML = KG.products.map(p=>`<option value="${p.id}" data-price="${p.price}" data-commission="${p.commission}">${p.name} — ${KG.fmt.money(p.price)}</option>`).join("");
 
-      // Defaults — real current date & a timestamp-based reference
+      // Defaults — real current date
       const today = () => new Date().toISOString().slice(0, 10);
-      const newRef = () => "TX-" + Date.now().toString().slice(-8);
       $("#date").value = today();
       $("#date").max = today();          // no future-dated sales
-      $("#ref").value = newRef();
+
+      // Perfume names already sold by the team, offered as suggestions.
+      const saleLabel = window.KGNotifFeed.saleLabel;
+      const knownPerfumes = [...new Set((KG.recentSales || []).map(s => (s.perfume || "").trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "fr"));
+      $("#perfumeNames").replaceChildren(...knownPerfumes.map(name => new Option(name)));
+      const productName = () => $("#product").selectedOptions[0].textContent.replace(/\s*—.*/,"");
 
       function selPrice() { const o = $("#product").selectedOptions[0]; return +(o?.dataset.price || 0); }
       function selCommission() { const o = $("#product").selectedOptions[0]; return +(o?.dataset.commission || 0); }
@@ -178,7 +184,7 @@
         const price = selPrice(), qty = Math.max(1, +$("#qty").value || 1);
         const total = price * qty, commission = selCommission() * qty;
         $("#price").value = price;
-        $("#sumProduct").textContent = $("#product").selectedOptions[0].textContent.replace(/\s*—.*/,"");
+        $("#sumProduct").textContent = saleLabel(productName(), $("#perfumeName").value);
         $("#sumQty").textContent = qty;
         $("#sumPrice").textContent = KG.fmt.money(price);
         $("#sumTotal").textContent = KG.fmt.money(total);
@@ -189,7 +195,7 @@
         badge.textContent = pay;
         badge.className = "badge " + payClass(pay);
       }
-      ["#product","#qty"].forEach(s => $(s).addEventListener("input", update));
+      ["#product","#qty","#perfumeName"].forEach(s => $(s).addEventListener("input", update));
       document.querySelectorAll('input[name="pay"]').forEach(r => r.addEventListener("change", update));
       update();
 
@@ -227,12 +233,14 @@
       $("#saleForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!$("#customer").value.trim()) { toast("error","Missing customer","Please enter a customer name."); $("#customer").focus(); return; }
+        if (!$("#perfumeName").value.trim()) { toast("error","Nom du parfum manquant","Indiquez le nom du parfum vendu."); $("#perfumeName").focus(); return; }
 
         const btn = e.submitter || document.querySelector('#saleForm button[type=submit]');
         const price = selPrice(), qty = Math.max(1, +$("#qty").value || 1);
         const sale = {
           customer: $("#customer").value.trim(),
-          product: $("#product").selectedOptions[0].textContent.replace(/\s*—.*/,""),
+          product: productName(),
+          perfume_name: $("#perfumeName").value.trim(),
           qty, amount: price * qty,
           commission: selCommission() * qty,
           pay: document.querySelector('input[name="pay"]:checked').value,
@@ -265,10 +273,11 @@
         }
         btn && (btn.disabled = false);
 
-        $("#successMsg").innerHTML = `<b>${$("#sumProduct").textContent}</b> ×${$("#sumQty").textContent} — <b style="color:var(--brand)">${$("#sumTotal").textContent}</b>`;
+        const esc = window.KGNotifFeed.escapeHtml; // the perfume name is typed by the user
+        $("#successMsg").innerHTML = `<b>${esc($("#sumProduct").textContent)}</b> ×${esc($("#sumQty").textContent)} — <b style="color:var(--brand)">${esc($("#sumTotal").textContent)}</b>`;
         window.kgModal.open("#successModal");
         toast("success","Sale registered","Rankings & XP updated.");
-        e.target.reset(); $("#date").value = today(); $("#ref").value = newRef();
+        e.target.reset(); $("#date").value = today();
         matchedClientId = null; setHint(""); update();
       });
     };

@@ -144,7 +144,7 @@ npm run verify -- https://kgroup-gilt.vercel.app
 Puis, dans le navigateur :
 
 1. `/login.html` s'affiche sans bandeau « Mode démo ».
-   *(le bandeau signifie que l'API est injoignable — voir §5)*
+   *(le bandeau signifie que l'API est injoignable — voir §7)*
 2. Connectez-vous, enregistrez une vente avec un numéro de téléphone.
 3. Le client apparaît dans **Clients**.
 4. **Rémunération** affiche les commissions.
@@ -164,7 +164,37 @@ curl -X POST https://kgroup-gilt.vercel.app/api/reminders/run \
 
 ---
 
-## 5. Si quelque chose ne marche pas
+## 5. Ajouter un second administrateur
+
+Chaque inscription d'administrateur crée **sa propre équipe, vide** : l'inscription
+est publique, donc un nouveau compte n'a jamais accès d'office à vos données.
+Pour qu'un deuxième administrateur partage le même tableau de bord, les mêmes
+commerciaux, ventes et clients :
+
+1. La personne crée son compte administrateur sur le site (`register.html`).
+2. Depuis votre poste (avec le `.env` de production), rattachez-la :
+
+```bash
+# aperçu : ne modifie rien
+npm run team:join -- nouvel.admin@exemple.com admin.existant@exemple.com
+# application
+npm run team:join -- nouvel.admin@exemple.com admin.existant@exemple.com --apply
+```
+
+Le script refuse d'agir si l'équipe du nouveau compte contient déjà des données
+(commerciaux, ventes…) : rien n'est jamais fusionné ni supprimé en silence.
+
+## 6. Mettre à jour le schéma de la base
+
+Quand une version ajoute une colonne (par exemple `sales.perfume_name`, le nom du
+parfum vendu), appliquez le schéma **avant** de déployer le code qui s'en sert :
+
+```bash
+npm run db:migrate   # idempotent : sans effet sur ce qui existe déjà
+npm run db:check
+```
+
+## 7. Si quelque chose ne marche pas
 
 | Symptôme | Cause probable | Correctif |
 | --- | --- | --- |
@@ -179,7 +209,7 @@ curl -X POST https://kgroup-gilt.vercel.app/api/reminders/run \
 
 ---
 
-## 6. Règles à ne pas enfreindre
+## 8. Règles à ne pas enfreindre
 
 - **`.env` ne doit jamais être commité ni téléversé.** Il est dans `.gitignore`
   et `.vercelignore`, et `npm run lint` échoue si un secret apparaît dans un

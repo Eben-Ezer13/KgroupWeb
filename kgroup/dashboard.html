@@ -231,7 +231,7 @@
         <div class="feed-item">
           <div class="feed-ico">${icon("bag")}</div>
           <div class="grow">
-            <div class="f-title">${escF(t.customer)} bought ${escF(t.product)}</div>
+            <div class="f-title">${escF(t.customer)} bought ${escF(window.KGNotifFeed.saleLabel(t.product, t.perfume))}</div>
             <div class="f-time">by ${escF(t.rep)} • ${window.KGrelTime(t.at ? Date.parse(t.at) : Date.now() - (t.minsAgo||0)*60000)}</div>
           </div>
           <div style="text-align:right"><b style="font-family:var(--font-display)">${KG.fmt.moneyShort(t.amount)}</b>

@@ -188,9 +188,10 @@ router.delete("/salespersons/:id", requireUser, async (req, res, next) => {
  * SALES                                                               *
  * ------------------------------------------------------------------ */
 const SALE_FIELDS = [
-  "customer", "product", "qty", "amount", "commission",
+  "customer", "product", "perfume_name", "qty", "amount", "commission",
   "pay", "rep_id", "rep_name", "remarks", "created_at",
 ];
+const PERFUME_NAME_MAX = 120;
 
 /* Champs client acceptes au moment de la vente (section CLIENT du formulaire). */
 const SALE_CLIENT_FIELDS = ["client_id", "client_phone", "client_birthday"];
@@ -286,6 +287,15 @@ router.post("/sales", requireUser, async (req, res, next) => {
     }
     if (!fields.product || !String(fields.product).trim()) {
       throw new HttpError(400, "A sale needs a product.");
+    }
+    // Nom du parfum : facultatif pour l'API (anciens clients, imports), mais
+    // toujours propre en base — texte coupé, vide ramené à null.
+    if (fields.perfume_name !== undefined) {
+      const name = String(fields.perfume_name || "").trim();
+      if (name.length > PERFUME_NAME_MAX) {
+        throw new HttpError(400, `Perfume name is too long (${PERFUME_NAME_MAX} characters max).`);
+      }
+      fields.perfume_name = name || null;
     }
     if (fields.rep_id === "") fields.rep_id = null;
 

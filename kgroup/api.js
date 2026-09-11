@@ -595,7 +595,7 @@
         const sales = await KGDB.listSales(1000);
         if (sales) {
           KG.recentSales = sales.slice(0, 40).map((t) => ({
-            id: t.id, customer: t.customer, product: t.product, qty: t.qty,
+            id: t.id, customer: t.customer, product: t.product, perfume: t.perfume_name || "", qty: t.qty,
             amount: num(t.amount), pay: t.pay, rep: t.rep_name || "—",
             repInitials: initialsOf(t.rep_name), hue: 150,
             at: t.created_at, // real timestamp from the DB
@@ -644,7 +644,7 @@
         const actSrc = (["salesperson", "relation_client"].includes(window.KG_ROLE)) ? mySales : (sales || []);
         KG.activity = actSrc.slice(0, 6).map(s => ({
           icon: "bag",
-          title: "Closed a sale — " + (s.product || "perfume") + (s.customer ? " · " + s.customer : ""),
+          title: "Closed a sale — " + ((s.perfume_name ? s.perfume_name + " · " : "") + (s.product || "perfume")) + (s.customer ? " · " + s.customer : ""),
           time: timeAgo(s.created_at),
         }));
       } catch (e) {

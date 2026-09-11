@@ -67,6 +67,15 @@ test("le titre et le détail d'une vente sont lisibles et traduits", () => {
   assert.strictEqual(challenge.body, "🎁 Prime 500 DH");
 });
 
+test("le nom du parfum précède le format dans le libellé d'une vente", () => {
+  assert.strictEqual(NF.saleLabel("Parfum 100 ml", "Oud Royal"), "Oud Royal · Parfum 100 ml");
+  assert.strictEqual(NF.saleLabel("Parfum 100 ml", "  "), "Parfum 100 ml", "vente ancienne, sans nom de parfum");
+  assert.strictEqual(NF.saleLabel("", "Oud Royal"), "Oud Royal");
+  assert.strictEqual(NF.saleLabel(null, undefined), "");
+  const [n] = NF.buildFeed({ sales: [{ id: 1, product: "Parfum 50 ml", perfume: "Ambre Nuit", qty: 3, at: minsAgo(1) }] }, { now: NOW });
+  assert.strictEqual(n.title, "New sale — Ambre Nuit · Parfum 50 ml ×3");
+});
+
 test("les ventes de démonstration (minsAgo) sont datées", () => {
   const [n] = NF.buildFeed({ sales: [{ id: 1, product: "P", qty: 1, minsAgo: 10 }] }, { now: NOW });
   assert.strictEqual(n.ts, NOW - 10 * 60000);

@@ -58,6 +58,15 @@
       .replace(/'/g, "&#39;");
   }
 
+  /** Libellé d'une vente : « Oud Royal · Parfum 100 ml » quand le nom du
+      parfum est connu, sinon le seul format du catalogue (ventes anciennes). */
+  function saleLabel(product, perfumeName) {
+    const format = String(product || "").trim();
+    const perfume = String(perfumeName || "").trim();
+    if (!perfume) return format;
+    return format ? perfume + " · " + format : perfume;
+  }
+
   function item(id, kindName, title, body, ts) {
     const kind = KINDS[kindName] || KINDS.team;
     return { id, kind: kindName, icon: kind.icon, tone: kind.tone, href: kind.href, title, body: body || "", ts };
@@ -68,7 +77,7 @@
    *
    * @param {object} src   { team: [], sales: [], challenges: [] }
    *   team        lignes de /api/notifications : { id, type, title, body, created_at }
-   *   sales       ventes : { id, product, qty, rep, at } (ou { minsAgo } en démo)
+   *   sales       ventes : { id, product, perfume, qty, rep, at } (ou { minsAgo } en démo)
    *   challenges  challenges : { id, title, createdAt }
    * @param {object} opts  { seenAt, now, labels, limit }
    * @returns {Array} éléments { id, kind, icon, tone, href, title, body, ts, unread }
@@ -93,7 +102,7 @@
       const qty = Number(sale.qty) > 1 ? " ×" + sale.qty : "";
       const ts = toMs(sale.at) || (sale.minsAgo != null ? now - sale.minsAgo * 60000 : 0);
       const rep = sale.rep && sale.rep !== "—" ? labels.by + " " + sale.rep : "";
-      feed.push(item("s:" + sale.id, "sale", labels.newSale + " — " + (sale.product || "") + qty, rep, ts));
+      feed.push(item("s:" + sale.id, "sale", labels.newSale + " — " + saleLabel(sale.product, sale.perfume) + qty, rep, ts));
     });
 
     (s.challenges || []).forEach((c) => {
@@ -156,5 +165,5 @@
     return "kg-notif-seen-at:" + (userId || "anon");
   }
 
-  return { KINDS, MAX_ITEMS, toMs, escapeHtml, buildFeed, unreadCount, badgeLabel, markSeen, relativeTime, storageKey };
+  return { KINDS, MAX_ITEMS, toMs, escapeHtml, saleLabel, buildFeed, unreadCount, badgeLabel, markSeen, relativeTime, storageKey };
 });

@@ -299,10 +299,10 @@
           <h4 class="kc-h4">Historique des achats</h4>
           ${sales.length ? `
             <div class="table-wrap"><table class="table">
-              <thead><tr><th>Date</th><th>Produit</th><th class="num">Qté</th><th class="num">Montant</th><th>Commercial</th></tr></thead>
+              <thead><tr><th>Date</th><th>Parfum</th><th class="num">Qté</th><th class="num">Montant</th><th>Commercial</th></tr></thead>
               <tbody>${sales.map(s => `<tr>
                 <td>${new Date(s.created_at).toLocaleDateString("fr-FR")}</td>
-                <td>${esc(s.product)}</td>
+                <td>${esc(window.KGNotifFeed.saleLabel(s.product, s.perfume_name))}</td>
                 <td class="num">${s.qty}</td>
                 <td class="num"><b>${money(s.amount)}</b></td>
                 <td>${esc(s.rep_name || "—")}</td></tr>`).join("")}</tbody>

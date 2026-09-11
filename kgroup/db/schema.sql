@@ -112,6 +112,9 @@ create table if not exists public.sales (
 );
 alter table public.sales add column if not exists team_id    uuid;
 alter table public.sales add column if not exists commission bigint default 0;
+-- Nom du parfum vendu (« Oud Royal »…). `product` reste le format du catalogue
+-- (30 / 50 / 100 ml), sur lequel reposent commissions et statistiques.
+alter table public.sales add column if not exists perfume_name text;
 
 -- ---------- CHALLENGES (admin-created competitions) ----------------------
 create table if not exists public.challenges (

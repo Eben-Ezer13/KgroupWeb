@@ -631,7 +631,7 @@
       ]).then(([team, sales, challenges]) => {
         const K = window.KG;
         if (team) K.teamNotifications = team;
-        if (sales) K.feedSales = sales.map(x => ({ id: x.id, product: x.product, qty: x.qty, rep: x.rep_name || "", at: x.created_at }));
+        if (sales) K.feedSales = sales.map(x => ({ id: x.id, product: x.product, perfume: x.perfume_name, qty: x.qty, rep: x.rep_name || "", at: x.created_at }));
         if (challenges) K.feedChallenges = challenges.map(c => ({ id: c.id, title: c.title, reward: c.reward, createdAt: c.created_at }));
         buildNotifications();
         // Something new arrived while the panel is open: show it right away.
