@@ -106,6 +106,9 @@
       "sec.salesPerf":"Sales Performance","sec.salesPerf.sub":"Revenue & units over the last 12 months",
       "sec.quickActions":"Quick Actions","sec.top10":"Top 10 Salespersons","sec.top10.sub":"By revenue this month",
       "sec.recent":"Recent Sales","sec.recent.sub":"Latest transactions","sec.notifications":"Latest Notifications",
+      "notif.title":"Notifications","notif.markAll":"Mark all read","notif.empty":"No notifications yet",
+      "notif.newSale":"New sale","notif.newChallenge":"New challenge","notif.by":"by","notif.active":"Active",
+      "notif.allRead":"All caught up","notif.allRead.msg":"Notifications marked as read.",
       "sec.category":"Sales by Category","sec.monthlyTarget":"Monthly Target",
       "empty.noReps":"No salespersons yet — add your team to start tracking performance.",
       "empty.noSales":"No sales registered yet — your data will appear here.",
@@ -129,6 +132,9 @@
       "sec.salesPerf":"Performance des ventes","sec.salesPerf.sub":"Revenus et unités sur les 12 derniers mois",
       "sec.quickActions":"Actions rapides","sec.top10":"Top 10 des vendeurs","sec.top10.sub":"Par revenu ce mois-ci",
       "sec.recent":"Ventes récentes","sec.recent.sub":"Dernières transactions","sec.notifications":"Dernières notifications",
+      "notif.title":"Notifications","notif.markAll":"Tout marquer comme lu","notif.empty":"Aucune notification pour le moment",
+      "notif.newSale":"Nouvelle vente","notif.newChallenge":"Nouveau challenge","notif.by":"par","notif.active":"En cours",
+      "notif.allRead":"Tout est lu","notif.allRead.msg":"Notifications marquées comme lues.",
       "sec.category":"Ventes par catégorie","sec.monthlyTarget":"Objectif mensuel",
       "empty.noReps":"Aucun vendeur — ajoutez votre équipe pour suivre la performance.",
       "empty.noSales":"Aucune vente enregistrée — vos données apparaîtront ici.",
@@ -395,7 +401,7 @@
         <header class="topbar">
           <button class="icon-btn hamburger" id="hamburger" aria-label="Menu">${icon("menu")}</button>
           <button class="icon-btn collapse-btn" id="collapseBtn" title="${t("topbar.collapse")}" aria-label="${t("topbar.collapse")}">${icon("panel")}</button>
-          <div>
+          <div class="topbar-title">
             <h1>${title}</h1>
             <div class="crumb">KGROUP • ${title}</div>
           </div>
@@ -412,6 +418,16 @@
           </div>
           <button class="icon-btn" id="helpBtn" title="${tutL("help")}">${icon("help")}</button>
           <button class="icon-btn" id="themeBtn" title="Toggle theme"><span data-theme-ico>${icon("moon")}</span></button>
+          <div class="dropdown" id="notifDropdown">
+            <button class="icon-btn" id="notifBtn" title="${t("notif.title")}" aria-label="${t("notif.title")}" aria-haspopup="true" aria-expanded="false">${icon("bell")}<span class="notif-count" id="notifCount" hidden></span></button>
+            <div class="dropdown-panel" role="dialog" aria-label="${t("notif.title")}">
+              <div class="dropdown-head">
+                <strong data-i18n="notif.title">${t("notif.title")}</strong>
+                <a href="#" class="link" id="markAll" data-i18n="notif.markAll">${t("notif.markAll")}</a>
+              </div>
+              <div class="dropdown-list" id="notifList"></div>
+            </div>
+          </div>
           ${avatar(me, 42)}
         </header>
         <div class="content" id="content"></div>
@@ -420,8 +436,9 @@
     body.appendChild(shell);
     $("#content").innerHTML = pageContent;
 
-    // Fill notifications dropdown
+    // Fill notifications dropdown + unread badge
     renderNotifs();
+    renderBell();
 
     // Wire interactions
     wireShell();
@@ -454,34 +471,29 @@
   }
   window.KGrelTime = relTime;
 
-  /* Build the notification feed from REAL activity (sales + challenges),
-     newest first, and flag the still-unseen ones as unread. */
+  /* Build the notification feed from REAL activity: the team feed (client
+     birthdays, training successes), sales and challenges, newest first.
+     The pure logic (merge, sort, unread) lives in notifications.js; this only
+     gathers the sources and the user's "seen up to" timestamp. */
+  const NF = window.KGNotifFeed;
+  const notifSeenKey = () => NF.storageKey(window.KG && window.KG.me && window.KG.me.id);
+  function getNotifSeenAt() {
+    try { return Number(localStorage.getItem(notifSeenKey())) || 0; } catch (_) { return 0; }
+  }
+  function setNotifSeenAt(ms) {
+    try { localStorage.setItem(notifSeenKey(), String(ms)); } catch (_) { /* storage unavailable */ }
+  }
   function buildNotifications() {
     const K = window.KG; if (!K) return [];
-    const notifs = [];
-    // Formation en tete : une reussite est plus notable qu une vente de routine.
-    (K.teamNotifications || []).slice(0, 5).forEach(n => notifs.push({
-      id: "t:" + n.id,
-      type: n.type === "training_completed" ? "gold" : "info",
-      icon: "medal",
-      title: n.title,
-      time: relTime(Date.parse(n.created_at)),
-    }));
-    (K.recentSales || []).slice(0, 8).forEach(s => notifs.push({
-      id: "s:" + s.id, type: "info", icon: "bag",
-      title: `New sale — ${s.product}${s.qty > 1 ? " ×" + s.qty : ""}`,
-      time: (s.rep ? `by ${s.rep} • ` : "") + relTime(s.at ? Date.parse(s.at) : Date.now() - (s.minsAgo || 0) * 60000),
-    }));
-    (K.challenges || []).slice(0, 3).forEach(c => notifs.push({
-      id: "c:" + c.id, type: "gold", icon: "flag", title: `Challenge: ${c.title}`, time: "Active",
-    }));
-    // Everything newer than the last item the user acknowledged is "unread"
-    const lastSeen = localStorage.getItem("kg-seen-notif-id");
-    const idx = lastSeen ? notifs.findIndex(n => n.id === lastSeen) : -1;
-    const unread = idx === -1 ? notifs.length : idx;
-    notifs.forEach((n, i) => n.unread = i < unread);
-    K.notifications = notifs;
-    return notifs;
+    if (!NF) { K.notifications = []; return []; }
+    const feed = NF.buildFeed(
+      { team: K.teamNotifications, sales: K.feedSales || K.recentSales, challenges: K.feedChallenges || K.challenges },
+      { seenAt: getNotifSeenAt(), labels: { newSale: t("notif.newSale"), newChallenge: t("notif.newChallenge"), by: t("notif.by") } }
+    );
+    // `type` and `time` are what the dashboard's own notification block reads.
+    feed.forEach(n => { n.type = n.tone; n.time = NF.relativeTime(n.ts, Date.now(), KGI18N.lang) || t("notif.active"); });
+    K.notifications = feed;
+    return feed;
   }
 
   /* How many unseen items to badge on a given nav item (0 = no badge). */
@@ -511,21 +523,37 @@
   function renderNotifs() {
     const list = $("#notifList");
     if (!list) return;
-    if (!(KG.notifications || []).length) {
-      list.innerHTML = `<div style="text-align:center;padding:30px 12px;color:var(--muted)">
-        <div style="font-size:26px;margin-bottom:6px">🔔</div><div style="font-size:13px">No new activity</div></div>`;
+    const feed = KG.notifications || [];
+    if (!feed.length || !NF) {
+      list.innerHTML = `<div class="notif-empty"><div class="notif-empty-ico">🔔</div><div>${t("notif.empty")}</div></div>`;
       return;
     }
-    const map = { success: ["ico-green","trophy"], info: ["ico-blue","bell"], gold: ["ico-gold","star"] };
-    list.innerHTML = (KG.notifications || []).map(n => {
-      const [cls] = map[n.type] || map.info;
-      return `<div class="notif ${n.unread ? "unread" : ""}">
-        <div class="notif-ico ${cls}" style="color:#fff">${icon(n.icon)}</div>
-        <div class="grow"><div class="f-title" style="font-size:13.5px;font-weight:600">${n.title}</div>
-        <div class="f-time">${n.time}</div></div>
+    const esc = NF.escapeHtml;
+    const tone = { success: "ico-green", info: "ico-blue", gold: "ico-gold" };
+    list.innerHTML = feed.map(n => {
+      // A notification opens the page where it can be acted on.
+      const tag = n.href ? "a" : "div";
+      const href = n.href ? ` href="${esc(n.href)}"` : "";
+      return `<${tag} class="notif ${n.unread ? "unread" : ""}"${href} data-notif-id="${esc(n.id)}">
+        <div class="notif-ico ${tone[n.tone] || tone.info}" style="color:#fff">${icon(n.icon)}</div>
+        <div class="grow notif-text">
+          <div class="notif-title">${esc(n.title)}</div>
+          ${n.body ? `<div class="notif-body">${esc(n.body)}</div>` : ""}
+          <div class="f-time">${esc(n.time)}</div>
+        </div>
         ${n.unread ? '<span class="dot on" style="align-self:center"></span>' : ""}
-      </div>`;
+      </${tag}>`;
     }).join("");
+  }
+
+  /* Unread counter on the bell (hidden at zero, "9+" beyond nine). */
+  function renderBell() {
+    const badge = $("#notifCount");
+    if (!badge || !NF) return;
+    const n = NF.unreadCount(KG.notifications);
+    badge.textContent = NF.badgeLabel(n);
+    badge.hidden = n === 0;
+    $("#notifBtn")?.setAttribute("aria-label", n ? `${t("notif.title")} (${n})` : t("notif.title"));
   }
 
   function wireShell() {
@@ -569,46 +597,71 @@
       window.location.href = "login.html";
     });
 
-    // Notifications dropdown — opening it marks everything as seen
+    // Notifications bell — opening the panel marks what it shows as seen;
+    // the highlight stays until the next opening so the user sees what's new.
     const dd = $("#notifDropdown");
-    async function refreshNotifications() {
-      if (!window.KGTraining || !window.KG_API_CONFIGURED) return;
-      const latest = await window.KGTraining.notifications(20);
-      if (!latest) return;
-      window.KG.teamNotifications = latest;
-      buildNotifications();
+    const notifBtn = $("#notifBtn");
+    const notifOpen = () => Boolean(dd && dd.classList.contains("open"));
+    function acknowledgeNotifs() {
+      if (!NF) return;
+      setNotifSeenAt(NF.markSeen(KG.notifications, getNotifSeenAt()));
+      (KG.notifications || []).forEach(n => { n.unread = false; });
+      renderBell();
+    }
+    function openNotifs() {
+      if (!dd) return;
       renderNotifs();
+      dd.classList.add("open");
+      notifBtn?.setAttribute("aria-expanded", "true");
+      acknowledgeNotifs();
     }
-    function markNotifsSeen() {
-      const top = (window.KG.notifications || [])[0];
-      if (top) localStorage.setItem("kg-seen-notif-id", top.id);
-      (window.KG.notifications || []).forEach(n => n.unread = false);
-      $$(".notif.unread").forEach(n => n.classList.remove("unread"));
-      $(".ping")?.remove();
-      document.querySelector('[data-nav="notifications"] .nav-badge')?.remove();
+    function closeNotifs() {
+      if (!notifOpen()) return;
+      dd.classList.remove("open");
+      notifBtn?.setAttribute("aria-expanded", "false");
     }
-    $("#notifBtn")?.addEventListener("click", async (e) => {
+    let refreshing = null;
+    function refreshNotifications() {
+      if (!window.KG_API_CONFIGURED || !window.KGTraining || !window.KGDB) return Promise.resolve();
+      if (refreshing) return refreshing;             // one refresh at a time
+      refreshing = Promise.all([
+        window.KGTraining.notifications(20),
+        window.KGDB.listSales(20),
+        window.KGDB.listChallenges(),
+      ]).then(([team, sales, challenges]) => {
+        const K = window.KG;
+        if (team) K.teamNotifications = team;
+        if (sales) K.feedSales = sales.map(x => ({ id: x.id, product: x.product, qty: x.qty, rep: x.rep_name || "", at: x.created_at }));
+        if (challenges) K.feedChallenges = challenges.map(c => ({ id: c.id, title: c.title, reward: c.reward, createdAt: c.created_at }));
+        buildNotifications();
+        // Something new arrived while the panel is open: show it right away.
+        if (notifOpen() && NF && NF.unreadCount(KG.notifications)) { renderNotifs(); acknowledgeNotifs(); }
+        renderBell();
+      }).catch(err => console.warn("Notifications refresh failed:", err))
+        .finally(() => { refreshing = null; });
+      return refreshing;
+    }
+    notifBtn?.addEventListener("click", (e) => {
       e.stopPropagation();
-      await refreshNotifications();
-      dd.classList.toggle("open");
-      if (dd.classList.contains("open")) markNotifsSeen();
+      if (notifOpen()) { closeNotifs(); return; }
+      openNotifs();
+      refreshNotifications();
     });
-    document.addEventListener("click", (e) => { if (dd && !dd.contains(e.target)) dd.classList.remove("open"); });
+    document.addEventListener("click", (e) => { if (dd && !dd.contains(e.target)) closeNotifs(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeNotifs(); });
     $("#markAll")?.addEventListener("click", (e) => {
       e.preventDefault();
-      markNotifsSeen();
-      toast("success", "All caught up", "Notifications marked as read.");
+      acknowledgeNotifs();
+      $$("#notifList .notif.unread").forEach(el => el.classList.remove("unread"));
+      $$("#notifList .dot.on").forEach(el => el.remove());
+      toast("success", t("notif.allRead"), t("notif.allRead.msg"));
     });
-
-    // Visiting a section via its nav item clears that section's badge
-    $('[data-nav="notifications"]')?.addEventListener("click", (e) => {
-      e.preventDefault();
-      if (!dd) return;
-      refreshNotifications();
-      dd.classList.add("open");
-      markNotifsSeen();
-    });
-    if (window.KG_API_CONFIGURED) setInterval(refreshNotifications, 60_000);
+    window.addEventListener("kg:lang", () => { buildNotifications(); renderNotifs(); renderBell(); });
+    if (window.KG_API_CONFIGURED) {
+      // Poll while the tab is visible, and catch up as soon as it comes back.
+      setInterval(() => { if (!document.hidden) refreshNotifications(); }, 60_000);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshNotifications(); });
+    }
     $('[data-nav="challenges"]')?.addEventListener("click", () =>
       setSeen("chal", (window.KG.challenges || []).length));
 

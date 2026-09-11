@@ -586,6 +586,7 @@
               title: c.title, desc: c.description || "", reward: c.reward || "—",
               current: c.current ?? 0, target: c.target ?? 0,
               participants: KG.salespersons.length, daysLeft, hrsLeft,
+              createdAt: c.created_at, // dates the challenge in the notification feed
             };
           });
           KG.kpis.challengeCount = KG.challenges.length;

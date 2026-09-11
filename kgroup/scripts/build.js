@@ -30,7 +30,7 @@ try {
 /* ---- 2. Required files -------------------------------------------------- */
 console.log("\nRequired files");
 const REQUIRED = [
-  "api.js", "data.js", "dashboard.js", "style.css",
+  "api.js", "data.js", "dashboard.js", "notifications.js", "style.css",
   "training-content.js", "training.css", "formation.html",
   "crm.css", "clients.html", "remuneration.html",
   "db/schema-crm.sql", "server/crm.js", "server/routes/clients.js",
@@ -117,6 +117,15 @@ for (const page of pages) {
       fail(`${page} loads its scripts out of order (data.js, api.js, dashboard.js)`);
       continue;
     }
+    // Pages with the app shell draw the notification bell: dashboard.js needs
+    // notifications.js loaded before it.
+    if (/<body[^>]*\sdata-app[\s>=]/.test(html)) {
+      const feed = html.indexOf('<script src="notifications.js"></script>');
+      if (feed === -1 || feed > order[2]) {
+        fail(`${page} must load notifications.js before dashboard.js`);
+        continue;
+      }
+    }
   }
 
   // Every local href/src in the MARKUP must resolve. Le contenu des <script>
@@ -201,7 +210,7 @@ fs.mkdirSync(DIST, { recursive: true });
 const ROOT_ASSETS = [
   ...fs.readdirSync(ROOT).filter((f) => f.endsWith(".html")),
   "style.css", "crm.css", "training.css",
-  "api.js", "data.js", "dashboard.js", "training-content.js",
+  "api.js", "data.js", "dashboard.js", "notifications.js", "training-content.js",
   "favicon.svg",
 ];
 

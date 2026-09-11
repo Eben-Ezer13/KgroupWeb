@@ -333,6 +333,10 @@ ul { list-style: none; }
 }
 .topbar h1 { font-size: 19px; }
 .topbar .crumb { font-size: 12.5px; color: var(--muted); }
+/* The title gives way first: buttons keep their size, a long title ends in an ellipsis. */
+.topbar-title { min-width: 0; }
+.topbar-title h1, .topbar-title .crumb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar .icon-btn, .topbar > .avatar-fallback { flex-shrink: 0; }
 .icon-btn {
   width: 42px; height: 42px; border-radius: var(--r-sm);
   display: inline-flex; align-items: center; justify-content: center;
@@ -342,6 +346,14 @@ ul { list-style: none; }
 .icon-btn:hover { color: var(--brand); border-color: var(--brand-300); transform: translateY(-2px); box-shadow: var(--sh-sm); }
 .icon-btn svg { width: 20px; height: 20px; }
 .icon-btn .ping { position: absolute; top: 8px; right: 9px; width: 8px; height: 8px; background: var(--danger); border-radius: 50%; border: 2px solid var(--surface); }
+/* Unread counter on the notification bell */
+.icon-btn .notif-count {
+  position: absolute; top: -6px; right: -6px; min-width: 19px; height: 19px; padding: 0 5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--danger); color: #fff; font-size: 10.5px; font-weight: 700; line-height: 1;
+  border-radius: var(--r-pill); border: 2px solid var(--surface); pointer-events: none;
+}
+.icon-btn .notif-count[hidden] { display: none; }
 
 .search-box {
   display: flex; align-items: center; gap: 10px;
@@ -443,6 +455,16 @@ canvas { display: block; width: 100%; }
 .notif.unread { background: var(--brand-50); }
 .notif-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
 .notif-ico svg { width: 19px; height: 19px; }
+a.notif { color: inherit; text-decoration: none; }
+.notif .notif-text { min-width: 0; }
+.notif .notif-title { font-size: 13.5px; font-weight: 600; }
+.notif .notif-body {
+  font-size: 12.5px; color: var(--muted); margin-top: 2px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.notif .f-time { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+.notif-empty { text-align: center; padding: 30px 12px; color: var(--muted); font-size: 13px; }
+.notif-empty-ico { font-size: 26px; margin-bottom: 6px; }
 
 /* Quick actions */
 .qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -780,8 +802,17 @@ table.data tbody tr:last-child td { border-bottom: none; }
   .podium-base { width: 92px; }
   .podium-col .p-av .avatar, .podium-col .p-av .avatar-fallback { width: 58px; height: 58px; }
   .dropdown-panel { width: calc(100vw - 32px); position: fixed; right: 16px; }
+  .topbar { gap: 8px; }
+  .topbar .icon-btn { width: 38px; height: 38px; }
+  .topbar h1 { font-size: 17px; }
+  .topbar .crumb { display: none; }
   .page-head h2 { font-size: 22px; }
   .auth-form-wrap { padding: 22px; }
+}
+
+/* Very narrow phones: the top-bar avatar is decorative (the user is shown in the menu). */
+@media (max-width: 480px) {
+  .topbar > .avatar-fallback { display: none; }
 }
 
 /* Print (Reports) */

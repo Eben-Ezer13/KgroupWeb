@@ -112,6 +112,7 @@
 
   <script src="data.js"></script>
   <script src="api.js"></script>
+  <script src="notifications.js"></script>
   <script src="dashboard.js"></script>
   <script>
     window.KGPage = function ({ icon, avatar, KGCharts }) {
@@ -256,10 +257,11 @@
 
       // Activity — real feed when available, friendly empty state for a brand-new account
       const acts = KG.activity || [];
+      const esc = window.KGNotifFeed.escapeHtml; // titles carry product and customer names
       document.getElementById("activity").innerHTML = acts.length
         ? acts.map(a=>`
           <div class="feed-item"><div class="feed-ico">${icon(a.icon)}</div>
-          <div class="grow"><div class="f-title">${a.title}</div><div class="f-time">${a.time}</div></div></div>`).join("")
+          <div class="grow"><div class="f-title">${esc(a.title)}</div><div class="f-time">${esc(a.time)}</div></div></div>`).join("")
         : `<div style="text-align:center;padding:26px;color:var(--muted)">
             <div style="font-size:26px;margin-bottom:6px">✨</div>
             <div style="font-size:13px">No activity yet — record your first sale to get started!</div></div>`;
@@ -274,7 +276,7 @@
       nb.innerHTML = KG.notifications.slice(0,5).map(n=>{
         const [cls]=nmap[n.type]||nmap.info;
         return `<div class="notif ${n.unread?'unread':''}"><div class="notif-ico ${cls}" style="color:#fff">${icon(n.icon)}</div>
-        <div class="grow"><div style="font-weight:600;font-size:13.5px">${n.title}</div><div class="f-time">${n.time}</div></div></div>`;
+        <div class="grow"><div style="font-weight:600;font-size:13.5px">${esc(n.title)}</div><div class="f-time">${esc(n.time)}</div></div></div>`;
       }).join("");
     };
   </script>

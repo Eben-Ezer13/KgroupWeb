@@ -149,6 +149,7 @@
 
   <script src="data.js"></script>
   <script src="api.js"></script>
+  <script src="notifications.js"></script>
   <script src="dashboard.js"></script>
   <script>
     window.KGPage = function ({ icon, avatar, toast, KGCharts }) {
@@ -224,21 +225,23 @@
 
       // Recent sales feed (empty state when no sales)
       const feedEl = document.getElementById("recentFeed");
+      const escF = window.KGNotifFeed.escapeHtml; // customer, product and rep names are user input
       if (!KG.recentSales.length) { feedEl.innerHTML = empty("empty.noSales"); }
       else feedEl.innerHTML = KG.recentSales.slice(0,6).map(t=>`
         <div class="feed-item">
           <div class="feed-ico">${icon("bag")}</div>
           <div class="grow">
-            <div class="f-title">${t.customer} bought ${t.product}</div>
-            <div class="f-time">by ${t.rep} • ${window.KGrelTime(t.at ? Date.parse(t.at) : Date.now() - (t.minsAgo||0)*60000)}</div>
+            <div class="f-title">${escF(t.customer)} bought ${escF(t.product)}</div>
+            <div class="f-time">by ${escF(t.rep)} • ${window.KGrelTime(t.at ? Date.parse(t.at) : Date.now() - (t.minsAgo||0)*60000)}</div>
           </div>
           <div style="text-align:right"><b style="font-family:var(--font-display)">${KG.fmt.moneyShort(t.amount)}</b>
-          <div><span class="badge ${t.pay==='Espèces'?'green':t.pay==='Virement'?'blue':'gold'}">${t.pay}</span></div></div>
+          <div><span class="badge ${t.pay==='Espèces'?'green':t.pay==='Virement'?'blue':'gold'}">${escF(t.pay)}</span></div></div>
         </div>`).join("");
 
       // Notifications block
       const nmap = { success:["ico-green","trophy"], info:["ico-blue","bell"], gold:["ico-gold","star"] };
       const notifBlock = document.getElementById("notifBlock");
+      const esc = window.KGNotifFeed.escapeHtml; // titles come from the database
       if (!KG.notifications.length) {
         notifBlock.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted)">
           <div style="font-size:28px;margin-bottom:6px">🔔</div><div style="font-size:13px" data-i18n="empty.noSales">${window.KGI18N.t("empty.noSales")}</div></div>`;
@@ -247,7 +250,7 @@
         const [cls,ic]=nmap[n.type]||nmap.info;
         return `<div class="notif ${n.unread?'unread':''}">
           <div class="notif-ico ${cls}" style="color:#fff">${icon(n.icon)}</div>
-          <div class="grow"><div style="font-weight:600;font-size:13.5px">${n.title}</div><div class="f-time">${n.time}</div></div>
+          <div class="grow"><div style="font-weight:600;font-size:13.5px">${esc(n.title)}</div><div class="f-time">${esc(n.time)}</div></div>
         </div>`;
       }).join("");
 
