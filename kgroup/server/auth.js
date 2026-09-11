@@ -26,7 +26,6 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const db = require("./db");
-const { ensureSharedAdminWorkspace } = require("./workspace");
 
 const COOKIE_NAME = "kg_session";
 const SESSION_TTL_DAYS = Number(process.env.SESSION_TTL_DAYS || 7);
@@ -140,16 +139,11 @@ async function attachUser(req, _res, next) {
     );
     if (!user) return next(); // account deleted since the token was issued
     req.user = user;
+    // The team is exactly the one on the profile. Admins are never merged into
+    // another team automatically: sign-up is public, so an automatic merge
+    // would hand every newcomer the company's data. A co-admin joins an
+    // existing team deliberately, with scripts/join-team.js.
     req.profile = await db.one(`select * from public.profiles where id = $1`, [user.id]);
-    if (req.profile && req.profile.role === "admin" && process.env.NODE_ENV !== "test") {
-      try {
-        const workspaceId = await ensureSharedAdminWorkspace();
-        if (workspaceId) req.profile.team_id = workspaceId;
-      } catch (err) {
-        // Workspace repair must never turn a valid login into a generic 500.
-        console.error("[workspace] shared-team repair deferred:", err.message);
-      }
-    }
   } catch (err) {
     // A database hiccup must not be mistaken for "signed out" on a write path,
     // so surface it rather than silently downgrading to anonymous.

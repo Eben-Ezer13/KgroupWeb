@@ -205,18 +205,11 @@ begin
     return new;
   end if;
 
-  -- ADMIN path -> all administrators share the platform workspace. The former
-  -- implementation created one isolated team per administrator, which made
-  -- the roster and dashboard differ between admin accounts.
-  select id into v_team
-    from public.teams
-   order by created_at nulls first, id
-   limit 1;
-  if v_team is null then
-    insert into public.teams (name, owner)
-      values ('KGROUP Workspace', new.id)
-      returning id into v_team;
-  end if;
+  -- ADMIN path -> spin up a team and link the profile to it. Sign-up is public:
+  -- joining an existing team here would hand every newcomer the company's
+  -- data. A co-administrator is attached deliberately, with
+  -- scripts/join-team.js.
+  insert into public.teams (name, owner) values (v_name || '''s Team', new.id) returning id into v_team;
   insert into public.profiles (id, full_name, email, role, team_id)
     values (new.id, v_name, new.email, 'admin', v_team)
     on conflict (id) do update set role = 'admin', team_id = excluded.team_id;

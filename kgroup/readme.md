@@ -150,6 +150,7 @@ npm test          # 70 tests: routes, auth, permissions, quiz, CRM, remuneration
 npm run e2e:crm   # parcours CRM complet contre Neon (serveur demarre)
 npm run db:check  # schema + row counts on Neon
 npm run db:smoke  # CRUD, constraints, transactions, triggers on Neon
+npm run team:join -- <new-admin-email> <existing-admin-email> --apply  # share one team between admins
 ```
 
 ## 🚀 Deploy

@@ -18,6 +18,7 @@
     "db:check": "node scripts/db-check.js",
     "db:smoke": "node scripts/db-smoke.js",
     "e2e:crm": "node scripts/e2e-crm.js",
+    "team:join": "node scripts/join-team.js",
     "data:import": "node scripts/import-from-supabase.js",
     "verify": "node scripts/verify-deploy.js"
   },
