@@ -52,10 +52,6 @@ Google OAuth remains intentionally disabled: the previous project did not includ
 
 To enable it in a later release, create a Google Cloud OAuth web client, register the exact production callback URL, configure the consent screen, then store the client ID and secret exclusively in Netlify Function variables. Do not place either value in `api.js` or any HTML file.
 
-## Demo mode
-
-On `login.html`, select **Use demo mode**. It persists a local-only flag and preserves the original sample dashboards, sales, rankings, reports and navigation. Select **Use real accounts** to return to API-backed authentication.
-
 ## Deploying to Netlify
 
 1. Connect the repository to Netlify.

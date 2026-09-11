@@ -118,10 +118,6 @@
             <a href="#" class="link" id="switchMode">Create an account</a>
           </p>
 
-          <div class="demo-hint" id="demoHint">
-            ⚙️ <b>Demo mode</b> uses local sample data and never contacts the API.
-            <button type="button" class="link" id="demoModeBtn">Use demo mode</button>
-          </div>
         </form>
       </div>
     </section>
@@ -148,11 +144,6 @@
     const $ = (id) => document.getElementById(id);
     const A = window.KGAuth;
     let mode = "signin"; // 'signin' | 'signup'
-
-    // Demo mode is explicit so the real API never silently falls back to fake data.
-    if (A.isDemo()) { $("email").value = "admin@kgroup.ma"; $("password").value = "kgroup2026"; }
-    $("demoModeBtn").textContent = A.isDemo() ? "Use real accounts" : "Use demo mode";
-    $("demoModeBtn").addEventListener("click", () => { A.useDemo(!A.isDemo()); location.reload(); });
 
     // Send an authenticated user to the right home for their role
     async function goHome() {

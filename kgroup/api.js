@@ -1,22 +1,24 @@
-/* KGROUP browser API. Real mode uses same-origin Netlify Functions; demo mode remains local. */
+/* KGROUP browser API. Requests use same-origin Netlify Functions. */
 (function () {
   "use strict";
-  const DEMO_KEY = "kg-demo-session";
   const DEMO_MODE_KEY = "kg-demo-mode";
   const base = "/api";
+  // Older builds offered a local demo switch. Do not let that persisted browser
+  // preference keep a real user in sample-data mode after upgrading.
+  localStorage.removeItem(DEMO_MODE_KEY);
   const request = async (path, options = {}) => {
     const response = await fetch(base + path, { credentials: "same-origin", headers: { "content-type": "application/json", ...(options.headers || {}) }, ...options });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || "Request failed.");
     return body;
   };
-  const isDemo = () => localStorage.getItem(DEMO_MODE_KEY) === "1";
+  const isDemo = () => false;
   const initials = name => (name || "?").split(" ").map(part => part[0]).slice(0, 2).join("").toUpperCase();
 
   const KGAuth = {
     get configured() { return !isDemo(); },
     isDemo,
-    useDemo(enabled = true) { localStorage.toggleItem ? localStorage.toggleItem(DEMO_MODE_KEY, enabled) : (enabled ? localStorage.setItem(DEMO_MODE_KEY, "1") : localStorage.removeItem(DEMO_MODE_KEY)); },
+    useDemo() { localStorage.removeItem(DEMO_MODE_KEY); },
     async signUp(email, password, fullName, opts = {}) {
       if (isDemo()) { localStorage.setItem(DEMO_KEY, email); return { demo: true }; }
       return request("/auth/signup", { method: "POST", body: JSON.stringify({ email, password, fullName, inviteCode: opts.inviteCode || "" }) });
