@@ -17,7 +17,7 @@
    keep rendering the sample data from data.js.
 
    Exposes: window.KGAuth, window.KGDB, window.KGData, window.KGTraining,
-            window.KGClients, window.KGPayroll,
+            window.KGClients, window.KGPayroll, window.KGPreorders,
             window.KG_API_READY, window.KG_API_CONFIGURED, window.KG_ROLE
    ========================================================================= */
 (function () {
@@ -257,6 +257,16 @@
     },
   };
 
+  /* Query string from an object, skipping empty values. */
+  const qs = (params) => {
+    const u = new URLSearchParams();
+    Object.entries(params || {}).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== "") u.set(k, v);
+    });
+    const s2 = u.toString();
+    return s2 ? "?" + s2 : "";
+  };
+
   /* ------------------------------------------------------------------ *
    * 4. DATABASE API (each method falls back to demo KG data)           *
    * ------------------------------------------------------------------ */
@@ -301,6 +311,20 @@
     async addSale(sale) {
       if (!(await ready())) return { demo: true };
       return request("/sales", { method: "POST", body: sale });
+    },
+
+    /* Historique des ventes : { rep_id, from, to, q, limit } -> rows,
+       summary, by_rep. null en mode demo ; une erreur API est propagee pour
+       que la page puisse l'afficher. */
+    async salesHistory(filters) {
+      if (!(await ready())) return null;
+      return request("/sales/history" + qs(filters));
+    },
+
+    /* (admin) Crediter une vente a un autre commercial. */
+    async reassignSale(id, repId) {
+      if (!(await ready())) return { demo: true };
+      return request("/sales/" + encodeURIComponent(id) + "/rep", { method: "PATCH", body: { rep_id: repId } });
     },
 
     async myProfile() {
@@ -381,15 +405,6 @@
    * l anniversaire, jours restants, lien WhatsApp) : une seule implementation
    * de ces regles, cote serveur, testee une seule fois.
    * ------------------------------------------------------------------ */
-  const qs = (params) => {
-    const u = new URLSearchParams();
-    Object.entries(params || {}).forEach(([k, v]) => {
-      if (v !== undefined && v !== null && v !== "") u.set(k, v);
-    });
-    const s2 = u.toString();
-    return s2 ? "?" + s2 : "";
-  };
-
   const KGClients = {
     /* Liste filtrable. filters: { q, rep_id, birthday_month, has_birthday, limit } */
     async list(filters) {
@@ -458,10 +473,10 @@
       catch (e) { console.warn(e); return null; }
     },
 
-    /* Evolution mensuelle. */
-    async history(months) {
+    /* Evolution mensuelle. repId (admin) : celle d un seul commercial. */
+    async history(months, repId) {
       if (!(await ready())) return null;
-      try { return await request("/payroll/history" + qs({ months })); }
+      try { return await request("/payroll/history" + qs({ months, rep_id: repId })); }
       catch (e) { console.warn(e); return null; }
     },
 
@@ -480,6 +495,41 @@
     async saveSettings(fields) {
       if (!(await ready())) return { demo: true };
       return request("/compensation-settings", { method: "PUT", body: fields });
+    },
+  };
+
+  /* ------------------------------------------------------------------ *
+   * 6b. PRECOMMANDES                                                    *
+   * -------------------------------------------------------------------
+   * Une precommande ne compte nulle part avant sa livraison ; deliver()
+   * la convertit en vente cote serveur (commission, classement, client).
+   * ------------------------------------------------------------------ */
+  const KGPreorders = {
+    /* filters: { status, rep_id, q, limit } -> { rows, summary, today }. */
+    async list(filters) {
+      if (!(await ready())) return null;
+      return request("/preorders" + qs(filters));
+    },
+
+    async create(preorder) {
+      if (!(await ready())) return { demo: true };
+      return request("/preorders", { method: "POST", body: preorder });
+    },
+
+    async update(id, fields) {
+      if (!(await ready())) return { demo: true };
+      return request("/preorders/" + encodeURIComponent(id), { method: "PATCH", body: fields });
+    },
+
+    /* body: { pay } — mode de paiement du solde. */
+    async deliver(id, body) {
+      if (!(await ready())) return { demo: true };
+      return request("/preorders/" + encodeURIComponent(id) + "/deliver", { method: "POST", body: body || {} });
+    },
+
+    async cancel(id, reason) {
+      if (!(await ready())) return { demo: true };
+      return request("/preorders/" + encodeURIComponent(id) + "/cancel", { method: "POST", body: { reason } });
     },
   };
 
@@ -596,7 +646,8 @@
         if (sales) {
           KG.recentSales = sales.slice(0, 40).map((t) => ({
             id: t.id, customer: t.customer, product: t.product, perfume: t.perfume_name || "", qty: t.qty,
-            amount: num(t.amount), pay: t.pay, rep: t.rep_name || "—",
+            amount: num(t.amount), commission: num(t.commission), pay: t.pay,
+            repId: t.rep_id || null, rep: t.rep_name || "—",
             repInitials: initialsOf(t.rep_name), hue: 150,
             at: t.created_at, // real timestamp from the DB
           }));
@@ -662,6 +713,7 @@
   window.KGTraining = KGTraining;
   window.KGClients = KGClients;
   window.KGPayroll = KGPayroll;
+  window.KGPreorders = KGPreorders;
   window.KG_API_READY = true;
   window.KG_API_CONFIGURED = IS_CONFIGURED;   // refined by the health probe
   window.KG_ROLE = window.KG_ROLE || "admin"; // default until hydrate resolves the real role

@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="icon" type="image/jpeg" href="assets/images/logo.jpeg" />
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="crm.css" />
 </head>
 <body data-app data-page="sales" data-title="Register Sale" data-role="Administrator">
 
@@ -21,6 +22,15 @@
     <!-- ============ FORM ============ -->
     <div class="card card-pad reveal">
       <form id="saleForm" novalidate>
+        <!-- ---- TYPE : vente immediate ou precommande ---- -->
+        <div class="kc-type">
+          <div class="seg" id="typeSeg" role="tablist" aria-label="Type d'enregistrement">
+            <button type="button" data-type="sale" class="on" role="tab">🛍️ Vente</button>
+            <button type="button" data-type="preorder" role="tab">⏳ Précommande</button>
+          </div>
+          <span class="hint" id="typeHint"></span>
+        </div>
+
         <div class="form-grid">
           <!-- ---- CLIENT ---- -->
           <div class="field full" style="margin-bottom:-4px">
@@ -65,8 +75,29 @@
             <input class="input" id="price" type="number" readonly>
           </div>
 
+          <!-- ---- PRECOMMANDE ---- -->
+          <div class="field full hidden" id="preorderFields">
+            <div class="kc-preorder-box">
+              <div class="form-grid">
+                <div class="field">
+                  <label for="deposit">Acompte versé (DHS)</label>
+                  <input class="input" id="deposit" type="number" min="0" step="1" value="0">
+                </div>
+                <div class="field">
+                  <label for="expectedAt">Date de livraison prévue</label>
+                  <input class="input" id="expectedAt" type="date">
+                </div>
+              </div>
+              <div class="hint" style="margin-top:10px">
+                Une précommande ne compte ni dans le chiffre d'affaires ni dans la commission tant qu'elle
+                n'est pas livrée. Marquez-la « livrée » depuis la page <a class="link" href="orders.html?tab=preorders">Commandes</a> :
+                la vente est alors enregistrée automatiquement.
+              </div>
+            </div>
+          </div>
+
           <div class="field full">
-            <label>Payment Method</label>
+            <label id="payLabel">Payment Method</label>
             <div class="pay-options">
               <div class="pay-opt">
                 <input type="radio" name="pay" id="payCash" value="Espèces" checked>
@@ -83,7 +114,7 @@
             </div>
           </div>
 
-          <div class="field">
+          <div class="field" id="dateField">
             <label>Date</label>
             <input class="input" id="date" type="date">
           </div>
@@ -95,7 +126,7 @@
         </div>
 
         <div class="row gap-3" style="margin-top:22px">
-          <button type="submit" class="btn btn-primary"><span data-ic="check"></span> Register Sale</button>
+          <button type="submit" class="btn btn-primary"><span data-ic="check"></span> <span id="submitLabel">Register Sale</span></button>
           <button type="reset" class="btn btn-ghost">Clear form</button>
         </div>
       </form>
@@ -104,7 +135,7 @@
     <!-- ============ LIVE SUMMARY ============ -->
     <div class="reveal">
       <div class="card card-pad" style="position:sticky;top:96px">
-        <div class="section-title"><h3>Order Summary</h3></div>
+        <div class="section-title"><h3 id="sumTitle">Order Summary</h3></div>
         <div style="display:flex;flex-direction:column;gap:14px">
           <div class="row"><span class="muted grow">Product</span><b id="sumProduct" style="text-align:right;max-width:60%">—</b></div>
           <div class="row"><span class="muted grow">Quantity</span><b id="sumQty">1</b></div>
@@ -113,13 +144,15 @@
           <hr style="border:none;border-top:1px dashed var(--line)">
           <div class="row"><span class="grow" style="font-weight:600">Total</span>
             <b id="sumTotal" style="font-family:var(--font-display);font-size:24px;color:var(--brand)">0 DHS</b></div>
+          <div class="row hidden" id="sumDepositRow"><span class="muted grow">Acompte versé</span><b id="sumDeposit">0 DHS</b></div>
+          <div class="row hidden" id="sumBalanceRow"><span class="muted grow">Reste à payer à la livraison</span><b id="sumBalance">0 DHS</b></div>
         </div>
         <div class="card card-pad" style="background:var(--brand-50);border-radius:var(--r-md);margin-top:18px">
           <div class="row gap-2" style="justify-content:space-between">
-            <span style="font-size:13px;font-weight:600">💸 Your commission (Art. 3)</span>
+            <span style="font-size:13px;font-weight:600" id="sumCommissionLabel">💸 Your commission (Art. 3)</span>
             <b id="sumCommission" style="color:var(--brand)">0 DHS</b>
           </div>
-          <div class="row gap-2" style="margin-top:10px"><span data-ic="zap" style="color:var(--brand)"></span>
+          <div class="row gap-2" style="margin-top:10px" id="xpRow"><span data-ic="zap" style="color:var(--brand)"></span>
           <span style="font-size:13px;font-weight:600">+<span id="xpGain">25</span> XP will be awarded</span></div>
         </div>
       </div>
@@ -133,11 +166,12 @@
         <div class="stat-ico ico-green" style="width:72px;height:72px;margin:0 auto 18px;animation:popIn .5s var(--ease)">
           <span data-ic="check" style="transform:scale(1.4)"></span>
         </div>
-        <h3 style="font-size:22px;margin-bottom:8px">Sale Registered!</h3>
+        <h3 style="font-size:22px;margin-bottom:8px" id="successTitle">Sale Registered!</h3>
         <p class="muted" id="successMsg">Transaction saved successfully.</p>
-        <div style="margin-top:22px" class="row gap-3 center">
+        <div style="margin-top:22px;flex-wrap:wrap" class="row gap-3 center">
           <button class="btn btn-ghost" data-modal-close>Register another</button>
-          <a href="dashboard.html" class="btn btn-primary">Back to dashboard</a>
+          <a href="orders.html" class="btn btn-ghost" id="successOrders">Voir les commandes</a>
+          <a href="dashboard.html" class="btn btn-primary" id="successHome">Back to dashboard</a>
         </div>
       </div>
     </div>
@@ -153,22 +187,68 @@
       const $ = (s) => document.querySelector(s);
       document.querySelectorAll("[data-ic]").forEach(el => el.innerHTML = icon(el.dataset.ic));
 
-      // Populate reps + products
-      $("#rep").innerHTML = KG.salespersons.map(s=>`<option value="${s.id}">${s.name} — ${s.city}</option>`).join("");
+      const esc = window.KGNotifFeed.escapeHtml; // names and perfumes are typed by users
+      const isRep = ["salesperson", "relation_client"].includes(window.KG_ROLE);
 
-      // Salespersons can only register their OWN sales → lock the rep field to themselves
-      if (["salesperson", "relation_client"].includes(window.KG_ROLE) && KG.me) {
+      // Populate reps + products
+      $("#rep").innerHTML = KG.salespersons.map(s=>`<option value="${esc(s.id)}">${esc(s.name)} — ${esc(s.city)}</option>`).join("");
+
+      /* Salespersons can only register their OWN sales → lock the rep field to
+         themselves. The option is also made the form's DEFAULT: form.reset()
+         restores default options, and without this it fell back to the first
+         rep of the list — the next sale was then credited to a colleague. The
+         server enforces the same rule (server/sales.js → resolveRep). */
+      function lockRep() {
+        if (!isRep || !KG.me) return;
         if (![...$("#rep").options].some(o => o.value === KG.me.id))
-          $("#rep").insertAdjacentHTML("afterbegin", `<option value="${KG.me.id}">${KG.me.name}</option>`);
+          $("#rep").insertAdjacentHTML("afterbegin", `<option value="${esc(KG.me.id)}">${esc(KG.me.name)}</option>`);
+        [...$("#rep").options].forEach(o => { o.defaultSelected = o.value === KG.me.id; });
         $("#rep").value = KG.me.id;
         $("#rep").disabled = true;
       }
+      lockRep();
       $("#product").innerHTML = KG.products.map(p=>`<option value="${p.id}" data-price="${p.price}" data-commission="${p.commission}">${p.name} — ${KG.fmt.money(p.price)}</option>`).join("");
 
-      // Defaults — real current date
-      const today = () => new Date().toISOString().slice(0, 10);
+      // Defaults — real current date (local day, not UTC)
+      const today = () => window.KGPeriod.isoDay(new Date());
       $("#date").value = today();
       $("#date").max = today();          // no future-dated sales
+      $("#expectedAt").min = today();    // a pre-order is delivered later, never in the past
+      $("#successHome").href = isRep ? "salesperson.html" : "dashboard.html";
+
+      /* ---- Vente immediate ou precommande ------------------------------ */
+      let type = new URLSearchParams(location.search).get("type") === "preorder" ? "preorder" : "sale";
+      const TYPE_TEXT = {
+        sale: {
+          hint: "Vente conclue : elle compte tout de suite dans le chiffre d'affaires, les classements et la commission.",
+          submit: "Enregistrer la vente", summary: "Récapitulatif de la vente", pay: "Mode de paiement",
+          commission: "💸 Commission (Art. 3)",
+        },
+        preorder: {
+          hint: "Précommande : le client réserve, la vente et la commission sont enregistrées à la livraison.",
+          submit: "Enregistrer la précommande", summary: "Récapitulatif de la précommande", pay: "Paiement de l'acompte",
+          commission: "💸 Commission — acquise à la livraison",
+        },
+      };
+      function setType(next) {
+        type = next;
+        const t = TYPE_TEXT[type];
+        const pre = type === "preorder";
+        document.querySelectorAll("#typeSeg [data-type]").forEach(b => b.classList.toggle("on", b.dataset.type === type));
+        $("#typeHint").textContent = t.hint;
+        $("#submitLabel").textContent = t.submit;
+        $("#sumTitle").textContent = t.summary;
+        $("#payLabel").textContent = t.pay;
+        $("#sumCommissionLabel").textContent = t.commission;
+        $("#preorderFields").classList.toggle("hidden", !pre);
+        $("#dateField").classList.toggle("hidden", pre);
+        $("#sumDepositRow").classList.toggle("hidden", !pre);
+        $("#sumBalanceRow").classList.toggle("hidden", !pre);
+        $("#xpRow").classList.toggle("hidden", pre);
+        update();
+      }
+      document.querySelectorAll("#typeSeg [data-type]").forEach(b =>
+        b.addEventListener("click", () => setType(b.dataset.type)));
 
       // Perfume names already sold by the team, offered as suggestions.
       const saleLabel = window.KGNotifFeed.saleLabel;
@@ -190,14 +270,17 @@
         $("#sumTotal").textContent = KG.fmt.money(total);
         $("#sumCommission").textContent = KG.fmt.money(commission);
         $("#xpGain").textContent = Math.max(10, Math.round(total/60));
+        const deposit = Math.min(total, Math.max(0, +$("#deposit").value || 0));
+        $("#sumDeposit").textContent = KG.fmt.money(deposit);
+        $("#sumBalance").textContent = KG.fmt.money(total - deposit);
         const pay = document.querySelector('input[name="pay"]:checked').value;
         const badge = $("#sumPay");
         badge.textContent = pay;
         badge.className = "badge " + payClass(pay);
       }
-      ["#product","#qty","#perfumeName"].forEach(s => $(s).addEventListener("input", update));
+      ["#product","#qty","#perfumeName","#deposit"].forEach(s => $(s).addEventListener("input", update));
       document.querySelectorAll('input[name="pay"]').forEach(r => r.addEventListener("change", update));
-      update();
+      setType(type); // also runs update()
 
       /* ---- Reconnaissance du client par son numero -------------------
          Des que le numero saisi est exploitable, on interroge l API. Si le
@@ -221,7 +304,7 @@
         lookupTimer = setTimeout(async () => {
           if (!window.KGClients) return;
           const c = await window.KGClients.lookupByPhone(raw);
-          if (!c) { setHint("Nouveau client — il sera cree avec cette vente."); return; }
+          if (!c) { setHint(`Nouveau client — il sera créé avec cette ${type === "preorder" ? "précommande" : "vente"}.`); return; }
           matchedClientId = c.id;
           $("#customer").value = c.name || "";
           if (c.birthday) $("#clientBirthday").value = String(c.birthday).slice(0, 10);
@@ -237,6 +320,7 @@
 
         const btn = e.submitter || document.querySelector('#saleForm button[type=submit]');
         const price = selPrice(), qty = Math.max(1, +$("#qty").value || 1);
+        const isPreorder = type === "preorder";
         const sale = {
           customer: $("#customer").value.trim(),
           product: productName(),
@@ -245,7 +329,7 @@
           commission: selCommission() * qty,
           pay: document.querySelector('input[name="pay"]:checked').value,
           rep_id: $("#rep").value || null,
-          rep_name: $("#rep").selectedOptions[0].textContent.replace(/\s*—.*/,""),
+          rep_name: $("#rep").selectedOptions[0] ? $("#rep").selectedOptions[0].textContent.replace(/\s*—.*/,"") : null,
           remarks: $("#remarks").value.trim() || null,
           // Le serveur retrouve le client par son numero, ou le cree. Il ne
           // duplique jamais un client existant (numero unique par equipe).
@@ -253,19 +337,33 @@
           client_phone: $("#clientPhone").value.trim() || null,
           client_birthday: $("#clientBirthday").value || null,
         };
-        // Real timestamp: today's sale uses the exact current time; a back-dated
-        // one keeps the chosen day. The DB would default to now() too, but we set
-        // it explicitly so the picked date is always honoured.
-        const dateVal = $("#date").value;
-        sale.created_at = (dateVal && dateVal !== today())
-          ? new Date(dateVal + "T12:00:00").toISOString()
-          : new Date().toISOString();
+
+        if (isPreorder) {
+          sale.unit_price = price;
+          sale.deposit = Math.max(0, Math.round(+$("#deposit").value || 0));
+          sale.expected_at = $("#expectedAt").value || null;
+          if (sale.deposit > sale.amount) {
+            toast("error", "Acompte trop élevé", "L'acompte ne peut pas dépasser le montant de la précommande.");
+            $("#deposit").focus(); return;
+          }
+          if (sale.expected_at && sale.expected_at < today()) {
+            toast("error", "Date de livraison passée", "Choisissez une date à venir, ou laissez le champ vide.");
+            $("#expectedAt").focus(); return;
+          }
+        } else {
+          // Real timestamp: today's sale uses the exact current time; a back-dated
+          // one keeps the chosen day. The DB would default to now() too, but we set
+          // it explicitly so the picked date is always honoured.
+          const dateVal = $("#date").value;
+          sale.created_at = (dateVal && dateVal !== today())
+            ? new Date(dateVal + "T12:00:00").toISOString()
+            : new Date().toISOString();
+        }
 
         try {
-          if (window.KGDB) {
-            btn && (btn.disabled = true);
-            await window.KGDB.addSale(sale); // no-op stub in demo mode
-          }
+          btn && (btn.disabled = true);
+          if (isPreorder && window.KGPreorders) await window.KGPreorders.create(sale);
+          else if (!isPreorder && window.KGDB) await window.KGDB.addSale(sale); // no-op stub in demo mode
         } catch (err) {
           toast("error", "Could not save", err.message || "Please try again.");
           btn && (btn.disabled = false);
@@ -273,13 +371,25 @@
         }
         btn && (btn.disabled = false);
 
-        const esc = window.KGNotifFeed.escapeHtml; // the perfume name is typed by the user
-        $("#successMsg").innerHTML = `<b>${esc($("#sumProduct").textContent)}</b> ×${esc($("#sumQty").textContent)} — <b style="color:var(--brand)">${esc($("#sumTotal").textContent)}</b>`;
+        const deposit = isPreorder && sale.deposit ? ` — acompte ${esc(KG.fmt.money(sale.deposit))}` : "";
+        $("#successTitle").textContent = isPreorder ? "Précommande enregistrée !" : "Sale Registered!";
+        $("#successMsg").innerHTML = `<b>${esc($("#sumProduct").textContent)}</b> ×${esc($("#sumQty").textContent)} — <b style="color:var(--brand)">${esc($("#sumTotal").textContent)}</b>${deposit}` +
+          (isPreorder ? `<br><span style="font-size:12.5px">Elle comptera comme vente le jour de sa livraison.</span>` : "");
+        $("#successOrders").href = isPreorder ? "orders.html?tab=preorders" : "orders.html";
         window.kgModal.open("#successModal");
-        toast("success","Sale registered","Rankings & XP updated.");
+        toast("success", isPreorder ? "Précommande enregistrée" : "Sale registered",
+          isPreorder ? "À livrer depuis la page Commandes." : "Rankings & XP updated.");
         e.target.reset(); $("#date").value = today();
-        matchedClientId = null; setHint(""); update();
+        lockRep();                    // keep the sale credited to the signed-in rep
+        matchedClientId = null; setHint(""); setType(type);
       });
+
+      // "Clear form" resets the inputs natively: restore what reset() cannot know.
+      $("#saleForm").addEventListener("reset", () => setTimeout(() => {
+        $("#date").value = today();
+        lockRep();
+        matchedClientId = null; setHint(""); update();
+      }, 0));
     };
   </script>
 </body>

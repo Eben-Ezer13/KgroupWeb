@@ -14,6 +14,7 @@ const { pool } = require("../server/db");
 const MIGRATIONS = [
   "schema.sql",       // v3   base + formation
   "schema-crm.sql",   // v3.2 clients, anniversaires, remuneration
+  "schema-preorders.sql", // v3.3 precommandes
 ];
 
 async function main() {

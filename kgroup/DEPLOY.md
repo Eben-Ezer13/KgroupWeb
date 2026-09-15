@@ -112,7 +112,7 @@ avant de basculer le site public.
 
 ```bash
 npm install
-npm test            # logique applicative (73 tests)
+npm test            # logique applicative (118 tests)
 npm run db:check    # la base Neon a le schéma attendu
 npm run db:smoke    # lecture / écriture / triggers sur la vraie base
 npm run build       # le déploiement est cohérent
@@ -193,6 +193,12 @@ parfum vendu), appliquez le schéma **avant** de déployer le code qui s'en sert
 npm run db:migrate   # idempotent : sans effet sur ce qui existe déjà
 npm run db:check
 ```
+
+> **Précommandes (`db/schema-preorders.sql`)** : la table `preorders` est aussi
+> créée automatiquement au premier appel de `/api/preorders` (même SQL, tout en
+> `IF NOT EXISTS`), pour que la page **Commandes** fonctionne dès le
+> déploiement. Lancez tout de même `npm run db:migrate` : c'est la procédure de
+> référence, et `db:check` vérifie la table et ses index.
 
 ## 7. Si quelque chose ne marche pas
 

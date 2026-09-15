@@ -32,6 +32,7 @@ const trainingRoutes = require("./routes/training");
 const clientRoutes = require("./routes/clients");
 const payrollRoutes = require("./routes/payroll");
 const reminderRoutes = require("./routes/reminders");
+const preorderRoutes = require("./routes/preorders");
 
 const app = express();
 
@@ -100,6 +101,7 @@ app.use("/api", trainingRoutes);
 app.use("/api", clientRoutes);
 app.use("/api", payrollRoutes);
 app.use("/api", reminderRoutes);
+app.use("/api", preorderRoutes);
 
 app.use("/api", (_req, res) => res.status(404).json({ error: "Unknown endpoint." }));
 

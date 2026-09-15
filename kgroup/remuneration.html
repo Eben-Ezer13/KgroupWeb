@@ -30,22 +30,25 @@
   <div id="statusBanner" class="kc-banner reveal"></div>
 
   <!-- Synthèse -->
-  <div class="grid grid-4 reveal" style="margin-bottom:20px">
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico ico-green" data-ic="users"></div></div>
-      <div class="stat-val" id="sReps">0</div><div class="stat-lbl">Commerciaux</div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico ico-blue" data-ic="chart"></div></div>
-      <div class="stat-val" id="sRevenue">0</div><div class="stat-lbl">CA du mois</div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico ico-gold" data-ic="dollar"></div></div>
-      <div class="stat-val" id="sCommission">0</div><div class="stat-lbl">Commissions</div></div>
-    <div class="stat-card"><div class="stat-top"><div class="stat-ico ico-purple" data-ic="trophy"></div></div>
-      <div class="stat-val" id="sTotal">0</div><div class="stat-lbl">Rémunération totale</div></div>
+  <div class="grid stat-grid reveal" style="margin-bottom:20px">
+    <div class="card stat"><div class="stat-top"><div class="stat-ico ico-green" data-ic="users"></div></div>
+      <div class="stat-val" id="sReps">0</div><div class="stat-label">Commerciaux</div></div>
+    <div class="card stat"><div class="stat-top"><div class="stat-ico ico-blue" data-ic="chart"></div></div>
+      <div class="stat-val" id="sRevenue">0</div><div class="stat-label">CA du mois</div></div>
+    <div class="card stat"><div class="stat-top"><div class="stat-ico ico-gold" data-ic="dollar"></div></div>
+      <div class="stat-val" id="sCommission">0</div><div class="stat-label">Commissions</div></div>
+    <div class="card stat"><div class="stat-top"><div class="stat-ico ico-purple" data-ic="trophy"></div></div>
+      <div class="stat-val" id="sTotal">0</div><div class="stat-label">Rémunération totale</div></div>
   </div>
 
   <!-- Tableau -->
   <div class="card card-pad reveal">
-    <div class="section-title" style="align-items:center">
+    <div class="section-title" style="align-items:center;flex-wrap:wrap;gap:12px">
       <div><h3>Détail par commercial</h3><div class="sub" id="tableSub">—</div></div>
-      <input class="input" id="search" placeholder="Rechercher un commercial…" style="max-width:260px">
+      <div class="row gap-2" style="flex-wrap:wrap">
+        <input class="input" id="search" placeholder="Rechercher un commercial…" style="max-width:240px">
+        <div class="export-bar" id="payExport"></div>
+      </div>
     </div>
     <div class="table-wrap">
       <table class="table kc-table">
@@ -53,7 +56,7 @@
           <tr>
             <th>Commercial</th><th class="num">Ventes</th><th class="num">CA</th>
             <th class="num">Commission</th><th class="num">Bonus</th>
-            <th class="num">Salaire fixe</th><th class="num">Total estimé</th><th>Statut</th>
+            <th class="num">Salaire fixe</th><th class="num">Total estimé</th><th>Statut</th><th></th>
           </tr>
         </thead>
         <tbody id="payBody"></tbody>
@@ -63,9 +66,24 @@
 
   <!-- Historique -->
   <div class="card card-pad reveal" style="margin-top:24px">
-    <div class="section-title"><div><h3>Évolution mensuelle</h3><div class="sub">6 derniers mois — équipe complète</div></div></div>
+    <div class="section-title" style="align-items:center;flex-wrap:wrap;gap:12px">
+      <div><h3>Évolution mensuelle</h3><div class="sub" id="histSub">6 derniers mois — équipe complète</div></div>
+      <select class="select" id="histRep" style="width:auto;min-width:220px" aria-label="Commercial"><option value="">Équipe complète</option></select>
+    </div>
     <canvas id="histChart" height="240"></canvas>
     <div id="histTable" style="margin-top:16px"></div>
+  </div>
+
+  <!-- ============ MODAL RÉMUNÉRATION D'UN COMMERCIAL ============ -->
+  <div class="modal-overlay" id="repModal">
+    <div class="modal kc-modal">
+      <div class="modal-head"><h3 id="rmTitle">Rémunération</h3><button class="icon-btn" data-modal-close><span data-ic="x"></span></button></div>
+      <div class="modal-body" id="rmBody"></div>
+      <div class="modal-foot" style="flex-wrap:wrap">
+        <a class="btn btn-ghost" id="rmOrders" href="orders.html"><span data-ic="clipboard"></span> Toutes ses ventes</a>
+        <div class="export-bar" id="rmExport"><span class="export-label">Relevé</span></div>
+      </div>
+    </div>
   </div>
 
   <!-- ============ MODAL PARAMÈTRES ============ -->
@@ -131,6 +149,7 @@
   <script src="data.js"></script>
   <script src="api.js"></script>
   <script src="notifications.js"></script>
+  <script src="exports.js"></script>
   <script src="dashboard.js"></script>
   <script>
     window.KGPage = async function ({ icon, toast, KGCharts }) {
@@ -138,15 +157,23 @@
       const $$ = (s) => Array.from(document.querySelectorAll(s));
       const KG = window.KG;
       const API = window.KGPayroll;
+      const Period = window.KGPeriod;
       const esc = (s) => String(s == null ? "" : s)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
       const money = (n) => KG.fmt.money(Number(n) || 0);
+      const monthLabel = (ym, opts) => {
+        const [y, m] = String(ym).slice(0, 7).split("-").map(Number);
+        return new Date(y, m - 1, 1).toLocaleDateString("fr-FR", opts || { month: "long", year: "numeric" });
+      };
+      const STATUS_TEXT = { EN_COURS: "En cours", CLOTURE: "Clôturé", VALIDEE: "Validée", PAYEE: "Payée" };
+      document.querySelectorAll("[data-ic]").forEach(el => el.innerHTML = icon(el.dataset.ic));
 
-      const nowMonth = new Date().toISOString().slice(0, 7);
+      const nowMonth = Period.isoDay(new Date()).slice(0, 7);
       $("#month").value = nowMonth;
       $("#month").max = nowMonth;
 
       let lines = [];
+      let summary = null;
 
       /* ---------- Chargement ---------- */
       async function load() {
@@ -154,11 +181,12 @@
         const data = await API.team(month);
         if (!data) {
           $("#payBody").innerHTML =
-            `<tr><td colspan="8" class="muted" style="text-align:center;padding:28px">
+            `<tr><td colspan="9" class="muted" style="text-align:center;padding:28px">
                Mode démo — démarrez l'API pour calculer la rémunération réelle.</td></tr>`;
           return;
         }
         lines = data.lines;
+        summary = data.summary;
         const s = data.summary;
         $("#sReps").textContent = s.reps;
         $("#sRevenue").textContent = money(s.revenue);
@@ -185,7 +213,7 @@
         const q = $("#search").value.trim().toLowerCase();
         const rows = lines.filter(l => !q || (l.rep_name || "").toLowerCase().includes(q));
         $("#payBody").innerHTML = rows.length ? rows.map(l => `
-          <tr>
+          <tr class="kc-rep-row" data-rep="${esc(l.rep_id)}" title="Voir le détail de ${esc(l.rep_name)}">
             <td><b>${esc(l.rep_name)}</b></td>
             <td class="num">${l.sales_count}</td>
             <td class="num">${money(l.revenue)}</td>
@@ -194,40 +222,187 @@
               l.bonus_next ? `<div class="muted" style="font-size:11px">→ ${l.bonus_next.sales} ventes : ${money(l.bonus_next.bonus)}</div>` : ""}</td>
             <td class="num">${money(l.salary_base)}</td>
             <td class="num"><b style="color:var(--brand)">${money(l.total)}</b></td>
-            <td><span class="kc-status ${esc(l.status)}">${esc(l.status.replace("_", " "))}</span></td>
+            <td><span class="kc-status ${esc(l.status)}">${esc(STATUS_TEXT[l.status] || l.status)}</span></td>
+            <td class="num"><button class="btn btn-ghost btn-sm" data-detail="${esc(l.rep_id)}">Détail</button></td>
           </tr>`).join("")
-          : `<tr><td colspan="8" class="muted" style="text-align:center;padding:28px">
+          : `<tr><td colspan="9" class="muted" style="text-align:center;padding:28px">
                Aucun commercial ne correspond.</td></tr>`;
+        $$("#payBody [data-rep]").forEach(tr => tr.addEventListener("click", () => openRep(tr.dataset.rep)));
       }
       $("#search").addEventListener("input", renderTable);
       $("#month").addEventListener("change", load);
 
-      /* ---------- Historique ---------- */
-      async function loadHistory() {
-        const h = await API.history(6);
-        if (!h || !h.months.length) return;
-        const labels = h.months.map(m => {
-          const [y, mo] = m.period.split("-");
-          return new Date(+y, +mo - 1, 1).toLocaleDateString("fr-FR", { month: "short" });
-        });
-        KGCharts.barChart($("#histChart"), {
-          values: h.months.map(m => Number(m.total) || 0), labels, height: 240,
-        });
-        $("#histTable").innerHTML = `
-          <div class="table-wrap"><table class="table">
+      /* ---------- Historique (équipe ou un commercial) ---------- */
+      (KG.salespersons || []).slice().sort((a, b) => a.name.localeCompare(b.name, "fr")).forEach(r =>
+        $("#histRep").insertAdjacentHTML("beforeend", `<option value="${esc(r.id)}">${esc(r.name)}</option>`));
+
+      function historyTable(months) {
+        return `
+          <div class="table-wrap"><table class="table kc-table">
             <thead><tr><th>Mois</th><th class="num">Ventes</th><th class="num">CA</th>
-              <th class="num">Commissions</th><th class="num">Bonus</th><th class="num">Total</th><th>Statut</th></tr></thead>
-            <tbody>${h.months.slice().reverse().map(m => `<tr>
-              <td>${new Date(m.period).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</td>
+              <th class="num">Commissions</th><th class="num">Bonus</th><th class="num">Salaire fixe</th>
+              <th class="num">Total</th><th>Statut</th></tr></thead>
+            <tbody>${months.slice().reverse().map(m => `<tr>
+              <td>${monthLabel(m.period)}</td>
               <td class="num">${m.sales_count}</td>
               <td class="num">${money(m.revenue)}</td>
               <td class="num">${money(m.commission)}</td>
               <td class="num">${money(m.bonus)}</td>
+              <td class="num">${money(m.salary_base)}</td>
               <td class="num"><b>${money(m.total)}</b></td>
               <td><span class="kc-status ${m.locked ? "CLOTURE" : "EN_COURS"}">${m.locked ? "figé" : "estimé"}</span></td>
             </tr>`).join("")}</tbody>
           </table></div>`;
       }
+
+      let lastHistory = null;
+      async function loadHistory() {
+        const repId = $("#histRep").value;
+        const h = await API.history(6, repId || undefined);
+        lastHistory = h;
+        if (!h || !h.months.length) return;
+        $("#histSub").textContent = `6 derniers mois — ${repId ? (h.rep ? h.rep.name : "commercial") : "équipe complète"}`;
+        drawHistory();
+        $("#histTable").innerHTML = historyTable(h.months);
+      }
+      function drawHistory() {
+        if (!lastHistory || !lastHistory.months.length) return;
+        KGCharts.barChart($("#histChart"), {
+          values: lastHistory.months.map(m => Number(m.total) || 0),
+          labels: lastHistory.months.map(m => monthLabel(m.period, { month: "short" })),
+          height: 240,
+        });
+      }
+      $("#histRep").addEventListener("change", loadHistory);
+
+      /* ---------- Rémunération d'un commercial ---------- */
+      let repView = null;   // { line, history, sales, month }
+      async function openRep(repId) {
+        const line = lines.find(l => l.rep_id === repId);
+        if (!line) return;
+        const month = $("#month").value || nowMonth;
+        const [y, m] = month.split("-").map(Number);
+        const from = `${month}-01`;
+        const to = Period.isoDay(new Date(y, m, 0));
+        $("#rmTitle").textContent = `${line.rep_name} — ${monthLabel(month)}`;
+        $("#rmBody").innerHTML = `<div class="muted" style="padding:20px;text-align:center">Chargement…</div>`;
+        $("#rmOrders").href = `orders.html?rep=${encodeURIComponent(repId)}&period=${month === nowMonth ? "month" : "12m"}`;
+        window.kgModal.open("#repModal");
+
+        const [history, sales] = await Promise.all([
+          API.history(12, repId),
+          window.KGDB.salesHistory({ rep_id: repId, from, to, limit: 1000 }).catch(() => null),
+        ]);
+        repView = { line, history, sales, month };
+        const l = line;
+        const rows = (sales && sales.rows) || [];
+        $("#rmBody").innerHTML = `
+          <div class="kc-fiche">
+            <div><span>Ventes du mois</span><b>${l.sales_count}</b></div>
+            <div><span>Chiffre d'affaires</span><b>${money(l.revenue)}</b></div>
+            <div><span>Commissions (Art. 3)</span><b>${money(l.commission)}</b></div>
+            <div><span>Bonus (Art. 4)</span><b>${money(l.bonus)}</b></div>
+            <div><span>Salaire fixe</span><b>${money(l.salary_base)}</b></div>
+            <div><span>${l.locked ? "Rémunération" : "Rémunération estimée"}</span><b style="color:var(--brand)">${money(l.total)}</b></div>
+          </div>
+          <div class="muted" style="font-size:12.5px">
+            ${esc(STATUS_TEXT[l.status] || l.status)}${l.locked ? " — montants figés à la clôture." : " — recalculé à chaque vente."}
+            ${l.bonus_next && !l.locked ? ` Encore ${l.bonus_next.sales - l.sales_count} vente(s) pour le palier de ${money(l.bonus_next.bonus)}.` : ""}
+          </div>
+          <h4 class="kc-h4">Évolution sur 12 mois</h4>
+          ${history && history.months.length ? historyTable(history.months) : '<div class="muted">Historique indisponible.</div>'}
+          <h4 class="kc-h4">Ventes de ${esc(monthLabel(month))} (${rows.length})</h4>
+          ${rows.length ? `
+            <div class="table-wrap"><table class="table kc-table">
+              <thead><tr><th>Date</th><th>Client</th><th>Parfum</th><th class="num">Qté</th><th class="num">Montant</th><th class="num">Commission</th></tr></thead>
+              <tbody>${rows.map(s => `<tr>
+                <td>${Period.frDay(Period.isoDay(new Date(s.created_at)))}</td>
+                <td>${esc(s.customer)}</td>
+                <td>${esc(window.KGNotifFeed.saleLabel(s.product, s.perfume_name))}${s.attribution_mismatch ? ' <span class="kc-flag">⚠ créditée à ' + esc(s.rep_name || "—") + "</span>" : ""}</td>
+                <td class="num">${s.qty}</td>
+                <td class="num">${money(s.amount)}</td>
+                <td class="num">${s.rep_id === repId ? money(s.commission) : '<span class="muted">—</span>'}</td>
+              </tr>`).join("")}</tbody>
+            </table></div>`
+            : `<div class="muted" style="padding:14px;text-align:center">Aucune vente ce mois-ci.</div>`}`;
+      }
+      /* ---------- Exports ---------- */
+      const me = (KG.me && KG.me.name) || "";
+      const PAY_COLUMNS = [
+        { key: "rep_name", label: "Commercial", type: "text" },
+        { key: "sales_count", label: "Ventes", type: "int", total: "sum" },
+        { key: "revenue", label: "Chiffre d'affaires", type: "money", total: "sum" },
+        { key: "commission", label: "Commissions", type: "money", total: "sum" },
+        { key: "bonus", label: "Bonus", type: "money", total: "sum" },
+        { key: "salary_base", label: "Salaire fixe", type: "money", total: "sum" },
+        { key: "total", label: "Total", type: "money", total: "sum" },
+        { label: "Statut", type: "text", get: (l) => STATUS_TEXT[l.status] || l.status },
+      ];
+      const HISTORY_COLUMNS = [
+        { label: "Mois", type: "text", get: (m) => monthLabel(m.period) },
+        { key: "sales_count", label: "Ventes", type: "int", total: "sum" },
+        { key: "revenue", label: "Chiffre d'affaires", type: "money", total: "sum" },
+        { key: "commission", label: "Commissions", type: "money", total: "sum" },
+        { key: "bonus", label: "Bonus", type: "money", total: "sum" },
+        { key: "salary_base", label: "Salaire fixe", type: "money", total: "sum" },
+        { key: "total", label: "Total", type: "money", total: "sum" },
+        { label: "Statut", type: "text", get: (m) => (m.locked ? "Figé" : "Estimé") },
+      ];
+
+      $("#payExport").innerHTML = window.KGExportUI.buttons();
+      window.KGExportUI.wire("#payExport", () => {
+        if (!lines.length) throw new Error("Aucune rémunération à exporter pour ce mois.");
+        const month = $("#month").value || nowMonth;
+        const s = summary || {};
+        return {
+          filename: `remuneration-${month}`, title: "Rémunération des commerciaux", badge: "Paie",
+          subtitle: monthLabel(month) + (lines.some(l => l.locked) ? " — mois clôturé" : " — estimation en cours"),
+          meta: [me ? `Exporté par ${me}` : null].filter(Boolean),
+          orientation: "landscape",
+          kpis: [
+            { label: "Commerciaux", value: String(s.reps || lines.length) },
+            { label: "CA du mois", value: money(s.revenue) },
+            { label: "Commissions", value: money(s.commission) },
+            { label: "Bonus", value: money(s.bonus) },
+            { label: "Rémunération totale", value: money(s.total) },
+          ],
+          sections: [{ name: "Rémunération", title: "Détail par commercial", columns: PAY_COLUMNS, rows: lines, totals: true }],
+        };
+      });
+
+      /* Relevé individuel : le détail d'un commercial, prêt à lui être remis. */
+      $("#rmExport").insertAdjacentHTML("beforeend", window.KGExportUI.buttons());
+      window.KGExportUI.wire("#rmExport", () => {
+        if (!repView) throw new Error("Le détail n'est pas encore chargé.");
+        const { line: l, history, sales, month } = repView;
+        const rows = ((sales && sales.rows) || []).filter(s => s.rep_id === l.rep_id);
+        return {
+          filename: `releve-${l.rep_name}-${month}`, title: `Relevé de rémunération — ${l.rep_name}`, badge: "Relevé",
+          subtitle: monthLabel(month) + (l.locked ? " — montants figés" : " — estimation, mois non clôturé"),
+          meta: ["Commissions (Art. 3) et bonus mensuel (Art. 4) du contrat KGroup", me ? `Édité par ${me}` : null].filter(Boolean),
+          kpis: [
+            { label: "Ventes du mois", value: String(l.sales_count) },
+            { label: "Commissions", value: money(l.commission) },
+            { label: "Bonus", value: money(l.bonus) },
+            { label: "Salaire fixe", value: money(l.salary_base) },
+            { label: l.locked ? "Rémunération" : "Rémunération estimée", value: money(l.total) },
+          ],
+          sections: [
+            { name: "Ventes", title: `Ventes de ${monthLabel(month)}`, totals: true, rows,
+              columns: [
+                { key: "created_at", label: "Date", type: "datetime" },
+                { key: "customer", label: "Client", type: "text" },
+                { key: "perfume_name", label: "Parfum", type: "text" },
+                { key: "product", label: "Format", type: "text" },
+                { key: "qty", label: "Qté", type: "int", total: "sum" },
+                { key: "amount", label: "Montant", type: "money", total: "sum" },
+                { key: "commission", label: "Commission", type: "money", total: "sum" },
+              ] },
+            { name: "Historique", title: "Évolution sur 12 mois", columns: HISTORY_COLUMNS,
+              rows: (history && history.months) || [], totals: true },
+          ],
+        };
+      });
 
       /* ---------- Paramètres ---------- */
       let settings = null;
@@ -267,7 +442,9 @@
           bonus: +row.querySelector('[data-t="bonus"]').value || 0,
           extra: row.querySelector('[data-t="extra"]').value.trim(),
         }));
-        e.currentTarget.disabled = true;
+        // e.currentTarget vaut null après un await : on garde le bouton.
+        const btn = e.currentTarget;
+        btn.disabled = true;
         try {
           await API.saveSettings({
             salary_base: +$("#stBase").value || 0,
@@ -280,7 +457,7 @@
           await Promise.all([loadSettings(), load(), loadHistory()]);
         } catch (err) {
           toast("error", "Enregistrement impossible", err.message);
-        } finally { e.currentTarget.disabled = false; }
+        } finally { btn.disabled = false; }
       });
 
       /* ---------- Clôture ---------- */
@@ -293,7 +470,8 @@
         window.kgModal.open("#closeModal");
       });
       $("#confirmClose").addEventListener("click", async (e) => {
-        e.currentTarget.disabled = true;
+        const btn = e.currentTarget;
+        btn.disabled = true;
         try {
           const res = await API.close($("#month").value, $("#closeStatus").value);
           window.kgModal.close($("#closeModal"));
@@ -301,12 +479,16 @@
           await Promise.all([load(), loadHistory()]);
         } catch (err) {
           toast("error", "Clôture impossible", err.message);
-        } finally { e.currentTarget.disabled = false; }
+        } finally { btn.disabled = false; }
       });
 
+      const wanted = new URLSearchParams(location.search).get("rep");
+      if (wanted && (KG.salespersons || []).some(r => r.id === wanted)) $("#histRep").value = wanted;
       await loadSettings();
       await Promise.all([load(), loadHistory()]);
-      window.addEventListener("kg:redraw", loadHistory);
+      window.addEventListener("kg:redraw", drawHistory);
+      // Lien « Rémunération » depuis la page Vendeurs : ouvre directement le détail.
+      if (wanted && lines.some(l => l.rep_id === wanted)) openRep(wanted);
     };
   </script>
 </body>

@@ -13,6 +13,7 @@ const EXPECTED_TABLES = [
   "users", "teams", "profiles", "salespersons", "sales", "challenges", "password_reset_tokens",
   "training_progress", "quiz_attempts", "notifications",
   "clients", "compensation_settings", "payroll_periods", "birthday_reminders",
+  "preorders",
 ];
 const EXPECTED_FUNCTIONS = [
   "team_id_of", "role_of", "invite_info", "handle_new_user", "apply_sale",
@@ -25,6 +26,7 @@ const EXPECTED_INDEXES = [
   "idx_quiz_attempts_user", "idx_notifications_team",
   "idx_clients_phone_uniq", "idx_clients_team", "idx_clients_rep",
   "idx_clients_birthday", "idx_sales_client", "idx_payroll_team_period",
+  "idx_preorders_team", "idx_preorders_status", "idx_preorders_rep",
 ];
 
 let failures = 0;

@@ -43,7 +43,7 @@ test("chaque type ouvre la page où l'on peut agir", () => {
   assert.strictEqual(byId["t:1"].href, "clients.html");
   assert.strictEqual(byId["t:1"].icon, "gift");
   assert.strictEqual(byId["t:2"].href, "formation.html");
-  assert.strictEqual(byId["s:a"].href, "sales.html");
+  assert.strictEqual(byId["s:a"].href, "orders.html", "une vente s'ouvre dans l'historique des commandes");
   assert.strictEqual(byId["c:c1"].href, "challenges.html");
 });
 

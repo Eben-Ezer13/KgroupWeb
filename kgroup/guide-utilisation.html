@@ -149,7 +149,7 @@
   <div class="tag">« La senteur du luxe »</div>
   <div class="meta">
     Manuel complet — Administrateurs · Commerciaux · Relation client<br>
-    Équipe · Ventes · Clients &amp; anniversaires · Rémunération · Formation · Classements &amp; défis
+    Équipe · Ventes &amp; précommandes · Commandes · Clients &amp; anniversaires · Rémunération · Formation · Classements &amp; défis
   </div>
 </section>
 
@@ -620,7 +620,8 @@ Kgroup Parfumery</div>
     <span class="tag">Vue hebdomadaire</span>
     <span class="tag">Top 10 commerciaux</span>
     <span class="tag">Objectif mensuel</span>
-    <span class="tag">Export &amp; impression</span>
+    <span class="tag">Exports PDF, Excel &amp; CSV</span>
+    <span class="tag">Impression</span>
   </div>
   <p>Toutes les données proviennent des ventes réellement enregistrées — aucun chiffre fictif.</p>
 
@@ -630,10 +631,51 @@ Kgroup Parfumery</div>
   <div class="foot"><span>KGroup Parfumery — Guide d'utilisation</span><span>Page 9</span></div>
 </section>
 
-<!-- ============ PAGE 10 — Aide rapide ============ -->
+<!-- ============ PAGE 10 — Commandes, précommandes & exports ============ -->
+<section class="page">
+  <div class="kicker">Suivi des ventes</div>
+  <h2><span class="num">10.</span> Commandes, précommandes &amp; exports</h2>
+  <p class="lead">Le menu <strong>Commandes</strong> rassemble l'historique de toutes les ventes et les précommandes. Un administrateur y voit l'équipe entière, commercial par commercial ; un commercial n'y voit que les siennes.</p>
+
+  <h3>Voir les ventes d'un commercial</h3>
+  <ol class="steps">
+    <li>Ouvrez <strong>Commandes</strong> et choisissez la <strong>période</strong> (ce mois-ci, mois dernier, 12 derniers mois, dates personnalisées…).</li>
+    <li>Le tableau <strong>Par commercial</strong> donne pour chacun : ventes, unités, chiffre d'affaires, commission et précommandes en attente — même ceux qui n'ont rien vendu.</li>
+    <li>Cliquez sur un commercial (ou choisissez-le dans le filtre) : la liste détaillée de ses ventes s'affiche, avec le client, le parfum, le montant, la commission et le paiement.</li>
+  </ol>
+  <div class="tip">🔗 Depuis la page <strong>Vendeurs</strong>, les icônes de chaque ligne ouvrent directement les ventes ou la rémunération du commercial.</div>
+
+  <div class="note">⚠️ <b>Vente créditée au mauvais commercial ?</b> Un bandeau orange le signale lorsqu'une vente a été saisie depuis le compte d'un commercial mais créditée à un autre. Le bouton <b>Les recréditer à leur auteur</b> corrige tout en une fois ; le bouton <b>Réattribuer</b> d'une ligne permet de choisir. Les unités, le chiffre d'affaires, la commission et l'XP suivent la vente. Un mois de paie clôturé ne peut plus être modifié.</div>
+
+  <h3>Les précommandes</h3>
+  <p>Un client réserve un parfum qui n'est pas encore disponible ? Dans <strong>Ventes</strong>, choisissez <strong>⏳ Précommande</strong>, puis indiquez l'<strong>acompte versé</strong> et la <strong>date de livraison prévue</strong>.</p>
+  <table>
+    <thead><tr><th>Statut</th><th>Ce que ça veut dire</th></tr></thead>
+    <tbody>
+      <tr><td><span class="state en">EN ATTENTE</span></td><td>Enregistrée, pas encore livrée. Elle ne compte <b>ni</b> dans le chiffre d'affaires, <b>ni</b> dans la commission. Signalée « en retard » si la date prévue est dépassée.</td></tr>
+      <tr><td><span class="state fig">LIVRÉE</span></td><td>Bouton <b>Livrer</b> dans l'onglet Précommandes : la vente est créée automatiquement au nom du commercial, et sa commission compte dans la paie du mois de livraison.</td></tr>
+      <tr><td><span class="state fig">ANNULÉE</span></td><td>Bouton <b>Annuler</b>, avec un motif facultatif. Rien n'est comptabilisé.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Rémunération d'un commercial</h3>
+  <p>Dans <strong>Rémunération</strong>, cliquez sur <strong>Détail</strong> : commissions, bonus et total du mois, évolution sur 12 mois et liste des ventes qui les composent. Le bouton <strong>Relevé</strong> produit un document PDF, Excel ou CSV à remettre au commercial.</p>
+
+  <h3>Télécharger les rapports</h3>
+  <p>Les boutons <span class="tag">PDF</span> <span class="tag">Excel</span> <span class="tag">CSV</span> sont présents sur les pages Commandes, Rémunération, Rapports et sur le Tableau de bord (bouton <strong>Exporter</strong>). Le fichier reprend exactement ce qui est affiché : mêmes filtres, même période.</p>
+  <ul>
+    <li><strong>PDF</strong> — un document mis en page, prêt à imprimer ou à envoyer.</li>
+    <li><strong>Excel</strong> — un classeur avec montants et dates en vrais nombres, filtres et totaux.</li>
+    <li><strong>CSV</strong> — pour importer les données dans un autre logiciel.</li>
+  </ul>
+
+  <div class="foot"><span>KGroup Parfumery — Guide d'utilisation</span><span>Page 10</span></div>
+</section>
+
+<!-- ============ PAGE 11 — Aide rapide ============ -->
 <section class="page">
   <div class="kicker">Aide-mémoire</div>
-  <h2><span class="num">10.</span> Questions fréquentes &amp; astuces</h2>
+  <h2><span class="num">11.</span> Questions fréquentes &amp; astuces</h2>
 
   <h3>Le client existe déjà — que faire ?</h3>
   <p>Rien de particulier : saisissez son <strong>numéro</strong> dans le formulaire de vente, ses informations se remplissent seules. La vente s'ajoute à sa fiche. <strong>Ne créez jamais un second client</strong> pour la même personne.</p>
@@ -672,15 +714,16 @@ Kgroup Parfumery</div>
       <thead><tr><th>Menu</th><th>À quoi ça sert</th><th>Qui</th></tr></thead>
       <tbody>
         <tr><td>Tableau de bord</td><td>Vue d'ensemble, KPIs, ma rémunération</td><td>Tous</td></tr>
-        <tr><td>Ventes</td><td>Enregistrer une vente + son client</td><td>Admin · Commercial</td></tr>
+        <tr><td>Ventes</td><td>Enregistrer une vente ou une précommande + son client</td><td>Admin · Commercial</td></tr>
+        <tr><td>Commandes</td><td>Historique des ventes par commercial, précommandes, exports</td><td>Tous (chacun les siennes)</td></tr>
         <tr><td>Vendeurs</td><td>Gérer l'équipe &amp; inviter</td><td>Admin</td></tr>
         <tr><td>Clients</td><td>Portefeuille, fiches, anniversaires, WhatsApp</td><td>Tous</td></tr>
         <tr><td>Classements</td><td>Podium &amp; classement</td><td>Tous</td></tr>
         <tr><td>Formation</td><td>Leçons, quiz &amp; badges</td><td>Tous</td></tr>
         <tr><td>Défis</td><td>Challenges d'équipe</td><td>Tous</td></tr>
         <tr><td>Récompenses</td><td>Bonus &amp; codes promo</td><td>Tous</td></tr>
-        <tr><td>Rapports</td><td>Analyses &amp; exports</td><td>Admin</td></tr>
-        <tr><td>Rémunération</td><td>Commissions, bonus, clôture des mois</td><td>Admin</td></tr>
+        <tr><td>Rapports</td><td>Analyses &amp; exports PDF / Excel / CSV</td><td>Admin</td></tr>
+        <tr><td>Rémunération</td><td>Commissions, bonus, relevé par commercial, clôture des mois</td><td>Admin</td></tr>
         <tr><td>Notifications</td><td>Anniversaires, formation, activité</td><td>Tous</td></tr>
         <tr><td>Paramètres</td><td>Profil &amp; mot de passe</td><td>Tous</td></tr>
       </tbody>
@@ -692,7 +735,7 @@ Kgroup Parfumery</div>
     Contact : Bénédicte Kashala · 06 96 97 56 99
   </p>
 
-  <div class="foot"><span>KGroup Parfumery — Guide d'utilisation</span><span>Page 10</span></div>
+  <div class="foot"><span>KGroup Parfumery — Guide d'utilisation</span><span>Page 11</span></div>
 </section>
 
 </body>

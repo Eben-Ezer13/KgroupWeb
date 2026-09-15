@@ -35,6 +35,8 @@ const REQUIRED = [
   "crm.css", "clients.html", "remuneration.html",
   "db/schema-crm.sql", "server/crm.js", "server/routes/clients.js",
   "server/routes/payroll.js", "server/routes/reminders.js",
+  "db/schema-preorders.sql", "server/preorders.js", "server/sales.js",
+  "server/routes/preorders.js", "exports.js", "orders.html",
   "db/schema.sql", "server/training.js", "server/routes/training.js",
   "server/app.js", "server/db.js", "server/auth.js", "server/policies.js",
   "server/routes/auth.js", "server/routes/data.js",
@@ -100,7 +102,7 @@ const APP_PAGES = new Set([
   "login.html", "register.html", "reset-password.html", "dashboard.html",
   "salesperson.html", "salespersons.html", "sales.html", "ranking.html",
   "challenges.html", "reports.html", "settings.html", "formation.html",
-  "clients.html", "remuneration.html",
+  "clients.html", "remuneration.html", "orders.html",
 ]);
 
 for (const page of pages) {
@@ -211,7 +213,7 @@ const ROOT_ASSETS = [
   ...fs.readdirSync(ROOT).filter((f) => f.endsWith(".html")),
   "style.css", "crm.css", "training.css",
   "api.js", "data.js", "dashboard.js", "notifications.js", "training-content.js",
-  "favicon.svg",
+  "exports.js", "favicon.svg",
 ];
 
 let copied = 0;

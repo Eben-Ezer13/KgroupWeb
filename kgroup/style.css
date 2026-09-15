@@ -764,6 +764,31 @@ table.table th.num, table.table td.num { text-align: right; }
 .report-kpi { display: flex; flex-direction: column; gap: 6px; padding: 18px; }
 .report-kpi .rk-val { font-family: var(--font-display); font-size: 24px; font-weight: 800; }
 .report-kpi .rk-label { font-size: 12.5px; color: var(--muted); }
+.report-kpi .trend { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: var(--r-pill); }
+.report-kpi .trend.flat { color: var(--muted); background: var(--line-2); }
+
+/* En-tête de page portant un menu déroulant (Exporter) : .reveal et .glass
+   créent des contextes d'empilement, et les cartes suivantes recouvraient le
+   menu. On élève l'en-tête au-dessus d'elles, sous la barre du haut (50). */
+.page-head.has-menu { position: relative; z-index: 30; }
+
+/* Boutons d'export PDF / Excel / CSV (exports.js) */
+.export-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.export-bar > .export-label { font-size: 12.5px; color: var(--muted); font-weight: 600; margin-right: 2px; }
+.btn-export { padding: 7px 12px; gap: 7px; font-size: 12.5px; }
+.btn-export:disabled { opacity: .55; cursor: progress; transform: none; }
+.fmt-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+.fmt-pdf  { background: #E24C4B; }
+.fmt-xlsx { background: #16965E; }
+.fmt-csv  { background: #3B82F6; }
+
+/* Centre d'export (Rapports) : une carte par rapport, trois formats */
+.export-card { display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: var(--r-md); background: var(--bg-2); border: 1px solid transparent; }
+.export-card .ec-head { display: flex; gap: 12px; align-items: center; }
+.export-card .ec-head .qa-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; flex-shrink: 0; }
+.export-card .ec-head .qa-ico svg { width: 20px; height: 20px; }
+.export-card strong { font-size: 14px; display: block; }
+.export-card .ec-sub { font-size: 12px; color: var(--muted); }
 
 /* -------------------------------------------------------------------------
    14. LOADING / ANIMATIONS

@@ -14,13 +14,20 @@
 <body data-app data-admin-only data-page="dashboard" data-title="Dashboard" data-role="Administrator">
 
   <!-- ===================== WELCOME ===================== -->
-  <div class="page-head reveal" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+  <div class="page-head has-menu reveal" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
     <div>
       <h2><span data-i18n="greeting.morning">Good morning</span>, <span id="waveName">there</span> 👋</h2>
       <p data-i18n="head.dashboard.sub">Here's what's happening across KGROUP Parfumery today.</p>
     </div>
     <div class="row gap-3">
-      <button class="btn btn-ghost" id="exportBtn"><span data-ic="download"></span> <span data-i18n="btn.export">Export</span></button>
+      <div class="dropdown" id="exportDropdown">
+        <button class="btn btn-ghost" id="exportBtn" aria-haspopup="true" aria-expanded="false"><span data-ic="download"></span> <span data-i18n="btn.export">Export</span></button>
+        <div class="dropdown-panel" style="width:280px">
+          <div class="dropdown-head"><strong>Ventes des 12 derniers mois</strong></div>
+          <div class="export-bar" id="exportMenu" style="padding:14px 16px"></div>
+          <div class="dropdown-foot"><a class="link" href="reports.html">Plus de rapports</a></div>
+        </div>
+      </div>
       <a href="sales.html" class="btn btn-primary"><span data-ic="plus"></span> <span data-i18n="btn.newSale">New Sale</span></a>
     </div>
   </div>
@@ -126,7 +133,7 @@
     <div class="card card-pad reveal">
       <div class="section-title">
         <div><h3 data-i18n="sec.recent">Recent Sales</h3><div class="sub" data-i18n="sec.recent.sub">Latest transactions</div></div>
-        <a href="sales.html" class="link" data-i18n="common.viewAll">View all</a>
+        <a href="orders.html" class="link" data-i18n="common.viewAll">View all</a>
       </div>
       <div class="feed" id="recentFeed"></div>
     </div>
@@ -150,6 +157,7 @@
   <script src="data.js"></script>
   <script src="api.js"></script>
   <script src="notifications.js"></script>
+  <script src="exports.js"></script>
   <script src="dashboard.js"></script>
   <script>
     window.KGPage = function ({ icon, avatar, toast, KGCharts }) {
@@ -269,8 +277,51 @@
         <span style="font-weight:600;font-size:13.5px">${s.name}</span>
         <span class="grow"></span><span class="muted" style="font-size:13px">${s.value} units</span></div>`).join("");
 
-      // Export button
-      document.getElementById("exportBtn").addEventListener("click", ()=> toast("info","Export started","Your CSV is being generated…"));
+      // Export — the team's sales over the last 12 months, in the chosen format
+      const dd = document.getElementById("exportDropdown");
+      document.getElementById("exportBtn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        const open = dd.classList.toggle("open");
+        e.currentTarget.setAttribute("aria-expanded", String(open));
+      });
+      document.addEventListener("click", (e) => { if (!dd.contains(e.target)) dd.classList.remove("open"); });
+      document.getElementById("exportMenu").innerHTML = window.KGExportUI.buttons();
+      window.KGExportUI.wire("#exportMenu", async () => {
+        const range = window.KGPeriod.range("12m");
+        const h = await window.KGDB.salesHistory({ from: range.from, to: range.to, limit: 5000 });
+        dd.classList.remove("open");
+        const rows = h ? h.rows : KG.recentSales.map(s => ({
+          created_at: s.at || new Date(Date.now() - (s.minsAgo || 0) * 60000).toISOString(),
+          customer: s.customer, perfume_name: s.perfume, product: s.product, qty: s.qty,
+          amount: s.amount, commission: s.commission || 0, pay: s.pay, rep_name: s.rep,
+        }));
+        const sum = (k) => rows.reduce((n, r) => n + (Number(r[k]) || 0), 0);
+        return {
+          filename: `ventes-12-mois-${range.to}`, title: "Ventes des 12 derniers mois", subtitle: range.label,
+          meta: [KG.me && KG.me.name ? `Exporté par ${KG.me.name}` : null].filter(Boolean),
+          orientation: "landscape",
+          kpis: [
+            { label: "Ventes", value: KG.fmt.num(rows.length) },
+            { label: "Unités", value: KG.fmt.num(sum("qty")) },
+            { label: "Chiffre d'affaires", value: KG.fmt.money(sum("amount")) },
+            { label: "Commissions", value: KG.fmt.money(sum("commission")) },
+          ],
+          sections: [{
+            name: "Ventes", title: "Détail des ventes", totals: true, rows,
+            columns: [
+              { key: "created_at", label: "Date", type: "datetime" },
+              { key: "customer", label: "Client", type: "text" },
+              { key: "perfume_name", label: "Parfum", type: "text" },
+              { key: "product", label: "Format", type: "text" },
+              { key: "qty", label: "Qté", type: "int", total: "sum" },
+              { key: "amount", label: "Montant", type: "money", total: "sum" },
+              { key: "commission", label: "Commission", type: "money", total: "sum" },
+              { key: "pay", label: "Paiement", type: "text" },
+              { key: "rep_name", label: "Commercial", type: "text" },
+            ],
+          }],
+        };
+      });
     };
   </script>
 </body>

@@ -106,7 +106,11 @@
     <div class="modal">
       <div class="modal-head"><h3>Salesperson Profile</h3><button class="icon-btn" data-modal-close><span data-ic="x"></span></button></div>
       <div class="modal-body" id="viewBody"></div>
-      <div class="modal-foot"><button class="btn btn-ghost" data-modal-close>Close</button><a href="salesperson.html" class="btn btn-primary">Open dashboard</a></div>
+      <div class="modal-foot" style="flex-wrap:wrap">
+        <button class="btn btn-ghost" data-modal-close>Close</button>
+        <a href="remuneration.html" class="btn btn-ghost" id="viewPay"><span data-ic="dollar"></span> Rémunération</a>
+        <a href="orders.html" class="btn btn-primary" id="viewOrders"><span data-ic="clipboard"></span> Ventes &amp; commandes</a>
+      </div>
     </div>
   </div>
 
@@ -184,6 +188,8 @@
           <td>${rankTag(s.rank)}</td>
           <td><div class="row-actions" style="justify-content:flex-end">
             ${s.invite_code ? `<button class="icon-btn" data-invite="${s.id}" title="Copy invite link" style="color:var(--brand);border-color:var(--brand-300)">${icon("link")}</button>` : ""}
+            <a class="icon-btn" href="orders.html?rep=${encodeURIComponent(s.id)}" title="Ventes &amp; commandes">${icon("clipboard")}</a>
+            <a class="icon-btn" href="remuneration.html?rep=${encodeURIComponent(s.id)}" title="Rémunération">${icon("dollar")}</a>
             <button class="icon-btn" data-view="${s.id}" title="View">${icon("eye")}</button>
             <button class="icon-btn" data-edit="${s.id}" title="Edit">${icon("edit")}</button>
             <button class="icon-btn" data-del="${s.id}" title="Remove">${icon("trash")}</button>
@@ -234,7 +240,10 @@
               <div class="card card-pad"><div class="muted" style="font-size:12px">Revenue</div><b style="font-family:var(--font-display);font-size:20px">${KG.fmt.moneyShort(s.revenue)}</b></div>
               <div class="card card-pad"><div class="muted" style="font-size:12px">City</div><b>${s.city}</b></div>
               <div class="card card-pad"><div class="muted" style="font-size:12px">Phone</div><b>${s.phone}</b></div>
+              <div class="card card-pad"><div class="muted" style="font-size:12px">Commission cumulée</div><b>${KG.fmt.money(s.commission || 0)}</b></div>
             </div>`;
+          document.getElementById("viewOrders").href = "orders.html?rep=" + encodeURIComponent(s.id);
+          document.getElementById("viewPay").href = "remuneration.html?rep=" + encodeURIComponent(s.id);
           window.kgModal.open("#viewModal");
         }));
         document.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => {

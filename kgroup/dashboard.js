@@ -62,6 +62,9 @@
     help:      '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
     book:      '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/>',
     heart:     '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21.2l7.7-7.8 1.1-1a5.5 5.5 0 0 0 0-7.8z"/>',
+    clipboard: '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>',
+    hourglass: '<path d="M6 2h12M6 22h12M7 2v4a5 5 0 0 0 10 0V2M7 22v-4a5 5 0 0 1 10 0v4"/>',
+    sheet:     '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
     google:    '<path d="M22 12c0-.6-.05-1.2-.15-1.8H12v3.6h5.6a4.8 4.8 0 0 1-2.08 3.15v2.6h3.36C20.85 17.9 22 15.25 22 12z" fill="#4285F4" stroke="none"/><path d="M12 22c2.7 0 4.96-.9 6.62-2.42l-3.36-2.6c-.93.62-2.12.98-3.26.98-2.5 0-4.62-1.69-5.38-3.96H3.16v2.68A10 10 0 0 0 12 22z" fill="#34A853" stroke="none"/><path d="M6.62 13.99a6 6 0 0 1 0-3.83V7.48H3.16a10 10 0 0 0 0 9.04z" fill="#FBBC05" stroke="none"/><path d="M12 5.4c1.47 0 2.79.51 3.82 1.5l2.85-2.85C16.95 2.42 14.7 1.5 12 1.5A10 10 0 0 0 3.16 7.48l3.46 2.68C7.38 7.9 9.5 5.4 12 5.4z" fill="#EA4335" stroke="none"/>',
   };
   function icon(name, cls) {
@@ -91,7 +94,7 @@
       "nav.dashboard":"Dashboard","nav.sales":"Sales","nav.salespersons":"Salespersons",
       "nav.ranking":"Rankings","nav.challenges":"Challenges","nav.rewards":"Rewards",
       "nav.reports":"Reports","nav.notifications":"Notifications","nav.settings":"Settings","nav.logout":"Logout",
-      "nav.formation":"Training","nav.clients":"Clients","nav.remuneration":"Payroll",
+      "nav.formation":"Training","nav.clients":"Clients","nav.remuneration":"Payroll","nav.orders":"Orders",
       "group.main":"Main","group.insights":"Insights","group.system":"System",
       "topbar.search":"Search anything…","lang.title":"Language","topbar.collapse":"Collapse sidebar",
       "greeting.morning":"Good morning","common.viewAll":"View all",
@@ -117,7 +120,7 @@
       "nav.dashboard":"Tableau de bord","nav.sales":"Ventes","nav.salespersons":"Vendeurs",
       "nav.ranking":"Classements","nav.challenges":"Défis","nav.rewards":"Récompenses",
       "nav.reports":"Rapports","nav.notifications":"Notifications","nav.settings":"Paramètres","nav.logout":"Déconnexion",
-      "nav.formation":"Formation","nav.clients":"Clients","nav.remuneration":"Rémunération",
+      "nav.formation":"Formation","nav.clients":"Clients","nav.remuneration":"Rémunération","nav.orders":"Commandes",
       "group.main":"Principal","group.insights":"Analyses","group.system":"Système",
       "topbar.search":"Rechercher…","lang.title":"Langue","topbar.collapse":"Replier le menu",
       "greeting.morning":"Bonjour","common.viewAll":"Voir tout",
@@ -321,6 +324,7 @@
   const NAV = [
     { key: "dashboard",    label: "Dashboard",    icon: "grid",   group: "Main",     roles: ["admin","salesperson","relation_client"] },
     { key: "sales",        label: "Sales",        icon: "bag",    group: "Main",     roles: ["admin","salesperson","relation_client"], href: "sales.html" },
+    { key: "orders",       label: "Orders",       icon: "clipboard", group: "Main",  roles: ["admin","salesperson","relation_client"], href: "orders.html" },
     { key: "salespersons", label: "Salespersons", icon: "users",  group: "Main",     roles: ["admin"],               href: "salespersons.html" },
     { key: "ranking",      label: "Rankings",     icon: "trophy", group: "Main",     roles: ["admin","salesperson","relation_client"], href: "ranking.html" },
     { key: "challenges",   label: "Challenges",   icon: "flag",   group: "Main",     roles: ["admin","salesperson","relation_client"], href: "challenges.html" },
@@ -1012,6 +1016,89 @@
   window.KGTable = initTable;
 
   /* -----------------------------------------------------------------------
+     10b. PERIODES — choix de période partagé (Commandes, Rapports)
+     Dates locales « AAAA-MM-JJ », bornes incluses, comme l'API
+     /api/sales/history.
+  ----------------------------------------------------------------------- */
+  const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const frDay = (iso) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : "");
+  const PERIOD_LABELS = {
+    month: "Ce mois-ci", last_month: "Mois dernier", quarter: "Ce trimestre", "3m": "3 derniers mois",
+    "12m": "12 derniers mois", year: "Cette année", all: "Depuis le début", custom: "Personnalisée",
+  };
+  const KGPeriod = {
+    labels: PERIOD_LABELS,
+    /** { from, to, label } pour un préréglage ; from/to nuls = sans limite. */
+    range(key, custom) {
+      const now = new Date();
+      const y = now.getFullYear(), m = now.getMonth();
+      const today = isoDay(now);
+      let from = null, to = today;
+      if (key === "month") from = isoDay(new Date(y, m, 1));
+      else if (key === "last_month") { from = isoDay(new Date(y, m - 1, 1)); to = isoDay(new Date(y, m, 0)); }
+      else if (key === "quarter") from = isoDay(new Date(y, m - (m % 3), 1));
+      else if (key === "3m") from = isoDay(new Date(y, m - 2, 1));
+      else if (key === "12m") from = isoDay(new Date(y, m - 11, 1));
+      else if (key === "year") from = isoDay(new Date(y, 0, 1));
+      else if (key === "custom") { from = (custom && custom.from) || null; to = (custom && custom.to) || null; }
+      else { from = null; to = null; }
+      return { key, from, to, label: KGPeriod.describe(from, to) };
+    },
+    /** « Du 01/09/2026 au 15/09/2026 », « Jusqu'au … », « Toutes les dates ». */
+    describe(from, to) {
+      if (from && to) return `Du ${frDay(from)} au ${frDay(to)}`;
+      if (from) return `Depuis le ${frDay(from)}`;
+      if (to) return `Jusqu'au ${frDay(to)}`;
+      return "Toutes les dates";
+    },
+    /** Période précédente de même durée (comparaisons), ou null. */
+    previous(r) {
+      if (!r || !r.from || !r.to) return null;
+      const a = new Date(r.from + "T00:00:00"), b = new Date(r.to + "T00:00:00");
+      const days = Math.round((b - a) / 86400000) + 1;
+      const prevTo = new Date(a); prevTo.setDate(prevTo.getDate() - 1);
+      const prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate() - (days - 1));
+      return { from: isoDay(prevFrom), to: isoDay(prevTo) };
+    },
+    isoDay, frDay,
+  };
+  window.KGPeriod = KGPeriod;
+
+  /* -----------------------------------------------------------------------
+     10c. EXPORTS — boutons PDF / Excel / CSV
+     Chaque page fournit une fonction (éventuellement asynchrone) qui rend la
+     description du rapport ; exports.js fabrique le fichier dans le
+     navigateur. Aucun envoi de données à un service tiers.
+  ----------------------------------------------------------------------- */
+  const FORMAT_LABEL = { pdf: "PDF", xlsx: "Excel", csv: "CSV" };
+  function exportButtons(formats) {
+    return (formats || ["pdf", "xlsx", "csv"]).map(f =>
+      `<button type="button" class="btn btn-ghost btn-sm btn-export" data-export="${f}" title="Télécharger en ${FORMAT_LABEL[f]}">
+        <span class="fmt-dot fmt-${f}"></span>${FORMAT_LABEL[f]}</button>`).join("");
+  }
+  function wireExports(root, buildSpec) {
+    const scope = typeof root === "string" ? $(root) : root;
+    if (!scope) return;
+    $$("[data-export]", scope).forEach(btn => btn.addEventListener("click", async () => {
+      const format = btn.dataset.export;
+      if (!window.KGExport) { toast("error", "Export indisponible", "Le module d'export n'est pas chargé."); return; }
+      btn.disabled = true;
+      try {
+        const spec = await buildSpec(format, btn);
+        if (!spec) return;
+        const file = window.KGExport.download(format, spec);
+        toast("success", "Téléchargement prêt", file.filename);
+      } catch (err) {
+        console.error(err);
+        toast("error", "Export impossible", err.message || "Réessayez dans un instant.");
+      } finally {
+        btn.disabled = false;
+      }
+    }));
+  }
+  window.KGExportUI = { buttons: exportButtons, wire: wireExports };
+
+  /* -----------------------------------------------------------------------
      11. SCROLL REVEAL
   ----------------------------------------------------------------------- */
   function initReveal() {
@@ -1043,7 +1130,7 @@
       const role = await window.KGAuth.role();
       window.KG_ROLE = role;
       if (role === "relation_client") {
-        const allowedPage = ["clients", "settings", "formation", "challenges", "ranking", "dashboard", "sales"].includes(document.body.dataset.page);
+        const allowedPage = ["clients", "settings", "formation", "challenges", "ranking", "dashboard", "sales", "orders"].includes(document.body.dataset.page);
         if (document.body.hasAttribute("data-admin-only") || !allowedPage) {
           window.location.replace("clients.html"); return;
         }

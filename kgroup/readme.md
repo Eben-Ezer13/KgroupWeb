@@ -32,7 +32,8 @@ kgroup-platform/
 ├── dashboard.html      # Administrator dashboard
 ├── salesperson.html    # Salesperson (gamified) dashboard
 ├── salespersons.html   # Team management table
-├── sales.html          # Sale registration form
+├── sales.html          # Sale / pre-order registration form
+├── orders.html         # Commandes: sales history per salesperson + pre-orders
 ├── ranking.html        # Rankings + animated podium
 ├── challenges.html     # Challenges + rewards + leaderboard
 ├── formation.html      # Sales training: lessons, quizzes, badges
@@ -44,7 +45,8 @@ kgroup-platform/
 ├── reports.html        # Analytics, charts, exports, print
 ├── style.css           # Full design system (tokens, glass, dark mode, responsive)
 ├── data.js             # Sample data (window.KG) — used when no API is reachable
-├── api.js              # Browser client: KGAuth, KGDB, KGData.hydrate()
+├── api.js              # Browser client: KGAuth, KGDB, KGPreorders, KGData.hydrate()
+├── exports.js          # PDF / XLSX / CSV files built in the browser, no library
 ├── dashboard.js        # App engine: layout, charts, counters, modals, toasts, tables
 ├── server/             # Express API — the only holder of DATABASE_URL
 │   ├── app.js          #   routes, CORS, static allow-list, error handling
@@ -52,10 +54,11 @@ kgroup-platform/
 │   ├── auth.js         #   bcrypt + JWT sessions (replaces Supabase Auth)
 │   ├── policies.js     #   the RLS rules, enforced server-side
 │   ├── crm.js          #   phone / birthdays / WhatsApp / compensation
-│   └── routes/         #   auth, data, training, clients, payroll, reminders
-├── db/schema.sql       # Neon schema: tables, FKs, indexes, functions, triggers
+│   ├── sales.js        #   rep attribution, client resolution, apply_sale() mirror
+│   └── routes/         #   auth, data, training, clients, payroll, reminders, preorders
+├── db/schema*.sql      # Neon schema: base, CRM, pre-orders (applied in that order)
 ├── scripts/            # migrate, check, smoke-test, import, lint, build
-├── tests/              # 70 tests — run with `npm test`
+├── tests/              # 118 tests — run with `npm test`
 ├── api/index.js        # the same Express app, as a Vercel serverless function
 ├── legacy/             # retired Supabase files, kept for reference only
 └── assets/{images,icons}
@@ -90,6 +93,19 @@ kgroup-platform/
   (Art. 4), calcule depuis les ventes reelles et remis a jour a chaque vente.
   Vue commerciale, vue administrateur, historique, et cloture mensuelle qui
   **fige** les montants avec les parametres en vigueur.
+- **Commandes** — historique complet des ventes, filtrable par commercial, par
+  période et par recherche, avec une synthèse par commercial (ventes, unités,
+  CA, commission, précommandes en attente). Une vente saisie depuis le compte
+  d'un commercial mais créditée à un autre est signalée, et l'administrateur
+  la réattribue en un clic — statistiques comprises. Le serveur crédite
+  toujours un commercial de ses propres ventes.
+- **Précommandes** — acompte et date de livraison prévue. Une précommande ne
+  compte nulle part tant qu'elle n'est pas livrée ; « Livrer » crée la vente,
+  qui passe par les mêmes triggers qu'une vente directe.
+- **Exports PDF / Excel / CSV** — sur Commandes, Rémunération (dont un relevé
+  par commercial), Rapports et le tableau de bord. Fichiers produits dans le
+  navigateur par `exports.js` : PDF en polices standard, XLSX Office Open XML
+  (nombres et dates typés, totaux en formules), CSV UTF-8 « ; » pour Excel.
 - **Formation commerciale** — the two Kgroup training days (univers olfactif,
   stratégie de vente) as readable lessons, each closed by a quiz. Quizzes are
   **graded server-side**, so the browser never sees the answer key and a score
@@ -146,7 +162,7 @@ password, so it can only live on a server. See
 ```bash
 npm run lint      # syntax, secret scan, no stale Supabase wiring
 npm run build     # page wiring, asset resolution, server modules load
-npm test          # 70 tests: routes, auth, permissions, quiz, CRM, remuneration
+npm test          # 118 tests: routes, auth, permissions, quiz, CRM, remuneration, orders, exports
 npm run e2e:crm   # parcours CRM complet contre Neon (serveur demarre)
 npm run db:check  # schema + row counts on Neon
 npm run db:smoke  # CRUD, constraints, transactions, triggers on Neon

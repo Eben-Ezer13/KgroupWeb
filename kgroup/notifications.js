@@ -33,7 +33,7 @@
     birthday_today:     { icon: "gift",  tone: "gold",    href: "clients.html" },
     birthday_tomorrow:  { icon: "gift",  tone: "info",    href: "clients.html" },
     training_completed: { icon: "medal", tone: "gold",    href: "formation.html" },
-    sale:               { icon: "bag",   tone: "success", href: "sales.html" },
+    sale:               { icon: "bag",   tone: "success", href: "orders.html" },
     challenge:          { icon: "flag",  tone: "gold",    href: "challenges.html" },
     team:               { icon: "bell",  tone: "info",    href: null },
   };

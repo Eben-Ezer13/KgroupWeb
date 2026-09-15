@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commandes — KGROUP Sales Performance Platform</title>
+  <meta name="description" content="Historique des ventes et des précommandes KGROUP Parfumery, par commercial." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/jpeg" href="assets/images/logo.jpeg" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="crm.css" />
+</head>
+<body data-app data-page="orders" data-title="Commandes">
+
+  <div class="page-head reveal" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+    <div>
+      <h2>Commandes &amp; ventes 🧾</h2>
+      <p id="scopeNote">Historique des ventes et des précommandes.</p>
+    </div>
+    <div class="row gap-2" style="flex-wrap:wrap">
+      <a href="sales.html?type=preorder" class="btn btn-ghost"><span data-ic="hourglass"></span> Nouvelle précommande</a>
+      <a href="sales.html" class="btn btn-primary"><span data-ic="plus"></span> Nouvelle vente</a>
+    </div>
+  </div>
+
+  <!-- ============ FILTRES ============ -->
+  <div class="card card-pad reveal" style="margin-bottom:16px">
+    <div class="kc-filters">
+      <div class="field" id="repField">
+        <label for="fRep">Commercial</label>
+        <select class="select" id="fRep"><option value="">Tous les commerciaux</option></select>
+      </div>
+      <div class="field">
+        <label for="fPeriod">Période des ventes</label>
+        <select class="select" id="fPeriod"></select>
+      </div>
+      <div class="field hidden" id="fromField"><label for="fFrom">Du</label><input class="input" type="date" id="fFrom"></div>
+      <div class="field hidden" id="toField"><label for="fTo">Au</label><input class="input" type="date" id="fTo"></div>
+      <div class="field grow">
+        <label for="fSearch">Rechercher</label>
+        <input class="input" id="fSearch" placeholder="Client, parfum, format…" autocomplete="off">
+      </div>
+      <div class="field" style="align-self:flex-end">
+        <button class="btn btn-ghost" id="fReset" type="button">Réinitialiser</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ONGLETS + EXPORT ============ -->
+  <div class="kc-toolbar reveal">
+    <div class="seg" id="tabs" role="tablist">
+      <button type="button" data-tab="sales" class="on" role="tab">Ventes <span class="n" id="nSales">0</span></button>
+      <button type="button" data-tab="preorders" role="tab">Précommandes <span class="n" id="nPre">0</span></button>
+    </div>
+    <div class="export-bar" id="exportBar"><span class="export-label">Exporter</span></div>
+  </div>
+
+  <div id="warnBox" class="kc-warn hidden"></div>
+
+  <!-- ============ VENTES ============ -->
+  <section id="tabSales">
+    <div class="grid stat-grid" style="margin-bottom:20px">
+      <div class="card stat">
+        <div class="stat-top"><div class="stat-ico ico-green" data-ic="bag"></div></div>
+        <div class="stat-val" id="kCount">0</div><div class="stat-label">Ventes</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-top"><div class="stat-ico ico-blue" data-ic="chart"></div></div>
+        <div class="stat-val" id="kUnits">0</div><div class="stat-label">Unités vendues</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-top"><div class="stat-ico ico-gold" data-ic="dollar"></div></div>
+        <div class="stat-val" id="kRevenue">0</div><div class="stat-label">Chiffre d'affaires</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-top"><div class="stat-ico ico-purple" data-ic="trophy"></div></div>
+        <div class="stat-val" id="kCommission">0</div><div class="stat-label">Commissions</div>
+      </div>
+    </div>
+
+    <div class="card card-pad reveal hidden" id="byRepCard" style="margin-bottom:20px">
+      <div class="section-title">
+        <div><h3>Par commercial</h3><div class="sub">Cliquez sur un commercial pour afficher le détail de ses ventes.</div></div>
+      </div>
+      <div class="table-wrap">
+        <table class="table kc-table">
+          <thead><tr>
+            <th>Commercial</th><th class="num">Ventes</th><th class="num">Unités</th>
+            <th class="num">Chiffre d'affaires</th><th class="num">Commission</th>
+            <th class="num">Précommandes en attente</th><th>Dernière vente</th>
+          </tr></thead>
+          <tbody id="byRepBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card card-pad reveal">
+      <div class="section-title">
+        <div><h3 id="salesTitle">Historique des ventes</h3><div class="sub" id="salesSub">—</div></div>
+      </div>
+      <div class="table-wrap">
+        <table class="table kc-table">
+          <thead><tr>
+            <th>Date</th><th>Client</th><th>Parfum</th><th class="num">Qté</th>
+            <th class="num">Montant</th><th class="num">Commission</th><th>Paiement</th>
+            <th>Commercial</th><th class="adm"></th>
+          </tr></thead>
+          <tbody id="salesBody"></tbody>
+        </table>
+      </div>
+      <div class="kc-more" id="salesMore"></div>
+    </div>
+  </section>
+
+  <!-- ============ PRÉCOMMANDES ============ -->
+  <section id="tabPre" class="hidden">
+    <div class="grid stat-grid" style="margin-bottom:20px">
+      <div class="card stat">
+        <div class="stat-top"><div class="stat-ico ico-gold" data-ic="hourglass"></div></div>
+        <div class="stat-val" id="pPending">0</div><div class="stat-label">En attente de livraison</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-top"><div class="stat-ico ico-blue" data-ic="dollar"></div></div>
+        <div class="stat-val" id="pAmount">0</div><div class="stat-label">Montant attendu</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-top"><div class="stat-ico ico-green" data-ic="cash"></div></div>
+        <div class="stat-val" id="pDeposit">0</div><div class="stat-label">Acomptes perçus</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-top"><div class="stat-ico ico-purple" data-ic="check"></div></div>
+        <div class="stat-val" id="pDelivered">0</div><div class="stat-label">Livrées</div>
+      </div>
+    </div>
+
+    <div class="card card-pad reveal">
+      <div class="section-title" style="flex-wrap:wrap;gap:12px">
+        <div><h3>Précommandes</h3><div class="sub" id="preSub">Une précommande devient une vente (et une commission) le jour de sa livraison.</div></div>
+        <div class="row gap-2" id="statusChips" style="flex-wrap:wrap">
+          <button type="button" class="chip on" data-status="EN_ATTENTE">En attente</button>
+          <button type="button" class="chip" data-status="LIVREE">Livrées</button>
+          <button type="button" class="chip" data-status="ANNULEE">Annulées</button>
+          <button type="button" class="chip" data-status="ALL">Toutes</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="table kc-table">
+          <thead><tr>
+            <th>Date</th><th>Client</th><th>Parfum</th><th class="num">Qté</th>
+            <th class="num">Montant</th><th class="num">Acompte</th><th class="num">Reste</th>
+            <th>Livraison prévue</th><th>Commercial</th><th>Statut</th><th></th>
+          </tr></thead>
+          <tbody id="preBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MODAL LIVRAISON ============ -->
+  <div class="modal-overlay" id="deliverModal">
+    <div class="modal">
+      <div class="modal-head"><h3>Livrer la précommande</h3><button class="icon-btn" data-modal-close><span data-ic="x"></span></button></div>
+      <div class="modal-body">
+        <div id="deliverSummary" class="kc-fiche"></div>
+        <div class="field">
+          <label>Paiement du solde</label>
+          <div class="pay-options">
+            <div class="pay-opt"><input type="radio" name="dPay" id="dCash" value="Espèces" checked><label for="dCash"><span data-ic="cash"></span>Espèces</label></div>
+            <div class="pay-opt"><input type="radio" name="dPay" id="dTransfer" value="Virement"><label for="dTransfer"><span data-ic="transfer"></span>Virement</label></div>
+            <div class="pay-opt"><input type="radio" name="dPay" id="dMobile" value="Mobile Money"><label for="dMobile"><span data-ic="phone"></span>Mobile Money</label></div>
+          </div>
+        </div>
+        <p class="muted" id="deliverNote" style="font-size:13px;margin-top:14px"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" data-modal-close>Annuler</button>
+        <button class="btn btn-primary" id="confirmDeliver"><span data-ic="check"></span> Confirmer la livraison</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL ANNULATION ============ -->
+  <div class="modal-overlay" id="cancelModal">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-head"><h3>Annuler la précommande</h3><button class="icon-btn" data-modal-close><span data-ic="x"></span></button></div>
+      <div class="modal-body">
+        <p class="muted" id="cancelText" style="font-size:13.5px;margin-top:0"></p>
+        <div class="field"><label for="cancelReason">Motif (facultatif)</label>
+          <input class="input" id="cancelReason" maxlength="300" placeholder="Ex. : client injoignable, parfum indisponible…"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" data-modal-close>Retour</button>
+        <button class="btn btn-danger" id="confirmCancel">Annuler la précommande</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL RÉATTRIBUTION (admin) ============ -->
+  <div class="modal-overlay" id="reassignModal">
+    <div class="modal" style="max-width:460px">
+      <div class="modal-head"><h3>Changer le commercial crédité</h3><button class="icon-btn" data-modal-close><span data-ic="x"></span></button></div>
+      <div class="modal-body">
+        <p class="muted" id="reassignText" style="font-size:13.5px;margin-top:0"></p>
+        <div class="field"><label for="reassignRep">Créditer la vente à</label><select class="select" id="reassignRep"></select></div>
+        <p class="hint" style="margin-top:10px">Les unités, le chiffre d'affaires, la commission et l'XP de cette vente passent au commercial choisi.
+          Impossible pour un mois de paie déjà clôturé.</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" data-modal-close>Annuler</button>
+        <button class="btn btn-primary" id="confirmReassign">Réattribuer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="api.js"></script>
+  <script src="notifications.js"></script>
+  <script src="exports.js"></script>
+  <script src="dashboard.js"></script>
+  <script>
+    window.KGPage = async function ({ icon, toast }) {
+      const $ = (s) => document.querySelector(s);
+      const $$ = (s) => Array.from(document.querySelectorAll(s));
+      const KG = window.KG;
+      const Period = window.KGPeriod;
+      const esc = window.KGNotifFeed.escapeHtml;
+      const saleLabel = window.KGNotifFeed.saleLabel;
+      const money = (n) => KG.fmt.money(Number(n) || 0);
+      const num = (n) => KG.fmt.num(Number(n) || 0);
+      const role = window.KG_ROLE || "admin";
+      const isAdmin = role === "admin";
+      const live = Boolean(window.KG_API_CONFIGURED);
+      document.querySelectorAll("[data-ic]").forEach(el => el.innerHTML = icon(el.dataset.ic));
+
+      const dayOf = (ts) => Period.isoDay(new Date(ts));
+      const dateTime = (ts) => {
+        const d = new Date(ts);
+        return { day: Period.frDay(Period.isoDay(d)), time: d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) };
+      };
+      const payClass = (p) => p === "Espèces" ? "green" : p === "Virement" ? "blue" : "gold";
+      /* Nom du parfum en clair, format et remarque en petit dessous : la
+         colonne reste lisible même quand le tableau est serré. */
+      const perfumeCell = (x) => {
+        const sub = [x.perfume_name ? x.product : "", x.remarks || ""].filter(Boolean).map(esc).join(" · ");
+        return `${esc(x.perfume_name || x.product || "—")}${sub ? `<div class="kc-sub">${sub}</div>` : ""}`;
+      };
+      const STATUS_LABEL = { EN_ATTENTE: "En attente", LIVREE: "Livrée", ANNULEE: "Annulée" };
+
+      /* ---------- État (lu depuis l'URL : liens depuis Vendeurs / Rémunération) ---------- */
+      const params = new URLSearchParams(location.search);
+      const reps = (KG.salespersons || []).slice().sort((a, b) => a.name.localeCompare(b.name, "fr"));
+      const state = {
+        tab: params.get("tab") === "preorders" ? "preorders" : "sales",
+        rep: isAdmin && reps.some(r => r.id === params.get("rep")) ? params.get("rep") : "",
+        period: Period.labels[params.get("period")] ? params.get("period") : "month",
+        status: "EN_ATTENTE",
+        shown: 50,
+      };
+      let salesData = null;      // réponse /api/sales/history
+      let preorders = null;    // réponse /api/preorders
+      let pendingBy = {};      // précommandes en attente par commercial
+
+      $("#scopeNote").textContent = isAdmin
+        ? "Toutes les ventes et précommandes de l'équipe, par commercial."
+        : "Vos ventes et vos précommandes.";
+      if (isAdmin) {
+        $("#fRep").innerHTML = '<option value="">Tous les commerciaux</option>' +
+          reps.map(r => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join("");
+        $("#fRep").value = state.rep;
+      } else {
+        $("#repField").classList.add("hidden");
+        $$(".adm").forEach(el => el.classList.add("hidden"));
+      }
+      $("#fPeriod").innerHTML = ["month", "last_month", "3m", "12m", "year", "all", "custom"]
+        .map(k => `<option value="${k}">${Period.labels[k]}</option>`).join("");
+      $("#fPeriod").value = state.period;
+
+      function currentRange() {
+        return Period.range(state.period, { from: $("#fFrom").value, to: $("#fTo").value });
+      }
+      function syncCustom() {
+        const custom = state.period === "custom";
+        $("#fromField").classList.toggle("hidden", !custom);
+        $("#toField").classList.toggle("hidden", !custom);
+      }
+      const repName = (id) => (reps.find(r => r.id === id) || {}).name || "";
+
+      /* ---------- Chargement ---------- */
+      function demoHistory() {
+        // Sans API : les ventes d'exemple de data.js, pour prévisualiser la page.
+        const rows = (KG.recentSales || []).map((s, i) => ({
+          id: s.id || "demo" + i, created_at: new Date(Date.now() - (s.minsAgo || 0) * 60000).toISOString(),
+          customer: s.customer, product: s.product, perfume_name: s.perfume || "", qty: s.qty,
+          amount: s.amount, commission: s.commission || 0, pay: s.pay, rep_id: null, rep_name: s.rep,
+        }));
+        const by = {};
+        rows.forEach(r => {
+          const g = by[r.rep_name] || (by[r.rep_name] = { rep_id: null, rep_name: r.rep_name, sales_count: 0, units: 0, revenue: 0, commission: 0, last_sale_at: r.created_at });
+          g.sales_count++; g.units += r.qty; g.revenue += r.amount; g.commission += r.commission;
+        });
+        const byRep = Object.values(by).sort((a, b) => b.revenue - a.revenue);
+        const summary = byRep.reduce((a, g) => ({ sales_count: a.sales_count + g.sales_count, units: a.units + g.units, revenue: a.revenue + g.revenue, commission: a.commission + g.commission }), { sales_count: 0, units: 0, revenue: 0, commission: 0 });
+        return { scope: "team", rows, by_rep: byRep, summary, mismatches: 0, truncated: false, demo: true };
+      }
+
+      async function loadSales() {
+        const r = currentRange();
+        $("#salesBody").innerHTML = `<tr><td colspan="9" class="muted" style="text-align:center;padding:26px">Chargement…</td></tr>`;
+        try {
+          salesData = await window.KGDB.salesHistory({
+            rep_id: state.rep, from: r.from, to: r.to, q: $("#fSearch").value.trim(), limit: 5000,
+          });
+          if (!salesData) salesData = demoHistory();
+        } catch (err) {
+          salesData = null;
+          $("#salesBody").innerHTML = `<tr><td colspan="9" class="muted" style="text-align:center;padding:26px">${esc(err.message)}</td></tr>`;
+          return;
+        }
+        state.shown = 50;
+        renderSales();
+      }
+
+      async function loadPreorders() {
+        if (!live || !window.KGPreorders) {
+          preorders = { rows: [], summary: {}, demo: true };
+          renderPreorders();
+          return;
+        }
+        try {
+          preorders = await window.KGPreorders.list({ status: "ALL", rep_id: state.rep, q: $("#fSearch").value.trim(), limit: 1000 });
+        } catch (err) {
+          preorders = { rows: [], summary: {}, error: err.message };
+        }
+        pendingBy = {};
+        (preorders.rows || []).filter(p => p.status === "EN_ATTENTE").forEach(p => {
+          pendingBy[p.rep_id || ""] = (pendingBy[p.rep_id || ""] || 0) + 1;
+        });
+        renderPreorders();
+        if (salesData) renderByRep();
+      }
+
+      /* ---------- Rendu : ventes ---------- */
+      function renderByRep() {
+        const show = isAdmin && !state.rep && salesData && salesData.by_rep && salesData.by_rep.length;
+        $("#byRepCard").classList.toggle("hidden", !show);
+        if (!show) return;
+        $("#byRepBody").innerHTML = salesData.by_rep.map(g => `
+          <tr class="kc-rep-row" data-rep="${esc(g.rep_id || "")}" title="Voir les ventes de ${esc(g.rep_name)}">
+            <td><b>${esc(g.rep_name)}</b></td>
+            <td class="num">${num(g.sales_count)}</td>
+            <td class="num">${num(g.units)}</td>
+            <td class="num"><b>${money(g.revenue)}</b></td>
+            <td class="num">${money(g.commission)}</td>
+            <td class="num">${pendingBy[g.rep_id || ""] ? `<span class="kc-status EN_ATTENTE">${pendingBy[g.rep_id || ""]}</span>` : '<span class="muted">0</span>'}</td>
+            <td>${g.last_sale_at ? Period.frDay(dayOf(g.last_sale_at)) : '<span class="muted">aucune sur la période</span>'}</td>
+          </tr>`).join("");
+        $$("#byRepBody [data-rep]").forEach(tr => tr.addEventListener("click", () => {
+          if (!tr.dataset.rep) return;
+          state.rep = tr.dataset.rep;
+          $("#fRep").value = state.rep;
+          reload();
+          document.getElementById("salesTitle").scrollIntoView({ behavior: "smooth", block: "start" });
+        }));
+      }
+
+      function renderWarn() {
+        const box = $("#warnBox");
+        const n = salesData && salesData.mismatches;
+        if (!n || state.tab !== "sales") { box.classList.add("hidden"); return; }
+        box.classList.remove("hidden");
+        box.innerHTML = isAdmin
+          ? `<span>⚠️</span><div class="grow"><b>${n} vente(s)</b> ont été saisies par un commercial mais créditées à un autre
+               (le formulaire repassait sur le premier commercial de la liste après une vente — c'est corrigé).</div>
+             <button class="btn btn-primary btn-sm" id="fixAll">Les recréditer à leur auteur</button>`
+          : `<span>⚠️</span><div class="grow"><b>${n} de vos vente(s)</b> sont créditées à un autre commercial.
+               Un administrateur peut les réattribuer depuis cette page.</div>`;
+        const fix = $("#fixAll");
+        if (fix) fix.addEventListener("click", fixAll);
+      }
+
+      function renderSales() {
+        const h = salesData;
+        if (!h) return;
+        const s = h.summary || {};
+        $("#kCount").textContent = num(s.sales_count);
+        $("#kUnits").textContent = num(s.units);
+        $("#kRevenue").textContent = money(s.revenue);
+        $("#kCommission").textContent = money(s.commission);
+        $("#nSales").textContent = num(s.sales_count);
+
+        const r = currentRange();
+        const who = state.rep ? repName(state.rep) : isAdmin ? "toute l'équipe" : "vos ventes";
+        $("#salesTitle").textContent = state.rep ? `Ventes de ${repName(state.rep)}` : "Historique des ventes";
+        $("#salesSub").textContent = `${r.label} · ${who} · ${num(s.sales_count)} vente(s)` +
+          (h.demo ? " · données de démonstration" : "");
+
+        renderByRep();
+        renderWarn();
+
+        const rows = h.rows || [];
+        if (!rows.length) {
+          $("#salesBody").innerHTML = `<tr><td colspan="9" class="muted" style="text-align:center;padding:28px">
+            Aucune vente sur cette période${state.rep ? " pour ce commercial" : ""}.</td></tr>`;
+          $("#salesMore").innerHTML = "";
+          return;
+        }
+        const shown = rows.slice(0, state.shown);
+        $("#salesBody").innerHTML = shown.map(v => {
+          const t = dateTime(v.created_at);
+          const author = v.recorded_by && v.recorded_by !== v.rep_name
+            ? (v.attribution_mismatch
+              ? `<div class="kc-flag" title="Saisie depuis le compte de ${esc(v.recorded_by)}">⚠ saisie par ${esc(v.recorded_by)}</div>`
+              : `<div class="kc-sub">saisie par ${esc(v.recorded_by)}</div>`)
+            : "";
+          return `<tr>
+            <td style="white-space:nowrap">${t.day}<div class="kc-sub">${t.time}</div></td>
+            <td><b>${esc(v.customer)}</b></td>
+            <td>${perfumeCell(v)}</td>
+            <td class="num">${num(v.qty)}</td>
+            <td class="num"><b>${money(v.amount)}</b></td>
+            <td class="num">${money(v.commission)}</td>
+            <td><span class="badge ${payClass(v.pay)}">${esc(v.pay || "—")}</span></td>
+            <td>${esc(v.rep_name || "—")}${author}</td>
+            ${isAdmin ? `<td class="num">${h.demo ? "" : `<button class="btn btn-ghost btn-sm" data-reassign="${esc(v.id)}" title="Changer le commercial crédité">Réattribuer</button>`}</td>` : ""}
+          </tr>`;
+        }).join("");
+        const left = rows.length - shown.length;
+        $("#salesMore").innerHTML = left > 0
+          ? `<button class="btn btn-ghost btn-sm" id="showMore">Afficher ${Math.min(50, left)} de plus (${left} restante(s))</button>`
+          : (h.truncated ? `<span class="muted" style="font-size:12.5px">Affichage limité aux ${num(rows.length)} ventes les plus récentes — réduisez la période.</span>` : "");
+        const more = $("#showMore");
+        if (more) more.addEventListener("click", () => { state.shown += 50; renderSales(); });
+        $$("[data-reassign]").forEach(b => b.addEventListener("click", () => openReassign(b.dataset.reassign)));
+      }
+
+      /* ---------- Rendu : précommandes ---------- */
+      function renderPreorders() {
+        const p = preorders || { rows: [], summary: {} };
+        const sum = p.summary || {};
+        const pend = sum.EN_ATTENTE || { count: 0, amount: 0, deposit: 0 };
+        $("#pPending").textContent = num(pend.count);
+        $("#pAmount").textContent = money(pend.amount);
+        $("#pDeposit").textContent = money(pend.deposit);
+        $("#pDelivered").textContent = num((sum.LIVREE || {}).count);
+        $("#nPre").textContent = num(pend.count);
+
+        if (p.demo || p.error) {
+          $("#preBody").innerHTML = `<tr><td colspan="11" class="muted" style="text-align:center;padding:28px">${
+            p.error ? esc(p.error) : "Mode démo — démarrez l'API pour gérer les précommandes."}</td></tr>`;
+          return;
+        }
+        const rows = (p.rows || []).filter(r => state.status === "ALL" || r.status === state.status);
+        if (!rows.length) {
+          $("#preBody").innerHTML = `<tr><td colspan="11" class="muted" style="text-align:center;padding:28px">
+            Aucune précommande ${state.status === "ALL" ? "" : STATUS_LABEL[state.status].toLowerCase()}.
+            <a class="link" href="sales.html?type=preorder">Enregistrer une précommande</a></td></tr>`;
+          return;
+        }
+        $("#preBody").innerHTML = rows.map(r => {
+          const exp = r.expected_at ? Period.frDay(r.expected_at) : "—";
+          const statusDetail = r.status === "LIVREE" && r.delivered_at
+            ? `<div class="kc-sub">le ${Period.frDay(dayOf(r.delivered_at))}</div>`
+            : r.status === "ANNULEE" && r.cancel_reason ? `<div class="kc-sub">${esc(r.cancel_reason)}</div>` : "";
+          return `<tr>
+            <td style="white-space:nowrap">${Period.frDay(dayOf(r.created_at))}</td>
+            <td><b>${esc(r.customer)}</b>${r.client_phone ? `<div class="kc-sub">${esc(r.client_phone)}</div>` : ""}</td>
+            <td>${perfumeCell(r)}</td>
+            <td class="num">${num(r.qty)}</td>
+            <td class="num"><b>${money(r.amount)}</b></td>
+            <td class="num">${money(r.deposit)}</td>
+            <td class="num">${r.status === "EN_ATTENTE" ? `<b>${money(r.balance)}</b>` : '<span class="muted">—</span>'}</td>
+            <td style="white-space:nowrap">${r.overdue ? `<span class="kc-late">${exp} · en retard</span>` : exp}</td>
+            <td>${esc(r.current_rep_name || r.rep_name || "—")}</td>
+            <td><span class="kc-status ${esc(r.status)}">${STATUS_LABEL[r.status] || esc(r.status)}</span>${statusDetail}</td>
+            <td>${r.status === "EN_ATTENTE" ? `<div class="kc-actions">
+              <button class="btn btn-primary btn-sm" data-deliver="${esc(r.id)}">Livrer</button>
+              <button class="btn btn-ghost btn-sm" data-cancel="${esc(r.id)}">Annuler</button></div>` : ""}</td>
+          </tr>`;
+        }).join("");
+        $$("[data-deliver]").forEach(b => b.addEventListener("click", () => openDeliver(b.dataset.deliver)));
+        $$("[data-cancel]").forEach(b => b.addEventListener("click", () => openCancel(b.dataset.cancel)));
+      }
+
+      /* ---------- Onglets & filtres ---------- */
+      function setTab(tab) {
+        state.tab = tab;
+        $$("#tabs [data-tab]").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+        $("#tabSales").classList.toggle("hidden", tab !== "sales");
+        $("#tabPre").classList.toggle("hidden", tab !== "preorders");
+        renderWarn();
+      }
+      $$("#tabs [data-tab]").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+      $$("#statusChips [data-status]").forEach(b => b.addEventListener("click", () => {
+        state.status = b.dataset.status;
+        $$("#statusChips [data-status]").forEach(x => x.classList.toggle("on", x === b));
+        renderPreorders();
+      }));
+
+      function reload() {
+        // L'URL garde le filtre : un lien partagé ou un rechargement retombe sur la même vue.
+        const u = new URL(location.href);
+        state.rep ? u.searchParams.set("rep", state.rep) : u.searchParams.delete("rep");
+        state.period !== "month" ? u.searchParams.set("period", state.period) : u.searchParams.delete("period");
+        window.history.replaceState(null, "", u);
+        return Promise.all([loadSales(), loadPreorders()]);
+      }
+      $("#fRep").addEventListener("change", () => { state.rep = $("#fRep").value; reload(); });
+      $("#fPeriod").addEventListener("change", () => {
+        state.period = $("#fPeriod").value;
+        syncCustom();
+        if (state.period !== "custom" || ($("#fFrom").value && $("#fTo").value)) loadSales();
+      });
+      ["#fFrom", "#fTo"].forEach(s => $(s).addEventListener("change", () => {
+        if ($("#fFrom").value && $("#fTo").value) loadSales();
+      }));
+      let debounce;
+      $("#fSearch").addEventListener("input", () => { clearTimeout(debounce); debounce = setTimeout(reload, 300); });
+      $("#fReset").addEventListener("click", () => {
+        state.rep = ""; state.period = "month";
+        $("#fRep").value = ""; $("#fPeriod").value = "month"; $("#fSearch").value = "";
+        $("#fFrom").value = ""; $("#fTo").value = "";
+        syncCustom(); reload();
+      });
+
+      /* ---------- Livraison / annulation ---------- */
+      let current = null;
+      const findPre = (id) => ((preorders && preorders.rows) || []).find(p => p.id === id);
+
+      function openDeliver(id) {
+        current = findPre(id);
+        if (!current) return;
+        const p = current;
+        $("#deliverSummary").innerHTML = `
+          <div><span>Client</span><b>${esc(p.customer)}</b></div>
+          <div><span>Parfum</span><b>${esc(saleLabel(p.product, p.perfume_name))} ×${num(p.qty)}</b></div>
+          <div><span>Montant</span><b>${money(p.amount)}</b></div>
+          <div><span>Acompte versé</span><b>${money(p.deposit)}</b></div>
+          <div><span>Reste à encaisser</span><b style="color:var(--brand)">${money(p.balance)}</b></div>
+          <div><span>Commercial</span><b>${esc(p.current_rep_name || p.rep_name || "—")}</b></div>`;
+        const pay = ["Espèces", "Virement", "Mobile Money"].includes(p.pay) ? p.pay : "Espèces";
+        document.querySelectorAll('input[name="dPay"]').forEach(r => { r.checked = r.value === pay; });
+        $("#deliverNote").textContent =
+          `Une vente de ${money(p.amount)} sera enregistrée aujourd'hui${p.rep_id ? ` au nom de ${p.current_rep_name || p.rep_name}` : ""} ` +
+          `: la commission de ${money(p.commission)} compte dans la paie du mois en cours.`;
+        window.kgModal.open("#deliverModal");
+      }
+      $("#confirmDeliver").addEventListener("click", async (e) => {
+        if (!current) return;
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        try {
+          const pay = document.querySelector('input[name="dPay"]:checked').value;
+          await window.KGPreorders.deliver(current.id, { pay });
+          window.kgModal.close($("#deliverModal"));
+          toast("success", "Précommande livrée", `La vente de ${current.customer} est enregistrée.`);
+          await reload();
+        } catch (err) {
+          toast("error", "Livraison impossible", err.message);
+        } finally { btn.disabled = false; }
+      });
+
+      function openCancel(id) {
+        current = findPre(id);
+        if (!current) return;
+        $("#cancelText").textContent = `Précommande de ${current.customer} — ${saleLabel(current.product, current.perfume_name)}, ${money(current.amount)}` +
+          (current.deposit ? ` (acompte de ${money(current.deposit)} à rembourser ou conserver selon votre politique).` : ".");
+        $("#cancelReason").value = "";
+        window.kgModal.open("#cancelModal");
+      }
+      $("#confirmCancel").addEventListener("click", async (e) => {
+        if (!current) return;
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        try {
+          await window.KGPreorders.cancel(current.id, $("#cancelReason").value.trim());
+          window.kgModal.close($("#cancelModal"));
+          toast("success", "Précommande annulée", current.customer);
+          await loadPreorders();
+        } catch (err) {
+          toast("error", "Annulation impossible", err.message);
+        } finally { btn.disabled = false; }
+      });
+
+      /* ---------- Réattribution (admin) ---------- */
+      let reassigning = null;
+      function openReassign(id) {
+        reassigning = ((salesData && salesData.rows) || []).find(r => r.id === id);
+        if (!reassigning) return;
+        const v = reassigning;
+        $("#reassignText").innerHTML = `Vente du ${dateTime(v.created_at).day} — <b>${esc(v.customer)}</b>, ${esc(saleLabel(v.product, v.perfume_name))},
+          ${money(v.amount)}. Actuellement créditée à <b>${esc(v.rep_name || "personne")}</b>${
+          v.recorded_by ? `, saisie par <b>${esc(v.recorded_by)}</b>` : ""}.`;
+        $("#reassignRep").innerHTML = reps.map(r => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join("");
+        $("#reassignRep").value = v.attribution_mismatch && v.recorded_by_rep ? v.recorded_by_rep : (v.rep_id || (reps[0] || {}).id || "");
+        window.kgModal.open("#reassignModal");
+      }
+      $("#confirmReassign").addEventListener("click", async (e) => {
+        if (!reassigning) return;
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        try {
+          await window.KGDB.reassignSale(reassigning.id, $("#reassignRep").value);
+          window.kgModal.close($("#reassignModal"));
+          toast("success", "Vente réattribuée", `Créditée à ${repName($("#reassignRep").value)}.`);
+          await loadSales();
+        } catch (err) {
+          toast("error", "Réattribution impossible", err.message);
+        } finally { btn.disabled = false; }
+      });
+
+      async function fixAll(e) {
+        const btn = e.currentTarget;
+        const todo = ((salesData && salesData.rows) || []).filter(r => r.attribution_mismatch && r.recorded_by_rep);
+        if (!todo.length) return;
+        btn.disabled = true;
+        let done = 0; const errors = [];
+        for (const v of todo) {
+          try { await window.KGDB.reassignSale(v.id, v.recorded_by_rep); done++; }
+          catch (err) { errors.push(err.message); }
+        }
+        if (done) toast("success", "Ventes recréditées", `${done} vente(s) rendues à leur auteur.`);
+        if (errors.length) toast("error", `${errors.length} vente(s) non modifiée(s)`, errors[0]);
+        await loadSales();
+      }
+
+      /* ---------- Exports ---------- */
+      $("#exportBar").insertAdjacentHTML("beforeend", window.KGExportUI.buttons());
+      const me = (KG.me && KG.me.name) || "";
+      window.KGExportUI.wire("#exportBar", (format) => {
+        const r = currentRange();
+        const who = state.rep ? repName(state.rep) : (isAdmin ? "Tous les commerciaux" : me);
+        const q = $("#fSearch").value.trim();
+        const meta = [`Commercial : ${who}`, q ? `Recherche : « ${q} »` : null, me ? `Exporté par ${me}` : null].filter(Boolean);
+        const slug = state.rep ? repName(state.rep) : (isAdmin ? "equipe" : me);
+
+        if (state.tab === "preorders") {
+          const rows = ((preorders && preorders.rows) || []).filter(p => state.status === "ALL" || p.status === state.status);
+          const s = (preorders && preorders.summary) || {};
+          return {
+            filename: `precommandes-${slug}-${Period.isoDay(new Date())}`,
+            title: "Précommandes",
+            subtitle: `Statut : ${state.status === "ALL" ? "toutes" : STATUS_LABEL[state.status].toLowerCase()} · ${rows.length} précommande(s)`,
+            meta, orientation: "landscape",
+            kpis: [
+              { label: "En attente", value: num((s.EN_ATTENTE || {}).count) },
+              { label: "Montant attendu", value: money((s.EN_ATTENTE || {}).amount) },
+              { label: "Acomptes perçus", value: money((s.EN_ATTENTE || {}).deposit) },
+              { label: "Livrées", value: num((s.LIVREE || {}).count) },
+            ],
+            sections: [{
+              name: "Précommandes", title: "Détail des précommandes", totals: true, rows,
+              columns: [
+                { key: "created_at", label: "Date", type: "date" },
+                { key: "customer", label: "Client", type: "text" },
+                { key: "client_phone", label: "Téléphone", type: "text" },
+                { key: "perfume_name", label: "Parfum", type: "text" },
+                { key: "product", label: "Format", type: "text" },
+                { key: "qty", label: "Qté", type: "int", total: "sum" },
+                { key: "amount", label: "Montant", type: "money", total: "sum" },
+                { key: "deposit", label: "Acompte", type: "money", total: "sum" },
+                { label: "Reste", type: "money", get: (p) => (p.status === "EN_ATTENTE" ? p.balance : 0) },
+                { key: "expected_at", label: "Livraison prévue", type: "date" },
+                { label: "Commercial", type: "text", get: (p) => p.current_rep_name || p.rep_name || "" },
+                { label: "Statut", type: "text", get: (p) => STATUS_LABEL[p.status] || p.status },
+              ],
+            }],
+          };
+        }
+
+        if (!salesData) throw new Error("Les ventes ne sont pas encore chargées.");
+        const s = salesData.summary || {};
+        const sections = [{
+          name: "Ventes", title: state.rep ? `Ventes de ${repName(state.rep)}` : "Détail des ventes",
+          totals: true, rows: salesData.rows || [],
+          note: salesData.truncated ? `Limité aux ${salesData.rows.length} ventes les plus récentes.` : "",
+          columns: [
+            { key: "created_at", label: "Date", type: "datetime" },
+            { key: "customer", label: "Client", type: "text" },
+            { key: "perfume_name", label: "Parfum", type: "text" },
+            { key: "product", label: "Format", type: "text" },
+            { key: "qty", label: "Qté", type: "int", total: "sum" },
+            { key: "amount", label: "Montant", type: "money", total: "sum" },
+            { key: "commission", label: "Commission", type: "money", total: "sum" },
+            { key: "pay", label: "Paiement", type: "text" },
+            { key: "rep_name", label: "Commercial", type: "text" },
+            { key: "recorded_by", label: "Saisie par", type: "text" },
+          ],
+        }];
+        if (isAdmin && !state.rep && (salesData.by_rep || []).length) {
+          const total = s.revenue || 0;
+          sections.push({
+            name: "Par commercial", title: "Synthèse par commercial", totals: true,
+            rows: salesData.by_rep,
+            columns: [
+              { key: "rep_name", label: "Commercial", type: "text" },
+              { key: "sales_count", label: "Ventes", type: "int", total: "sum" },
+              { key: "units", label: "Unités", type: "int", total: "sum" },
+              { key: "revenue", label: "Chiffre d'affaires", type: "money", total: "sum" },
+              { key: "commission", label: "Commission", type: "money", total: "sum" },
+              { label: "Part du CA", type: "percent", get: (g) => (total ? g.revenue / total : 0) },
+            ],
+          });
+        }
+        return {
+          filename: `ventes-${slug}-${r.from || "debut"}_${r.to || Period.isoDay(new Date())}`,
+          title: state.rep ? `Ventes de ${repName(state.rep)}` : "Historique des ventes",
+          subtitle: r.label, meta, orientation: "landscape",
+          kpis: [
+            { label: "Ventes", value: num(s.sales_count) },
+            { label: "Unités", value: num(s.units) },
+            { label: "Chiffre d'affaires", value: money(s.revenue) },
+            { label: "Commissions", value: money(s.commission) },
+          ],
+          sections,
+        };
+      });
+
+      syncCustom();
+      setTab(state.tab);
+      await Promise.all([loadSales(), loadPreorders()]);
+    };
+  </script>
+</body>
+</html>

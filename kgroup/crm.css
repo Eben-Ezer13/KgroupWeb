@@ -161,6 +161,56 @@
   font-size: 12px; color: var(--brand-600);
 }
 
+/* ---------- Commandes & précommandes (orders.html, sales.html) ---------- */
+.kc-status.EN_ATTENTE { background: rgba(240,160,32,.16); color: #9A6208; }
+.kc-status.LIVREE     { background: var(--brand-100); color: var(--brand-600); }
+.kc-status.ANNULEE    { background: rgba(226,76,75,.12); color: #C43535; }
+[data-theme="dark"] .kc-status.EN_ATTENTE { color: #F2C860; }
+[data-theme="dark"] .kc-status.LIVREE { color: var(--brand-300); }
+
+/* Signalement : vente saisie par un commercial mais créditée à un autre. */
+.kc-warn {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 13px 18px; margin-bottom: 18px;
+  border-radius: var(--r-md); font-size: 13.5px;
+  border: 1px solid rgba(240,160,32,.45);
+  background: rgba(240,160,32,.10); color: #7A4E00;
+}
+.kc-warn .grow { flex: 1 1 260px; }
+[data-theme="dark"] .kc-warn { color: #F2C860; }
+.kc-flag {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 4px;
+  padding: 2px 8px; border-radius: var(--r-pill);
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+  background: rgba(240,160,32,.16); color: #9A6208;
+}
+[data-theme="dark"] .kc-flag { color: #F2C860; }
+
+.kc-table td.num { white-space: nowrap; }
+.kc-late { color: var(--danger); font-weight: 700; }
+.kc-sub  { font-size: 12px; color: var(--muted); }
+.kc-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.kc-toolbar .seg button .n {
+  display: inline-grid; place-items: center; min-width: 20px; height: 18px; padding: 0 6px;
+  border-radius: var(--r-pill); background: var(--line-2); font-size: 11px; color: var(--ink-2);
+}
+.kc-toolbar .seg button.on .n { background: var(--brand-100); color: var(--brand-600); }
+
+/* Tableau « par commercial » : une ligne filtre la page sur ce commercial. */
+.kc-rep-row { cursor: pointer; transition: background .16s var(--ease); }
+.kc-rep-row:hover { background: var(--brand-50); }
+.kc-rep-row.on { background: var(--brand-50); box-shadow: inset 3px 0 0 var(--brand); }
+.kc-more { display: flex; justify-content: center; margin-top: 14px; }
+.kc-actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* Formulaire de vente : vente immédiate ou précommande */
+.kc-type { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.kc-type .hint { max-width: 420px; }
+.kc-preorder-box {
+  padding: 14px 16px; border-radius: var(--r-md);
+  background: rgba(240,160,32,.08); border: 1px dashed rgba(240,160,32,.5);
+}
+
 /* ---------- Responsive --------------------------------------------------- */
 @media (max-width: 720px) {
   .kc-filters .field { min-width: 100%; }

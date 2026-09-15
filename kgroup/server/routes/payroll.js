@@ -3,7 +3,8 @@
    -------------------------------------------------------------------------
      GET   /api/payroll?month=YYYY-MM        ma rémunération du mois
      GET   /api/payroll/team?month=YYYY-MM   (admin) toute l'équipe + synthèse
-     GET   /api/payroll/history              (admin) évolution mensuelle
+     GET   /api/payroll/history              évolution mensuelle (la sienne ;
+                                             équipe ou ?rep_id= pour un admin)
      POST  /api/payroll/close                (admin) clôturer un mois
      GET   /api/compensation-settings        paramètres de l'équipe
      PUT   /api/compensation-settings        (admin) les modifier
@@ -192,10 +193,30 @@ router.get("/payroll/history", requireUser, async (req, res, next) => {
   try {
     const teamId = teamScope(req);
     const months = Math.min(Math.max(parseInt(req.query.months, 10) || 6, 1), 24);
-    const mine = !canSeeAllPayroll(req);
-    const repId = req.profile && req.profile.salesperson_id;
-    if (mine && !repId) return res.json({ months: [] });
 
+    // Trois périmètres : ma paie (commercial), un commercial (admin + rep_id),
+    // toute l'équipe (admin).
+    let scope = "team";
+    let repId = null;
+    let rep = null;
+    if (!canSeeAllPayroll(req)) {
+      repId = req.profile && req.profile.salesperson_id;
+      if (!repId) return res.json({ months: [], scope: "me" });
+      scope = "me";
+    } else if (req.query.rep_id) {
+      rep = await db.one(
+        `select id, name from public.salespersons where id = $1 and team_id = $2`,
+        [String(req.query.rep_id), teamId]
+      );
+      if (!rep) throw new HttpError(404, "Ce commercial ne fait pas partie de votre équipe.");
+      repId = rep.id;
+      scope = "rep";
+    }
+    const perRep = scope !== "team";
+
+    // Agrégats par mois ET par commercial : le bonus (Art. 4) est un palier
+    // individuel. Appliqué au total de l'équipe, il donnait un bonus dès que
+    // l'équipe cumulait 20 ventes, même si personne ne les avait atteintes.
     // Les mois clôturés sont lus depuis payroll_periods (figés) ; les mois
     // encore ouverts sont recalculés depuis les ventes.
     const rows = await db.many(
@@ -206,60 +227,88 @@ router.get("/payroll/history", requireUser, async (req, res, next) => {
            interval '1 month'
          )::date as period
        )
-       select p.period,
+       select p.period, s.rep_id,
               coalesce(sum(s.amount), 0)::bigint     as revenue,
               coalesce(sum(s.commission), 0)::bigint as commission,
               count(s.id)::int                       as sales_count
          from periods p
          left join public.sales s
            on s.team_id = $1
+          and s.rep_id is not null
           and date_trunc('month', (s.created_at at time zone 'Africa/Casablanca')) = p.period
           and ($3::uuid is null or s.rep_id = $3::uuid)
-        group by p.period
+        group by p.period, s.rep_id
         order by p.period`,
-      [teamId, months, mine ? repId : null]
+      [teamId, months, repId]
     );
 
     const settings = await settingsFor(teamId);
     const stored = await db.many(
       `select period, status, total, commission, bonus, salary_base, sales_count, revenue
          from public.payroll_periods
-        where team_id = $1 ${mine ? "and rep_id = $2" : ""}`,
-      mine ? [teamId, repId] : [teamId]
+        where team_id = $1 ${perRep ? "and rep_id = $2" : ""}`,
+      perRep ? [teamId, repId] : [teamId]
     );
     const lockedByPeriod = {};
     for (const s of stored) {
       if (!crm.isPeriodLocked(s.status)) continue;
       const key = String(s.period).slice(0, 10);
-      const acc = lockedByPeriod[key] || { total: 0, commission: 0, bonus: 0, sales_count: 0, revenue: 0, status: s.status };
+      const acc = lockedByPeriod[key] || {
+        total: 0, commission: 0, bonus: 0, salary_base: 0, sales_count: 0, revenue: 0, status: s.status,
+      };
       acc.total += Number(s.total) || 0;
       acc.commission += Number(s.commission) || 0;
       acc.bonus += Number(s.bonus) || 0;
+      acc.salary_base += Number(s.salary_base) || 0;
       acc.sales_count += s.sales_count || 0;
       acc.revenue += Number(s.revenue) || 0;
       lockedByPeriod[key] = acc;
     }
 
+    // Vue équipe : un salaire fixe par commercial du roster, comme la vue
+    // mensuelle (/payroll/team), pour que les deux affichent le même total.
+    let salaryBase = Number(settings.salary_base) || 0;
+    if (!perRep && salaryBase) {
+      const roster = await db.one(
+        `select count(*)::int as n from public.salespersons where team_id = $1`, [teamId]
+      );
+      salaryBase *= (roster && roster.n) || 0;
+    }
+
+    const periods = [];
+    const byPeriod = new Map();
+    for (const r of rows) {
+      const key = String(r.period).slice(0, 10);
+      if (!byPeriod.has(key)) { byPeriod.set(key, []); periods.push(key); }
+      if (r.rep_id) byPeriod.get(key).push(r); // rep_id nul : mois sans vente
+    }
+
     return res.json({
-      months: rows.map((r) => {
-        const key = String(r.period).slice(0, 10);
+      months: periods.map((key) => {
         const locked = lockedByPeriod[key];
         if (locked) return { period: key, ...locked, locked: true };
-        const c = crm.computeCompensation(
-          { sales_count: r.sales_count, revenue: Number(r.revenue), commission: Number(r.commission) },
-          settings
-        );
+        const acc = { sales_count: 0, revenue: 0, commission: 0, bonus: 0 };
+        for (const g of byPeriod.get(key)) {
+          const c = crm.computeCompensation(
+            { sales_count: g.sales_count, revenue: Number(g.revenue), commission: Number(g.commission) },
+            settings
+          );
+          acc.sales_count += c.sales_count;
+          acc.revenue += c.revenue;
+          acc.commission += c.commission;
+          acc.bonus += c.bonus;
+        }
         return {
           period: key,
-          sales_count: c.sales_count, revenue: c.revenue,
-          commission: c.commission, bonus: c.bonus,
-          salary_base: mine ? c.salary_base : 0, // la synthèse équipe agrège ailleurs
-          total: mine ? c.total : c.commission + c.bonus,
+          ...acc,
+          salary_base: salaryBase,
+          total: salaryBase + acc.commission + acc.bonus,
           status: "EN_COURS", locked: false,
         };
       }),
       currency: settings.currency,
-      scope: mine ? "me" : "team",
+      scope,
+      rep: rep ? { id: rep.id, name: rep.name } : null,
     });
   } catch (err) {
     return next(err);
