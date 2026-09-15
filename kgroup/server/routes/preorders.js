@@ -4,17 +4,19 @@
      GET    /api/preorders                 liste : status, rep_id, q, limit
      POST   /api/preorders                 enregistrer une précommande
      PATCH  /api/preorders/:id             modifier (acompte, date prévue…)
-     POST   /api/preorders/:id/deliver     livrer -> crée la vente
+     POST   /api/preorders/:id/deliver     valider en vente (paiement reçu ou
+                                           parfum remis) -> crée la vente
      POST   /api/preorders/:id/cancel      annuler
 
    PÉRIMÈTRE (clause WHERE, comme partout ailleurs)
      admin         toutes les précommandes de l'équipe
      autres rôles  celles qui leur sont créditées ou qu'ils ont saisies
 
-   Une précommande ne compte nulle part tant qu'elle n'est pas livrée. À la
-   livraison, une vente ordinaire est insérée : les triggers apply_sale() et
-   apply_sale_client() mettent alors à jour le commercial et le client, et
-   la commission entre dans la paie du mois de livraison.
+   Une précommande ne compte nulle part tant qu'elle n'est pas validée en
+   vente — quand le client a payé ou reçu son parfum. Une vente ordinaire est
+   alors insérée : les triggers apply_sale() et apply_sale_client() mettent à
+   jour le commercial et le client, et la commission entre dans la paie du
+   mois de la date de vente choisie.
    ========================================================================= */
 "use strict";
 
@@ -262,18 +264,48 @@ router.patch("/preorders/:id", requireUser, async (req, res, next) => {
 });
 
 /* ------------------------------------------------------------------ *
- * LIVRAISON -> VENTE                                                  *
+ * VALIDATION EN VENTE (paiement reçu ou parfum remis)                 *
+ * -------------------------------------------------------------------
+ * body: { pay, sale_date }
+ *   pay        mode de paiement du solde
+ *   sale_date  jour de la vente (AAAA-MM-JJ), aujourd'hui par défaut : le
+ *              jour où le client a payé. C'est lui qui décide du mois de paie
+ *              où la commission est comptée.
  * ------------------------------------------------------------------ */
 router.post("/preorders/:id/deliver", requireUser, async (req, res, next) => {
   try {
     await ensurePreorderSchema();
     const b = req.body || {};
+    const saleDay = day(b.sale_date, "La date de la vente");
     const result = await db.tx(async (client) => {
       const po = await findInScope(client, req, req.params.id, true);
       if (po.status !== "EN_ATTENTE") {
         throw new HttpError(409, po.status === "LIVREE"
-          ? "Cette précommande est déjà livrée."
-          : "Cette précommande est annulée : elle ne peut plus être livrée.");
+          ? "Cette précommande est déjà validée en vente."
+          : "Cette précommande est annulée : elle ne peut plus devenir une vente.");
+      }
+
+      const today = crm.todayLocal();
+      const orderedDay = crm.todayLocal(crm.TIMEZONE, new Date(po.created_at));
+      if (saleDay && saleDay > today) {
+        throw new HttpError(400, "La date de la vente ne peut pas être dans le futur.");
+      }
+      if (saleDay && saleDay < orderedDay) {
+        throw new HttpError(400, `La vente ne peut pas précéder la précommande (${frDate(po.created_at)}).`);
+      }
+      // Un mois de paie clôturé est figé : y ajouter une vente créerait une
+      // commission que la paie déjà arrêtée n'inclut pas.
+      if (po.rep_id) {
+        const { rows: locked } = await client.query(
+          `select 1 as locked from public.payroll_periods
+            where team_id = $1 and period = $2 and rep_id = any($3::uuid[])
+              and status in ('CLOTURE', 'VALIDEE', 'PAYEE')
+            limit 1`,
+          [po.team_id, crm.periodStart(saleDay || today), [po.rep_id]]
+        );
+        if (locked.length) {
+          throw new HttpError(409, "La paie de ce mois est clôturée : choisissez une date dans un mois ouvert.");
+        }
       }
 
       const deposit = Number(po.deposit) || 0;
@@ -284,23 +316,27 @@ router.post("/preorders/:id/deliver", requireUser, async (req, res, next) => {
       ].filter(Boolean).join(" — ");
 
       // La vente garde son auteur (le compte qui a pris la précommande) : elle
-      // apparaît dans SON activité, même si c'est l'administrateur qui livre.
+      // apparaît dans SON activité, même si c'est l'administrateur qui valide.
+      // Aujourd'hui : l'heure exacte ; un jour passé : midi, heure du Maroc.
       const { rows: saleRows } = await client.query(
         `insert into public.sales
            (owner, team_id, rep_id, rep_name, client_id, customer, product, perfume_name,
-            qty, amount, commission, pay, remarks)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+            qty, amount, commission, pay, remarks, created_at)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
+                 coalesce(($14::date + time '12:00') at time zone 'Africa/Casablanca', now()))
          returning *`,
         [po.owner || req.user.id, po.team_id, po.rep_id, po.rep_name, po.client_id, po.customer,
          po.product, po.perfume_name, po.qty, po.amount, po.commission,
-         text(b.pay, "pay", { label: "Le mode de paiement" }) || po.pay || null, remarks]
+         text(b.pay, "pay", { label: "Le mode de paiement" }) || po.pay || null, remarks,
+         saleDay && saleDay !== today ? saleDay : null]
       );
       const sale = saleRows[0];
 
+      // delivered_at = date de la vente : la liste affiche « vente du … ».
       const { rows } = await client.query(
-        `update public.preorders set status = 'LIVREE', sale_id = $2, delivered_at = now()
+        `update public.preorders set status = 'LIVREE', sale_id = $2, delivered_at = $3
           where id = $1 returning *`,
-        [po.id, sale.id]
+        [po.id, sale.id, sale.created_at]
       );
       return { preorder: rows[0], sale };
     });

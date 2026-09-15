@@ -446,11 +446,10 @@ router.patch("/sales/:id/rep", requireUser, async (req, res, next) => {
         `select id, name from public.salespersons where id = $1 and team_id = $2`, [targetId, teamId]
       );
       if (!target) throw new HttpError(400, "That salesperson is not on your team.");
+      // Rien à déplacer : on le dit, plutôt que de répondre « réattribuée »
+      // alors que la liste ne peut pas changer.
       if (sale.rep_id === target.id) {
-        if (sale.rep_name !== target.name) {
-          return one(`update public.sales set rep_name = $2 where id = $1 returning *`, [sale.id, target.name]);
-        }
-        return sale;
+        throw new HttpError(400, `Cette vente est déjà créditée à ${target.name}. Choisissez un autre commercial.`);
       }
 
       const saleDay = localDay(sale.created_at) || crm.todayLocal();

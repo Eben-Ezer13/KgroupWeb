@@ -90,8 +90,13 @@
               </div>
               <div class="hint" style="margin-top:10px">
                 Une précommande ne compte ni dans le chiffre d'affaires ni dans la commission tant qu'elle
-                n'est pas livrée. Marquez-la « livrée » depuis la page <a class="link" href="orders.html?tab=preorders">Commandes</a> :
-                la vente est alors enregistrée automatiquement.
+                n'est pas validée. Dès que le client a payé (ou reçu son parfum), cliquez « Valider la vente »
+                dans la page <a class="link" href="orders.html?tab=preorders">Commandes</a> : la vente est alors enregistrée
+                et créditée au commercial.
+              </div>
+              <div class="hint hidden" id="paidHint" style="margin-top:8px;color:var(--brand-600);font-weight:600">
+                ✅ Paiement complet : la précommande apparaîtra « Payée ». Validez-la en vente dans Commandes pour
+                créditer la commission — ou choisissez directement 🛍️ Vente si le client repart avec son parfum.
               </div>
             </div>
           </div>
@@ -145,7 +150,7 @@
           <div class="row"><span class="grow" style="font-weight:600">Total</span>
             <b id="sumTotal" style="font-family:var(--font-display);font-size:24px;color:var(--brand)">0 DHS</b></div>
           <div class="row hidden" id="sumDepositRow"><span class="muted grow">Acompte versé</span><b id="sumDeposit">0 DHS</b></div>
-          <div class="row hidden" id="sumBalanceRow"><span class="muted grow">Reste à payer à la livraison</span><b id="sumBalance">0 DHS</b></div>
+          <div class="row hidden" id="sumBalanceRow"><span class="muted grow">Reste à payer</span><b id="sumBalance">0 DHS</b></div>
         </div>
         <div class="card card-pad" style="background:var(--brand-50);border-radius:var(--r-md);margin-top:18px">
           <div class="row gap-2" style="justify-content:space-between">
@@ -225,9 +230,9 @@
           commission: "💸 Commission (Art. 3)",
         },
         preorder: {
-          hint: "Précommande : le client réserve, la vente et la commission sont enregistrées à la livraison.",
+          hint: "Précommande : le client réserve ; la vente et la commission sont enregistrées quand vous la validez (paiement reçu ou parfum remis).",
           submit: "Enregistrer la précommande", summary: "Récapitulatif de la précommande", pay: "Paiement de l'acompte",
-          commission: "💸 Commission — acquise à la livraison",
+          commission: "💸 Commission — acquise à la validation",
         },
       };
       function setType(next) {
@@ -273,6 +278,7 @@
         const deposit = Math.min(total, Math.max(0, +$("#deposit").value || 0));
         $("#sumDeposit").textContent = KG.fmt.money(deposit);
         $("#sumBalance").textContent = KG.fmt.money(total - deposit);
+        $("#paidHint").classList.toggle("hidden", !(type === "preorder" && total > 0 && deposit >= total));
         const pay = document.querySelector('input[name="pay"]:checked').value;
         const badge = $("#sumPay");
         badge.textContent = pay;
@@ -374,11 +380,11 @@
         const deposit = isPreorder && sale.deposit ? ` — acompte ${esc(KG.fmt.money(sale.deposit))}` : "";
         $("#successTitle").textContent = isPreorder ? "Précommande enregistrée !" : "Sale Registered!";
         $("#successMsg").innerHTML = `<b>${esc($("#sumProduct").textContent)}</b> ×${esc($("#sumQty").textContent)} — <b style="color:var(--brand)">${esc($("#sumTotal").textContent)}</b>${deposit}` +
-          (isPreorder ? `<br><span style="font-size:12.5px">Elle comptera comme vente le jour de sa livraison.</span>` : "");
+          (isPreorder ? `<br><span style="font-size:12.5px">Elle comptera comme vente quand vous la validerez (paiement reçu ou parfum remis).</span>` : "");
         $("#successOrders").href = isPreorder ? "orders.html?tab=preorders" : "orders.html";
         window.kgModal.open("#successModal");
         toast("success", isPreorder ? "Précommande enregistrée" : "Sale registered",
-          isPreorder ? "À livrer depuis la page Commandes." : "Rankings & XP updated.");
+          isPreorder ? "À valider en vente depuis la page Commandes." : "Rankings & XP updated.");
         e.target.reset(); $("#date").value = today();
         lockRep();                    // keep the sale credited to the signed-in rep
         matchedClientId = null; setHint(""); setType(type);

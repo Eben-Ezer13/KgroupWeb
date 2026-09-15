@@ -501,8 +501,9 @@
   /* ------------------------------------------------------------------ *
    * 6b. PRECOMMANDES                                                    *
    * -------------------------------------------------------------------
-   * Une precommande ne compte nulle part avant sa livraison ; deliver()
-   * la convertit en vente cote serveur (commission, classement, client).
+   * Une precommande ne compte nulle part avant d etre validee en vente
+   * (paiement recu ou parfum remis) ; deliver() la convertit en vente cote
+   * serveur (commission, classement, client), a la date choisie.
    * ------------------------------------------------------------------ */
   const KGPreorders = {
     /* filters: { status, rep_id, q, limit } -> { rows, summary, today }. */
@@ -521,7 +522,7 @@
       return request("/preorders/" + encodeURIComponent(id), { method: "PATCH", body: fields });
     },
 
-    /* body: { pay } — mode de paiement du solde. */
+    /* body: { pay, sale_date } — paiement du solde, jour de la vente (AAAA-MM-JJ). */
     async deliver(id, body) {
       if (!(await ready())) return { demo: true };
       return request("/preorders/" + encodeURIComponent(id) + "/deliver", { method: "POST", body: body || {} });

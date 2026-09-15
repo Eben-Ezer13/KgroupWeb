@@ -4,14 +4,15 @@
 -- Idempotente : que des CREATE ... IF NOT EXISTS.
 --
 -- Une précommande est une vente PROMISE : le client réserve un parfum (souvent
--- en versant un acompte), la vente n'existe qu'à la livraison.
+-- en versant un acompte), la vente n'existe qu'une fois validée — paiement
+-- reçu ou parfum remis.
 --
---   EN_ATTENTE  enregistrée, non livrée — ne compte NI dans les ventes, NI
+--   EN_ATTENTE  enregistrée, non validée — ne compte NI dans les ventes, NI
 --               dans le chiffre d'affaires, NI dans la commission
---   LIVREE      convertie en vente (sale_id) : la vente passe par les
---               triggers habituels (apply_sale, apply_sale_client) et compte
---               dans le mois de sa livraison, comme une vente « validée »
---               au sens de l'Art. 4
+--   LIVREE      convertie en vente (sale_id), affichée « Vendue » : la vente
+--               passe par les triggers habituels (apply_sale,
+--               apply_sale_client) et compte dans le mois de la date de vente
+--               choisie, comme une vente « validée » au sens de l'Art. 4
 --   ANNULEE     abandonnée ; rien n'est comptabilisé
 --
 -- Une table à part plutôt qu'un statut sur `sales` : aucun des calculs

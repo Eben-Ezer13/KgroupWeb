@@ -119,7 +119,7 @@
     <div class="grid stat-grid" style="margin-bottom:20px">
       <div class="card stat">
         <div class="stat-top"><div class="stat-ico ico-gold" data-ic="hourglass"></div></div>
-        <div class="stat-val" id="pPending">0</div><div class="stat-label">En attente de livraison</div>
+        <div class="stat-val" id="pPending">0</div><div class="stat-label">En attente</div>
       </div>
       <div class="card stat">
         <div class="stat-top"><div class="stat-ico ico-blue" data-ic="dollar"></div></div>
@@ -131,16 +131,16 @@
       </div>
       <div class="card stat">
         <div class="stat-top"><div class="stat-ico ico-purple" data-ic="check"></div></div>
-        <div class="stat-val" id="pDelivered">0</div><div class="stat-label">Livrées</div>
+        <div class="stat-val" id="pDelivered">0</div><div class="stat-label">Validées en vente</div>
       </div>
     </div>
 
     <div class="card card-pad reveal">
       <div class="section-title" style="flex-wrap:wrap;gap:12px">
-        <div><h3>Précommandes</h3><div class="sub" id="preSub">Une précommande devient une vente (et une commission) le jour de sa livraison.</div></div>
+        <div><h3>Précommandes</h3><div class="sub" id="preSub">Paiement reçu ou parfum remis : « Valider la vente » la transforme en vente, avec sa commission.</div></div>
         <div class="row gap-2" id="statusChips" style="flex-wrap:wrap">
           <button type="button" class="chip on" data-status="EN_ATTENTE">En attente</button>
-          <button type="button" class="chip" data-status="LIVREE">Livrées</button>
+          <button type="button" class="chip" data-status="LIVREE">Vendues</button>
           <button type="button" class="chip" data-status="ANNULEE">Annulées</button>
           <button type="button" class="chip" data-status="ALL">Toutes</button>
         </div>
@@ -158,12 +158,20 @@
     </div>
   </section>
 
-  <!-- ============ MODAL LIVRAISON ============ -->
+  <!-- ============ MODAL VALIDATION EN VENTE ============ -->
   <div class="modal-overlay" id="deliverModal">
     <div class="modal">
-      <div class="modal-head"><h3>Livrer la précommande</h3><button class="icon-btn" data-modal-close><span data-ic="x"></span></button></div>
+      <div class="modal-head"><h3>Valider la vente</h3><button class="icon-btn" data-modal-close><span data-ic="x"></span></button></div>
       <div class="modal-body">
+        <p class="muted" style="font-size:13px;margin-top:0">
+          Le client a payé ou a reçu son parfum : la précommande devient une vente, créditée au commercial.
+        </p>
         <div id="deliverSummary" class="kc-fiche"></div>
+        <div class="field" style="margin-bottom:16px">
+          <label for="dDate">Date de la vente (jour du paiement)</label>
+          <input class="input" type="date" id="dDate">
+          <div class="hint">La commission compte dans la rémunération du mois de cette date.</div>
+        </div>
         <div class="field">
           <label>Paiement du solde</label>
           <div class="pay-options">
@@ -176,7 +184,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn btn-ghost" data-modal-close>Annuler</button>
-        <button class="btn btn-primary" id="confirmDeliver"><span data-ic="check"></span> Confirmer la livraison</button>
+        <button class="btn btn-primary" id="confirmDeliver"><span data-ic="check"></span> Valider la vente</button>
       </div>
     </div>
   </div>
@@ -203,7 +211,7 @@
       <div class="modal-head"><h3>Changer le commercial crédité</h3><button class="icon-btn" data-modal-close><span data-ic="x"></span></button></div>
       <div class="modal-body">
         <p class="muted" id="reassignText" style="font-size:13.5px;margin-top:0"></p>
-        <div class="field"><label for="reassignRep">Créditer la vente à</label><select class="select" id="reassignRep"></select></div>
+        <div class="field"><label for="reassignRep">Nouveau commercial à créditer</label><select class="select" id="reassignRep"></select></div>
         <p class="hint" style="margin-top:10px">Les unités, le chiffre d'affaires, la commission et l'XP de cette vente passent au commercial choisi.
           Impossible pour un mois de paie déjà clôturé.</p>
       </div>
@@ -246,7 +254,7 @@
         const sub = [x.perfume_name ? x.product : "", x.remarks || ""].filter(Boolean).map(esc).join(" · ");
         return `${esc(x.perfume_name || x.product || "—")}${sub ? `<div class="kc-sub">${sub}</div>` : ""}`;
       };
-      const STATUS_LABEL = { EN_ATTENTE: "En attente", LIVREE: "Livrée", ANNULEE: "Annulée" };
+      const STATUS_LABEL = { EN_ATTENTE: "En attente", LIVREE: "Vendue", ANNULEE: "Annulée" };
 
       /* ---------- État (lu depuis l'URL : liens depuis Vendeurs / Rémunération) ---------- */
       const params = new URLSearchParams(location.search);
@@ -261,6 +269,7 @@
       let salesData = null;      // réponse /api/sales/history
       let preorders = null;    // réponse /api/preorders
       let pendingBy = {};      // précommandes en attente par commercial
+      let flashId = null;      // vente à mettre en évidence après une réattribution
 
       $("#scopeNote").textContent = isAdmin
         ? "Toutes les ventes et précommandes de l'équipe, par commercial."
@@ -414,7 +423,7 @@
               ? `<div class="kc-flag" title="Saisie depuis le compte de ${esc(v.recorded_by)}">⚠ saisie par ${esc(v.recorded_by)}</div>`
               : `<div class="kc-sub">saisie par ${esc(v.recorded_by)}</div>`)
             : "";
-          return `<tr>
+          return `<tr data-sale="${esc(v.id)}"${v.id === flashId ? ' class="kc-flash"' : ""}>
             <td style="white-space:nowrap">${t.day}<div class="kc-sub">${t.time}</div></td>
             <td><b>${esc(v.customer)}</b></td>
             <td>${perfumeCell(v)}</td>
@@ -433,6 +442,10 @@
         const more = $("#showMore");
         if (more) more.addEventListener("click", () => { state.shown += 50; renderSales(); });
         $$("[data-reassign]").forEach(b => b.addEventListener("click", () => openReassign(b.dataset.reassign)));
+        // La ligne qui vient de changer de commercial : mise en évidence.
+        const flashed = flashId && document.querySelector(`#salesBody tr[data-sale="${CSS.escape(flashId)}"]`);
+        if (flashed) flashed.scrollIntoView({ behavior: "smooth", block: "center" });
+        flashId = null;
       }
 
       /* ---------- Rendu : précommandes ---------- */
@@ -461,7 +474,7 @@
         $("#preBody").innerHTML = rows.map(r => {
           const exp = r.expected_at ? Period.frDay(r.expected_at) : "—";
           const statusDetail = r.status === "LIVREE" && r.delivered_at
-            ? `<div class="kc-sub">le ${Period.frDay(dayOf(r.delivered_at))}</div>`
+            ? `<div class="kc-sub">vente du ${Period.frDay(dayOf(r.delivered_at))}</div>`
             : r.status === "ANNULEE" && r.cancel_reason ? `<div class="kc-sub">${esc(r.cancel_reason)}</div>` : "";
           return `<tr>
             <td style="white-space:nowrap">${Period.frDay(dayOf(r.created_at))}</td>
@@ -470,12 +483,13 @@
             <td class="num">${num(r.qty)}</td>
             <td class="num"><b>${money(r.amount)}</b></td>
             <td class="num">${money(r.deposit)}</td>
-            <td class="num">${r.status === "EN_ATTENTE" ? `<b>${money(r.balance)}</b>` : '<span class="muted">—</span>'}</td>
+            <td class="num">${r.status !== "EN_ATTENTE" ? '<span class="muted">—</span>'
+              : r.balance > 0 ? `<b>${money(r.balance)}</b>` : '<span class="badge green" title="Acompte = montant total">Payée</span>'}</td>
             <td style="white-space:nowrap">${r.overdue ? `<span class="kc-late">${exp} · en retard</span>` : exp}</td>
             <td>${esc(r.current_rep_name || r.rep_name || "—")}</td>
             <td><span class="kc-status ${esc(r.status)}">${STATUS_LABEL[r.status] || esc(r.status)}</span>${statusDetail}</td>
             <td>${r.status === "EN_ATTENTE" ? `<div class="kc-actions">
-              <button class="btn btn-primary btn-sm" data-deliver="${esc(r.id)}">Livrer</button>
+              <button class="btn btn-primary btn-sm" data-deliver="${esc(r.id)}" title="Paiement reçu ou parfum remis : enregistrer la vente">Valider la vente</button>
               <button class="btn btn-ghost btn-sm" data-cancel="${esc(r.id)}">Annuler</button></div>` : ""}</td>
           </tr>`;
         }).join("");
@@ -524,10 +538,23 @@
         syncCustom(); reload();
       });
 
-      /* ---------- Livraison / annulation ---------- */
+      /* ---------- Validation en vente / annulation ---------- */
       let current = null;
       const findPre = (id) => ((preorders && preorders.rows) || []).find(p => p.id === id);
+      const monthName = (iso) => {
+        const [y, m] = iso.split("-").map(Number);
+        return new Date(y, m - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+      };
 
+      function deliverNote() {
+        const p = current;
+        if (!p) return;
+        const day = $("#dDate").value || Period.isoDay(new Date());
+        const who = p.current_rep_name || p.rep_name;
+        $("#deliverNote").textContent =
+          `Une vente de ${money(p.amount)} sera enregistrée le ${Period.frDay(day)}${who ? ` au nom de ${who}` : ""} : ` +
+          `la commission de ${money(p.commission)} compte dans la rémunération de ${monthName(day)}.`;
+      }
       function openDeliver(id) {
         current = findPre(id);
         if (!current) return;
@@ -536,28 +563,33 @@
           <div><span>Client</span><b>${esc(p.customer)}</b></div>
           <div><span>Parfum</span><b>${esc(saleLabel(p.product, p.perfume_name))} ×${num(p.qty)}</b></div>
           <div><span>Montant</span><b>${money(p.amount)}</b></div>
-          <div><span>Acompte versé</span><b>${money(p.deposit)}</b></div>
-          <div><span>Reste à encaisser</span><b style="color:var(--brand)">${money(p.balance)}</b></div>
-          <div><span>Commercial</span><b>${esc(p.current_rep_name || p.rep_name || "—")}</b></div>`;
+          <div><span>Acompte déjà versé</span><b>${money(p.deposit)}</b></div>
+          <div><span>Reste à encaisser</span><b style="color:var(--brand)">${p.balance > 0 ? money(p.balance) : "rien — déjà payée"}</b></div>
+          <div><span>Commercial crédité</span><b>${esc(p.current_rep_name || p.rep_name || "—")}</b></div>`;
+        const today = Period.isoDay(new Date());
+        $("#dDate").max = today;
+        $("#dDate").min = dayOf(p.created_at);
+        $("#dDate").value = today;
         const pay = ["Espèces", "Virement", "Mobile Money"].includes(p.pay) ? p.pay : "Espèces";
         document.querySelectorAll('input[name="dPay"]').forEach(r => { r.checked = r.value === pay; });
-        $("#deliverNote").textContent =
-          `Une vente de ${money(p.amount)} sera enregistrée aujourd'hui${p.rep_id ? ` au nom de ${p.current_rep_name || p.rep_name}` : ""} ` +
-          `: la commission de ${money(p.commission)} compte dans la paie du mois en cours.`;
+        deliverNote();
         window.kgModal.open("#deliverModal");
       }
+      $("#dDate").addEventListener("change", deliverNote);
       $("#confirmDeliver").addEventListener("click", async (e) => {
         if (!current) return;
         const btn = e.currentTarget;
         btn.disabled = true;
         try {
           const pay = document.querySelector('input[name="dPay"]:checked').value;
-          await window.KGPreorders.deliver(current.id, { pay });
+          await window.KGPreorders.deliver(current.id, { pay, sale_date: $("#dDate").value || undefined });
           window.kgModal.close($("#deliverModal"));
-          toast("success", "Précommande livrée", `La vente de ${current.customer} est enregistrée.`);
+          const who = current.current_rep_name || current.rep_name;
+          toast("success", "Vente enregistrée",
+            `La précommande de ${current.customer} est devenue une vente${who ? `, créditée à ${who}` : ""}.`);
           await reload();
         } catch (err) {
-          toast("error", "Livraison impossible", err.message);
+          toast("error", "Validation impossible", err.message);
         } finally { btn.disabled = false; }
       });
 
@@ -583,8 +615,13 @@
         } finally { btn.disabled = false; }
       });
 
-      /* ---------- Réattribution (admin) ---------- */
+      /* ---------- Réattribution (admin) ----------
+         Le commercial déjà crédité n'est pas proposé : le choisir ne changerait
+         rien, et c'était précisément ce qui donnait « réattribuée » sans que
+         la liste bouge. Pour une vente signalée, l'auteur de la saisie est
+         présélectionné ; sinon il faut choisir explicitement. */
       let reassigning = null;
+      function syncReassignButton() { $("#confirmReassign").disabled = !$("#reassignRep").value; }
       function openReassign(id) {
         reassigning = ((salesData && salesData.rows) || []).find(r => r.id === id);
         if (!reassigning) return;
@@ -592,22 +629,33 @@
         $("#reassignText").innerHTML = `Vente du ${dateTime(v.created_at).day} — <b>${esc(v.customer)}</b>, ${esc(saleLabel(v.product, v.perfume_name))},
           ${money(v.amount)}. Actuellement créditée à <b>${esc(v.rep_name || "personne")}</b>${
           v.recorded_by ? `, saisie par <b>${esc(v.recorded_by)}</b>` : ""}.`;
-        $("#reassignRep").innerHTML = reps.map(r => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join("");
-        $("#reassignRep").value = v.attribution_mismatch && v.recorded_by_rep ? v.recorded_by_rep : (v.rep_id || (reps[0] || {}).id || "");
+        const others = reps.filter(r => r.id !== v.rep_id);
+        $("#reassignRep").innerHTML = '<option value="">— Choisir le commercial —</option>' +
+          others.map(r => `<option value="${esc(r.id)}">${esc(r.name)}${
+            v.attribution_mismatch && r.id === v.recorded_by_rep ? " (a saisi la vente)" : ""}</option>`).join("");
+        $("#reassignRep").value = v.attribution_mismatch && others.some(r => r.id === v.recorded_by_rep) ? v.recorded_by_rep : "";
+        syncReassignButton();
         window.kgModal.open("#reassignModal");
       }
+      $("#reassignRep").addEventListener("change", syncReassignButton);
       $("#confirmReassign").addEventListener("click", async (e) => {
-        if (!reassigning) return;
+        if (!reassigning || !$("#reassignRep").value) return;
         const btn = e.currentTarget;
+        const v = reassigning;
+        const from = v.rep_name || "personne";
+        const to = repName($("#reassignRep").value);
         btn.disabled = true;
         try {
-          await window.KGDB.reassignSale(reassigning.id, $("#reassignRep").value);
+          await window.KGDB.reassignSale(v.id, $("#reassignRep").value);
           window.kgModal.close($("#reassignModal"));
-          toast("success", "Vente réattribuée", `Créditée à ${repName($("#reassignRep").value)}.`);
+          flashId = v.id;
           await loadSales();
+          const stillListed = ((salesData && salesData.rows) || []).some(r => r.id === v.id);
+          toast("success", "Vente réattribuée", `${v.customer} : ${from} → ${to}.` +
+            (stillListed ? "" : ` Elle n'apparaît plus dans cette liste, filtrée sur ${repName(state.rep)}.`));
         } catch (err) {
           toast("error", "Réattribution impossible", err.message);
-        } finally { btn.disabled = false; }
+        } finally { syncReassignButton(); }
       });
 
       async function fixAll(e) {
@@ -647,7 +695,7 @@
               { label: "En attente", value: num((s.EN_ATTENTE || {}).count) },
               { label: "Montant attendu", value: money((s.EN_ATTENTE || {}).amount) },
               { label: "Acomptes perçus", value: money((s.EN_ATTENTE || {}).deposit) },
-              { label: "Livrées", value: num((s.LIVREE || {}).count) },
+              { label: "Validées en vente", value: num((s.LIVREE || {}).count) },
             ],
             sections: [{
               name: "Précommandes", title: "Détail des précommandes", totals: true, rows,

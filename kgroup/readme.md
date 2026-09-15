@@ -100,8 +100,9 @@ kgroup-platform/
   la réattribue en un clic — statistiques comprises. Le serveur crédite
   toujours un commercial de ses propres ventes.
 - **Précommandes** — acompte et date de livraison prévue. Une précommande ne
-  compte nulle part tant qu'elle n'est pas livrée ; « Livrer » crée la vente,
-  qui passe par les mêmes triggers qu'une vente directe.
+  compte nulle part tant qu'elle n'est pas validée ; « Valider la vente »
+  (paiement reçu ou parfum remis) crée la vente à la date du paiement, qui
+  passe par les mêmes triggers qu'une vente directe.
 - **Exports PDF / Excel / CSV** — sur Commandes, Rémunération (dont un relevé
   par commercial), Rapports et le tableau de bord. Fichiers produits dans le
   navigateur par `exports.js` : PDF en polices standard, XLSX Office Open XML

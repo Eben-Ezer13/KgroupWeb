@@ -89,7 +89,16 @@ function applySale(sale) {
 
 function insertSale(sql, params) {
   const row = { id: uuid(), created_at: new Date().toISOString(), qty: 1, amount: 0, commission: 0 };
-  insertColumns(sql, "sales").forEach((c, i) => { row[c] = params[i]; });
+  insertColumns(sql, "sales").forEach((c, i) => {
+    if (c === "created_at") {
+      // Validation d'une précommande : jour « AAAA-MM-JJ » (midi au Maroc)
+      // ou null pour « maintenant », comme le coalesce(...) de la requête.
+      const v = params[i];
+      if (v) row.created_at = /^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T11:00:00.000Z` : v;
+      return;
+    }
+    row[c] = params[i];
+  });
   if (row.created_at instanceof Date) row.created_at = row.created_at.toISOString();
   store.sales.push(row);
   applySale(row);
@@ -303,7 +312,7 @@ function execute(sql, params = []) {
   }
   if (q.startsWith("update public.preorders set status = 'livree'")) {
     const p = store.preorders.find((x) => x.id === params[0]);
-    Object.assign(p, { status: "LIVREE", sale_id: params[1], delivered_at: new Date() });
+    Object.assign(p, { status: "LIVREE", sale_id: params[1], delivered_at: params[2] });
     return ok([{ ...p }]);
   }
   if (q.startsWith("update public.preorders set status = 'annulee'")) {
@@ -494,6 +503,12 @@ test("réattribuer une vente déplace aussi ses statistiques", async () => {
   assert.strictEqual(s1.xp, 10, "XP d'une vente à 450 DHS : max(10, round(450/60)) = 8 -> 10");
   assert.ok(s1.badges.includes("starter"), "le badge de première vente est décerné");
   assert.ok(s2.badges.includes("starter"), "un badge acquis n'est jamais retiré");
+
+  // Même commercial : rien ne bouge, et on le dit au lieu d'annoncer un succès.
+  const same = await admin("PATCH", `/api/sales/${sale.id}/rep`, { rep_id: S1.id });
+  assert.strictEqual(same.status, 400);
+  assert.match(same.body.error, /déjà créditée à Sofia Benali/);
+  assert.deepStrictEqual([repOf(S1).sales, repOf(S1).revenue], [3, 450], "statistiques inchangées");
 });
 
 test("une vente d'un mois de paie clôturé ne change plus de commercial", async () => {
@@ -612,6 +627,36 @@ test("livrer une précommande crée la vente et crédite le commercial", async (
   const again = await sofia("POST", `/api/preorders/${created.id}/deliver`, {});
   assert.strictEqual(again.status, 409, "on ne livre pas deux fois");
   assert.strictEqual((await sofia("POST", `/api/preorders/${created.id}/cancel`, {})).status, 409);
+});
+
+test("une précommande payée plus tôt devient une vente datée du jour du paiement", async () => {
+  store.preorders.length = 0;
+  store.payroll.length = 0;
+  const created = (await sofia("POST", "/api/preorders", PRE)).body;
+  // Précommande prise il y a 10 jours, payée il y a 3 jours.
+  const po = store.preorders.find((p) => p.id === created.id);
+  po.created_at = new Date(Date.now() - 10 * 86400000);
+  const ordered = localDay(po.created_at);
+  const paid = localDay(Date.now() - 3 * 86400000);
+  const future = localDay(Date.now() + 2 * 86400000);
+  const tooEarly = localDay(Date.now() - 20 * 86400000);
+
+  assert.strictEqual((await sofia("POST", `/api/preorders/${po.id}/deliver`, { sale_date: future })).status, 400, "pas de vente future");
+  const early = await sofia("POST", `/api/preorders/${po.id}/deliver`, { sale_date: tooEarly });
+  assert.strictEqual(early.status, 400, "pas avant la précommande");
+  assert.match(early.body.error, /précéder la précommande/);
+
+  // Mois de paie clôturé pour la commerciale : refusé.
+  store.payroll.push({ team_id: TEAM_A, rep_id: S1.id, period: `${paid.slice(0, 7)}-01`, status: "PAYEE" });
+  assert.strictEqual((await sofia("POST", `/api/preorders/${po.id}/deliver`, { sale_date: paid })).status, 409);
+  store.payroll.length = 0;
+
+  const res = await sofia("POST", `/api/preorders/${po.id}/deliver`, { sale_date: paid, pay: "Mobile Money" });
+  assert.strictEqual(res.status, 200, JSON.stringify(res.body));
+  assert.strictEqual(localDay(res.body.sale.created_at), paid, "la vente porte la date du paiement");
+  assert.strictEqual(localDay(res.body.preorder.delivered_at), paid, "la précommande affiche la même date");
+  assert.strictEqual(res.body.sale.pay, "Mobile Money");
+  assert.ok(ordered < paid);
 });
 
 test("annuler ou modifier une précommande en attente", async () => {
