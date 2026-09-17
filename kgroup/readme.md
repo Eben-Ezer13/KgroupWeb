@@ -43,6 +43,8 @@ kgroup-platform/
 ├── remuneration.html   # Admin: commissions, bonus, cloture mensuelle
 ├── crm.css             # Styles CRM + remuneration
 ├── reports.html        # Analytics, charts, exports, print
+├── guide-commandes.html# In-app visual guide: sales, pre-orders, exports
+├── guide.css           # Styles for the visual guide (annotated screen mock-ups)
 ├── style.css           # Full design system (tokens, glass, dark mode, responsive)
 ├── data.js             # Sample data (window.KG) — used when no API is reachable
 ├── api.js              # Browser client: KGAuth, KGDB, KGPreorders, KGData.hydrate()

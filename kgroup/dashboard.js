@@ -94,7 +94,7 @@
       "nav.dashboard":"Dashboard","nav.sales":"Sales","nav.salespersons":"Salespersons",
       "nav.ranking":"Rankings","nav.challenges":"Challenges","nav.rewards":"Rewards",
       "nav.reports":"Reports","nav.notifications":"Notifications","nav.settings":"Settings","nav.logout":"Logout",
-      "nav.formation":"Training","nav.clients":"Clients","nav.remuneration":"Payroll","nav.orders":"Orders",
+      "nav.formation":"Training","nav.clients":"Clients","nav.remuneration":"Payroll","nav.orders":"Orders","nav.guide":"Guide",
       "group.main":"Main","group.insights":"Insights","group.system":"System",
       "topbar.search":"Search anything…","lang.title":"Language","topbar.collapse":"Collapse sidebar",
       "greeting.morning":"Good morning","common.viewAll":"View all",
@@ -120,7 +120,7 @@
       "nav.dashboard":"Tableau de bord","nav.sales":"Ventes","nav.salespersons":"Vendeurs",
       "nav.ranking":"Classements","nav.challenges":"Défis","nav.rewards":"Récompenses",
       "nav.reports":"Rapports","nav.notifications":"Notifications","nav.settings":"Paramètres","nav.logout":"Déconnexion",
-      "nav.formation":"Formation","nav.clients":"Clients","nav.remuneration":"Rémunération","nav.orders":"Commandes",
+      "nav.formation":"Formation","nav.clients":"Clients","nav.remuneration":"Rémunération","nav.orders":"Commandes","nav.guide":"Guide",
       "group.main":"Principal","group.insights":"Analyses","group.system":"Système",
       "topbar.search":"Rechercher…","lang.title":"Langue","topbar.collapse":"Replier le menu",
       "greeting.morning":"Bonjour","common.viewAll":"Voir tout",
@@ -333,6 +333,7 @@
     { key: "remuneration", label: "Payroll",      icon: "dollar", group: "Insights", roles: ["admin"],               href: "remuneration.html" },
     { key: "rewards",      label: "Rewards",      icon: "gift",   group: "Insights", roles: ["admin","salesperson","relation_client"], href: "challenges.html#rewards" },
     { key: "reports",      label: "Reports",      icon: "file",   group: "Insights", roles: ["admin"],               href: "reports.html" },
+    { key: "guide",        label: "Guide",        icon: "help",   group: "System",   roles: ["admin","salesperson","relation_client"], href: "guide-commandes.html" },
     { key: "settings",     label: "Settings",     icon: "gear",   group: "System",   roles: ["admin","salesperson","relation_client"], href: "settings.html" },
   ];
 
@@ -1130,7 +1131,7 @@
       const role = await window.KGAuth.role();
       window.KG_ROLE = role;
       if (role === "relation_client") {
-        const allowedPage = ["clients", "settings", "formation", "challenges", "ranking", "dashboard", "sales", "orders"].includes(document.body.dataset.page);
+        const allowedPage = ["clients", "settings", "formation", "challenges", "ranking", "dashboard", "sales", "orders", "guide"].includes(document.body.dataset.page);
         if (document.body.hasAttribute("data-admin-only") || !allowedPage) {
           window.location.replace("clients.html"); return;
         }
