@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide Ventes &amp; Commandes — KGroup Parfumery</title>
+<meta name="description" content="Guide pratique : enregistrer une vente ou une précommande, suivre les commandes par commercial, valider une précommande, corriger une attribution et exporter les rapports.">
+<style>
+  :root{
+    --brand:#0B7A4B;
+    --brand-dark:#075c39;
+    --brand-soft:#e7f4ee;
+    --ink:#1a2b24;
+    --muted:#5a6b63;
+    --line:#d9e5df;
+    --bg:#ffffff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:#eef2f0;
+    line-height:1.6;
+    font-size:14px;
+  }
+  .page{
+    background:var(--bg);
+    width:210mm;
+    min-height:297mm;
+    margin:18px auto;
+    padding:26mm 22mm;
+    box-shadow:0 10px 40px rgba(0,0,0,.10);
+    position:relative;
+  }
+
+  /* ---------- Cover ---------- */
+  .cover{
+    display:flex;flex-direction:column;justify-content:center;
+    background:linear-gradient(150deg,var(--brand) 0%,var(--brand-dark) 100%);
+    color:#fff;
+  }
+  .cover .logo{
+    width:64px;height:64px;border-radius:16px;
+    background:rgba(255,255,255,.16);
+    display:flex;align-items:center;justify-content:center;
+    font-size:34px;margin-bottom:34px;border:1px solid rgba(255,255,255,.3);
+  }
+  .cover h1{font-size:44px;line-height:1.1;font-weight:800;letter-spacing:-.5px;margin-bottom:14px}
+  .cover .sub{font-size:19px;opacity:.92;font-weight:500}
+  .cover .tag{font-style:italic;opacity:.8;margin-top:6px}
+  .cover .meta{margin-top:auto;padding-top:40px;font-size:13px;opacity:.85;border-top:1px solid rgba(255,255,255,.25)}
+  .cover .pill{display:inline-block;background:rgba(255,255,255,.18);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;margin-bottom:26px}
+  .cover ol{margin:26px 0 0 20px;font-size:14.5px;opacity:.95}
+  .cover li{margin-bottom:4px}
+
+  /* ---------- Typography ---------- */
+  h2{
+    font-size:24px;color:var(--brand-dark);font-weight:800;letter-spacing:-.3px;
+    margin:0 0 4px;padding-bottom:10px;border-bottom:2px solid var(--brand-soft);
+  }
+  h2 .num{color:var(--brand);}
+  h3{font-size:17px;color:var(--ink);font-weight:700;margin:22px 0 8px}
+  h4{font-size:14.5px;color:var(--brand-dark);font-weight:700;margin:14px 0 6px}
+  p{margin:0 0 10px;color:var(--ink)}
+  .lead{color:var(--muted);font-size:14px;margin-bottom:18px}
+  ul,ol{margin:0 0 12px 20px}
+  li{margin-bottom:6px}
+  strong{color:var(--brand-dark)}
+  code{background:var(--brand-soft);color:var(--brand-dark);padding:1px 6px;border-radius:5px;font-size:13px;font-family:Consolas,monospace}
+  a{color:var(--brand);text-decoration:none}
+
+  /* ---------- Components ---------- */
+  .kicker{color:var(--brand);font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
+  .card{border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0;background:#fbfdfc}
+  .card.brandbar{border-left:4px solid var(--brand)}
+  .steps{counter-reset:step;list-style:none;margin-left:0}
+  .steps li{position:relative;padding-left:44px;margin-bottom:14px;min-height:30px}
+  .steps li::before{
+    counter-increment:step;content:counter(step);
+    position:absolute;left:0;top:0;
+    width:30px;height:30px;border-radius:50%;
+    background:var(--brand);color:#fff;font-weight:700;
+    display:flex;align-items:center;justify-content:center;font-size:14px;
+  }
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--brand);color:#fff;font-weight:600}
+  tr:nth-child(even) td{background:#f6faf8}
+  .tag-row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+  .tag{background:var(--brand-soft);color:var(--brand-dark);border-radius:999px;padding:5px 13px;font-size:12.5px;font-weight:600}
+  .note{background:#fff8e6;border-left:4px solid #e0a800;border-radius:8px;padding:12px 15px;margin:14px 0;font-size:13px}
+  .note b{color:#8a6500}
+  .tip{background:var(--brand-soft);border-left:4px solid var(--brand);border-radius:8px;padding:12px 15px;margin:14px 0;font-size:13px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .role-card{border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .role-card h4{color:var(--brand-dark);font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+  .role-card ul{margin-left:16px;font-size:13px}
+  .foot{position:absolute;bottom:12mm;left:22mm;right:22mm;display:flex;justify-content:space-between;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+
+  /* Flux : etape -> etape */
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}
+  .flow span{background:var(--brand-soft);color:var(--brand-dark);border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:600}
+  .flow i{color:var(--brand);font-style:normal;font-weight:700}
+  /* Etats */
+  .state{display:inline-block;border-radius:999px;padding:3px 11px;font-size:12px;font-weight:700;white-space:nowrap}
+  .state.en{background:#fdf1dc;color:#8a6500}
+  .state.ok{background:var(--brand-soft);color:var(--brand-dark)}
+  .state.no{background:#f7e4e4;color:#9a3b3a}
+  /* Noms de boutons, tels qu'ils apparaissent à l'écran */
+  .b{display:inline-block;background:var(--brand);color:#fff;border-radius:6px;padding:1px 9px;font-size:12.5px;font-weight:700;white-space:nowrap}
+  .b.ghost{background:#fff;color:var(--brand-dark);border:1px solid var(--line)}
+  /* Schema d'ecran */
+  .mock{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:14px 0;font-size:12.5px}
+  .mock .bar{background:var(--brand);color:#fff;padding:8px 14px;font-weight:700}
+  .mock .row{display:flex;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);align-items:center}
+  .mock .row:last-child{border-bottom:none}
+  .mock .lbl{color:var(--muted);min-width:132px;font-weight:600}
+  .mock .val{color:var(--ink)}
+
+  /* ---------- Print ---------- */
+  @media print{
+    body{background:#fff}
+    .page{margin:0;box-shadow:none;width:auto;min-height:auto;page-break-after:always}
+    .page:last-child{page-break-after:auto}
+    .no-print{display:none}
+    h2{page-break-after:avoid}
+    .card,.role-card,table,.note,.tip,.mock{page-break-inside:avoid}
+  }
+  @page{size:A4;margin:0}
+
+  .toolbar{
+    position:sticky;top:0;z-index:10;background:var(--brand-dark);color:#fff;
+    padding:12px 20px;display:flex;align-items:center;justify-content:space-between;
+    gap:16px;font-size:14px;flex-wrap:wrap;
+  }
+  .toolbar a{color:#fff;text-decoration:underline}
+  .toolbar button{
+    background:#fff;color:var(--brand-dark);border:none;border-radius:8px;
+    padding:9px 18px;font-weight:700;font-size:14px;cursor:pointer;
+  }
+  @media (max-width:760px){
+    .page{width:auto;min-height:auto;padding:22px 18px;margin:12px}
+    .two{grid-template-columns:1fr}
+    .foot{position:static;margin-top:20px;left:auto;right:auto}
+    .mock .row{flex-direction:column;align-items:flex-start;gap:2px}
+    /* Les noms de boutons peuvent se couper, et un tableau trop large défile
+       dans son cadre plutôt que d'élargir la page. */
+    .b,.state{white-space:normal}
+    table{display:block;overflow-x:auto;font-size:12.5px}
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+  <span>📄 Pour l'imprimer ou l'envoyer : « Enregistrer en PDF », puis <b>Destination → Enregistrer au format PDF</b>.</span>
+  <span><a href="guide-utilisation.html">← Guide complet de la plateforme</a></span>
+  <button onclick="window.print()">Enregistrer en PDF</button>
+</div>
+
+<!-- ============ COUVERTURE ============ -->
+<section class="page cover">
+  <div class="logo">🧾</div>
+  <div class="pill">Guide pratique • Ventes &amp; Commandes</div>
+  <h1>Enregistrer et suivre<br>les ventes</h1>
+  <div class="sub">KGroup Parfumery</div>
+  <div class="tag">« La senteur du luxe »</div>
+  <ol>
+    <li>Vente ou précommande : laquelle choisir</li>
+    <li>Enregistrer une vente</li>
+    <li>Enregistrer une précommande</li>
+    <li>La page Commandes, écran par écran</li>
+    <li>Suivre un commercial</li>
+    <li>Valider une précommande en vente</li>
+    <li>Corriger une vente attribuée au mauvais commercial</li>
+    <li>Exporter en PDF, Excel ou CSV</li>
+    <li>Questions fréquentes</li>
+  </ol>
+  <div class="meta">
+    Pour les administrateurs et les commerciaux<br>
+    Menus concernés : <b>Ventes</b> (enregistrer) et <b>Commandes</b> (suivre, valider, exporter)
+  </div>
+</section>
+
+<!-- ============ 1. VENTE OU PRÉCOMMANDE ============ -->
+<section class="page">
+  <div class="kicker">Le point de départ</div>
+  <h2><span class="num">1.</span> Vente ou précommande : laquelle choisir</h2>
+  <p class="lead">Deux menus, deux rôles : <strong>Ventes</strong> sert à enregistrer, <strong>Commandes</strong> sert à suivre, valider et exporter.</p>
+
+  <div class="flow">
+    <span>Menu Ventes</span><i>→</i><span>🛍️ Vente</span><i>→</i><span>comptée tout de suite</span>
+  </div>
+  <div class="flow">
+    <span>Menu Ventes</span><i>→</i><span>⏳ Précommande</span><i>→</i><span>en attente</span><i>→</i><span>Commandes → Valider la vente</span><i>→</i><span>comptée</span>
+  </div>
+
+  <table>
+    <thead><tr><th style="width:24%">&nbsp;</th><th>🛍️ Vente</th><th>⏳ Précommande</th></tr></thead>
+    <tbody>
+      <tr><td><b>Quand l'utiliser</b></td>
+        <td>Le client repart avec son parfum, ou il a payé et vous le lui remettez.</td>
+        <td>Le client réserve un parfum que vous n'avez pas encore, souvent en laissant un acompte.</td></tr>
+      <tr><td><b>Chiffre d'affaires</b></td><td>Compté immédiatement</td><td>Pas compté tant qu'elle n'est pas validée</td></tr>
+      <tr><td><b>Commission</b></td><td>Acquise tout de suite</td><td>Acquise le jour de la validation</td></tr>
+      <tr><td><b>Classements &amp; XP</b></td><td>Mis à jour immédiatement</td><td>Rien tant qu'elle n'est pas validée</td></tr>
+      <tr><td><b>Fiche client</b></td><td>Créée ou complétée</td><td>Créée ou complétée dès la précommande</td></tr>
+      <tr><td><b>Où la retrouver</b></td><td>Commandes → onglet <b>Ventes</b></td><td>Commandes → onglet <b>Précommandes</b></td></tr>
+    </tbody>
+  </table>
+
+  <div class="tip">💡 <b>Dans le doute :</b> si l'argent est encaissé <b>et</b> le parfum remis, c'est une vente. Dans tous les autres cas, une précommande — vous la validerez en vente au moment du paiement.</div>
+
+  <h3>Qui voit quoi</h3>
+  <div class="two">
+    <div class="role-card">
+      <h4>👑 Administrateur</h4>
+      <ul>
+        <li>Toutes les ventes et précommandes de l'équipe</li>
+        <li>Le filtre <b>Commercial</b> et le tableau <b>Par commercial</b></li>
+        <li>Les boutons <b>Réattribuer</b></li>
+        <li>Les exports de toute l'équipe</li>
+      </ul>
+    </div>
+    <div class="role-card">
+      <h4>🧑‍💼 Commercial · Relation client</h4>
+      <ul>
+        <li>Uniquement ses propres ventes et précommandes</li>
+        <li>Peut valider ou annuler ses précommandes</li>
+        <li>Peut exporter ce qu'il voit</li>
+        <li>Ne peut pas réattribuer une vente</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="foot"><span>KGroup Parfumery — Ventes &amp; Commandes</span><span>Page 1</span></div>
+</section>
+
+<!-- ============ 2. ENREGISTRER UNE VENTE ============ -->
+<section class="page">
+  <div class="kicker">Menu Ventes</div>
+  <h2><span class="num">2.</span> Enregistrer une vente</h2>
+  <p class="lead">Une minute suffit. Tout le reste — commission, classements, fiche client, rémunération — se met à jour tout seul.</p>
+
+  <ol class="steps">
+    <li>Ouvrez le menu <strong>Ventes</strong>. Le sélecteur en haut du formulaire est déjà sur <strong>🛍️ Vente</strong>.</li>
+    <li>Saisissez le <strong>Téléphone</strong> du client, puis attendez une seconde : la plateforme reconnaît le client.</li>
+    <li>Complétez le <strong>Nom du client</strong> (obligatoire) et, si vous la connaissez, la <strong>Date d'anniversaire</strong>.</li>
+    <li>Indiquez le <strong>Nom du parfum</strong> (obligatoire), par exemple <code>Oud Royal</code>. Les parfums déjà vendus sont proposés au fur et à mesure de la frappe.</li>
+    <li>Choisissez le <strong>Produit</strong> — 30 ml, 50 ml ou 100 ml — et la <strong>Quantité</strong>. Le prix unitaire s'affiche seul.</li>
+    <li>Choisissez le <strong>Mode de paiement</strong> : Espèces, Virement ou Mobile Money.</li>
+    <li>Laissez la <strong>Date de la vente</strong> sur aujourd'hui, ou choisissez un jour passé si vous rattrapez une vente ancienne.</li>
+    <li>Cliquez sur <span class="b">✓ Enregistrer la vente</span>.</li>
+  </ol>
+
+  <div class="card brandbar">
+    <strong>📱 Le numéro de téléphone reconnaît le client tout seul</strong>
+    <ul style="margin-top:8px;margin-bottom:0">
+      <li><b>Client déjà connu</b> → son nom et son anniversaire se remplissent seuls. Ne les ressaisissez pas : la vente s'ajoute à sa fiche.</li>
+      <li><b>Nouveau client</b> → sa fiche sera créée avec la vente, et vous en devenez le commercial responsable.</li>
+      <li><code>0612345678</code>, <code>06 12 34 56 78</code> et <code>+212612345678</code> désignent le même client : aucun doublon possible.</li>
+    </ul>
+  </div>
+
+  <h3>Le récapitulatif, à droite</h3>
+  <p>Il se met à jour à chaque frappe : parfum, quantité, prix unitaire, mode de paiement, <strong>total</strong>, <strong>commission</strong> et XP gagnés. Vérifiez-le avant de valider.</p>
+
+  <table>
+    <thead><tr><th>Produit</th><th>Prix de vente</th><th>Commission du commercial</th></tr></thead>
+    <tbody>
+      <tr><td>Parfum 30 ml</td><td>50 DHS</td><td>5 DHS</td></tr>
+      <tr><td>Parfum 50 ml</td><td>80 DHS</td><td>8 DHS</td></tr>
+      <tr><td>Parfum 100 ml</td><td>150 DHS</td><td>15 DHS</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">⚠️ <b>La vente est toujours à votre nom.</b> Un commercial ne peut pas enregistrer une vente au nom d'un collègue : le champ <b>Commercial</b> est verrouillé sur son propre nom, et il le reste après chaque enregistrement. Seul un administrateur choisit le commercial à créditer.</div>
+
+  <div class="tip">🔁 Après l'enregistrement, cliquez sur <span class="b ghost">Enregistrer une autre</span> pour enchaîner : le formulaire est vidé, mais le commercial reste le bon.</div>
+
+  <div class="foot"><span>KGroup Parfumery — Ventes &amp; Commandes</span><span>Page 2</span></div>
+</section>
+
+<!-- ============ 3. ENREGISTRER UNE PRÉCOMMANDE ============ -->
+<section class="page">
+  <div class="kicker">Menu Ventes</div>
+  <h2><span class="num">3.</span> Enregistrer une précommande</h2>
+  <p class="lead">Le client réserve un parfum que vous n'avez pas en stock : vous notez sa demande, l'acompte qu'il laisse, et la date à laquelle vous pensez le livrer.</p>
+
+  <ol class="steps">
+    <li>Dans le menu <strong>Ventes</strong>, cliquez sur <strong>⏳ Précommande</strong> en haut du formulaire.</li>
+    <li>Remplissez le client, le parfum, le produit et la quantité — exactement comme pour une vente.</li>
+    <li>Saisissez l'<strong>Acompte versé (DHS)</strong>, ou laissez <code>0</code> si le client n'a rien payé.</li>
+    <li>Choisissez la <strong>Date de livraison prévue</strong> (facultative, jamais dans le passé).</li>
+    <li>Indiquez le <strong>Paiement de l'acompte</strong> et, si besoin, une remarque — « coffret cadeau », « à rappeler vendredi »…</li>
+    <li>Cliquez sur <span class="b">✓ Enregistrer la précommande</span>.</li>
+  </ol>
+
+  <div class="note">🧮 <b>Une précommande ne compte nulle part</b> tant qu'elle n'est pas validée : ni dans le chiffre d'affaires, ni dans les classements, ni dans la commission. C'est voulu — rien n'est gagné tant que la vente n'est pas conclue.</div>
+
+  <h3>Le récapitulatif affiche en plus</h3>
+  <div class="mock">
+    <div class="bar">Récapitulatif de la précommande</div>
+    <div class="row"><span class="lbl">Total</span><span class="val">300 DHS</span></div>
+    <div class="row"><span class="lbl">Acompte versé</span><span class="val">100 DHS</span></div>
+    <div class="row"><span class="lbl">Reste à payer</span><span class="val">200 DHS</span></div>
+    <div class="row"><span class="lbl">Commission</span><span class="val">30 DHS — acquise à la validation</span></div>
+  </div>
+
+  <div class="tip">✅ <b>Le client paie tout d'avance ?</b> Saisissez l'acompte égal au montant total. La précommande s'affichera <b>« Payée »</b> dans la liste, et il ne restera qu'à la valider en vente (page 6) le jour où vous lui remettez le parfum — ou tout de suite si vous voulez créditer la commission immédiatement.</div>
+
+  <h3>Ce que vous pourrez faire ensuite</h3>
+  <div class="tag-row">
+    <span class="tag">Valider la vente</span>
+    <span class="tag">Annuler avec un motif</span>
+    <span class="tag">Voir « en retard » si la date est dépassée</span>
+    <span class="tag">Exporter la liste</span>
+  </div>
+  <p>Tout se passe dans le menu <strong>Commandes</strong>, onglet <strong>Précommandes</strong>.</p>
+
+  <div class="foot"><span>KGroup Parfumery — Ventes &amp; Commandes</span><span>Page 3</span></div>
+</section>
+
+<!-- ============ 4. LA PAGE COMMANDES ============ -->
+<section class="page">
+  <div class="kicker">Menu Commandes</div>
+  <h2><span class="num">4.</span> La page Commandes, écran par écran</h2>
+  <p class="lead">C'est l'historique de tout ce qui a été vendu : qui a vendu quoi, à qui, quand, et pour combien.</p>
+
+  <h3>① Les filtres, en haut</h3>
+  <table>
+    <thead><tr><th>Filtre</th><th>À quoi il sert</th></tr></thead>
+    <tbody>
+      <tr><td><b>Commercial</b><br><span style="color:var(--muted)">administrateur</span></td><td>« Tous les commerciaux », ou une seule personne. Le tableau détaillé ne montre alors que ses ventes.</td></tr>
+      <tr><td><b>Période des ventes</b></td><td>Ce mois-ci (par défaut), Mois dernier, 3 derniers mois, 12 derniers mois, Cette année, Depuis le début, ou <b>Personnalisée</b> avec les champs <b>Du</b> et <b>Au</b>.</td></tr>
+      <tr><td><b>Rechercher</b></td><td>Un nom de client, un parfum, un format ou un commercial.</td></tr>
+      <tr><td><span class="b ghost">Réinitialiser</span></td><td>Revient à la vue de départ : toute l'équipe, ce mois-ci.</td></tr>
+    </tbody>
+  </table>
+  <div class="tip">🔗 L'adresse de la page garde vos filtres : vous pouvez l'ajouter aux favoris ou l'envoyer à un collègue administrateur.</div>
+
+  <h3>② Les deux onglets</h3>
+  <p><strong>Ventes</strong> et <strong>Précommandes</strong>. Le chiffre affiché à côté de « Précommandes » est le nombre de précommandes <b>en attente</b> : s'il n'est pas à zéro, il y a du travail en cours.</p>
+
+  <h3>③ Les quatre compteurs (onglet Ventes)</h3>
+  <div class="tag-row">
+    <span class="tag">Ventes</span><span class="tag">Unités vendues</span>
+    <span class="tag">Chiffre d'affaires</span><span class="tag">Commissions</span>
+  </div>
+  <p>Ils portent toujours sur la période et le commercial choisis — jamais sur « tout depuis toujours », sauf si vous choisissez « Depuis le début ».</p>
+
+  <h3>④ Le tableau « Par commercial » <span style="color:var(--muted);font-weight:400">(administrateur)</span></h3>
+  <p>Une ligne par commercial, <strong>même ceux qui n'ont rien vendu</strong> sur la période — c'est souvent l'information la plus utile.</p>
+  <table>
+    <thead><tr><th>Colonne</th><th>Signification</th></tr></thead>
+    <tbody>
+      <tr><td>Ventes / Unités</td><td>Nombre de ventes, et nombre de flacons</td></tr>
+      <tr><td>Chiffre d'affaires</td><td>Total encaissé sur la période</td></tr>
+      <tr><td>Commission</td><td>Ce que le commercial a gagné sur ces ventes</td></tr>
+      <tr><td>Précommandes en attente</td><td>Réservations pas encore validées</td></tr>
+      <tr><td>Dernière vente</td><td>Date de sa vente la plus récente, ou « aucune sur la période »</td></tr>
+    </tbody>
+  </table>
+  <div class="tip">👆 <b>Cliquez sur une ligne</b> pour n'afficher que les ventes de ce commercial. Le filtre « Commercial » se règle tout seul.</div>
+
+  <h3>⑤ Le tableau détaillé</h3>
+  <p>Date et heure, client, parfum et format, quantité, montant, commission, paiement, commercial crédité. Les ventes les plus récentes sont en haut. Au-delà de 50 lignes, le bouton <span class="b ghost">Afficher 50 de plus</span> complète la liste.</p>
+
+  <div class="foot"><span>KGroup Parfumery — Ventes &amp; Commandes</span><span>Page 4</span></div>
+</section>
+
+<!-- ============ 5. SUIVRE UN COMMERCIAL ============ -->
+<section class="page">
+  <div class="kicker">Pour les administrateurs</div>
+  <h2><span class="num">5.</span> Suivre un commercial</h2>
+  <p class="lead">Répondre à « qu'a-t-elle vendu ce mois-ci ? » prend trois secondes, par trois chemins différents.</p>
+
+  <h3>Depuis la page Commandes</h3>
+  <ol class="steps">
+    <li>Choisissez la <strong>période</strong> qui vous intéresse.</li>
+    <li>Cliquez sur la ligne du commercial dans <strong>Par commercial</strong>, ou choisissez son nom dans le filtre <strong>Commercial</strong>.</li>
+    <li>Le titre devient « Ventes de … » et la liste ne contient plus que les siennes.</li>
+  </ol>
+
+  <h3>Depuis la page Vendeurs</h3>
+  <p>Sur chaque ligne de l'équipe, deux icônes ouvrent directement le bon écran :</p>
+  <ul>
+    <li>🧾 <strong>Ventes &amp; commandes</strong> → la page Commandes, filtrée sur cette personne.</li>
+    <li>💲 <strong>Rémunération</strong> → sa fiche de rémunération du mois.</li>
+  </ul>
+  <p>La fiche du commercial (icône 👁) rappelle aussi ses totaux : ventes, chiffre d'affaires, commission cumulée.</p>
+
+  <h3>Depuis la page Rémunération</h3>
+  <p>Cliquez sur <span class="b ghost">Détail</span> au bout de sa ligne : vous obtenez le mois en cours (ventes, commissions, bonus, total), l'évolution sur douze mois, et la liste des ventes qui composent la somme. Le bouton <strong>Relevé</strong> en produit un document à lui remettre.</p>
+
+  <div class="card brandbar">
+    <strong>🔍 Trois questions courantes, trois réponses</strong>
+    <table style="margin-top:8px;margin-bottom:0">
+      <tbody>
+        <tr><td style="width:46%"><b>« A-t-elle vendu cette semaine ? »</b></td><td>Commandes → Période <b>Personnalisée</b>, du lundi à aujourd'hui.</td></tr>
+        <tr><td><b>« Combien a-t-elle gagné ce mois-ci ? »</b></td><td>Rémunération → <b>Détail</b> sur sa ligne.</td></tr>
+        <tr><td><b>« Qu'a-t-elle en cours ? »</b></td><td>Commandes → onglet <b>Précommandes</b>, filtre sur son nom.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="foot"><span>KGroup Parfumery — Ventes &amp; Commandes</span><span>Page 5</span></div>
+</section>
+
+<!-- ============ 6. VALIDER UNE PRÉCOMMANDE ============ -->
+<section class="page">
+  <div class="kicker">Menu Commandes → Précommandes</div>
+  <h2><span class="num">6.</span> Valider une précommande en vente</h2>
+  <p class="lead">C'est l'étape qui transforme une réservation en vraie vente : le chiffre d'affaires, la commission et les classements ne bougent qu'à ce moment-là.</p>
+
+  <h3>Quand la valider</h3>
+  <p>Dès que <strong>le client a payé</strong>, ou que vous lui avez <strong>remis son parfum</strong> — le premier des deux qui arrive. Vous n'avez pas à attendre la livraison si l'argent est encaissé.</p>
+
+  <ol class="steps">
+    <li>Menu <strong>Commandes</strong> → onglet <strong>Précommandes</strong>.</li>
+    <li>Sur la ligne concernée, cliquez sur <span class="b">Valider la vente</span>.</li>
+    <li>Vérifiez le récapitulatif : montant, acompte déjà versé, reste à encaisser, commercial crédité.</li>
+    <li>Choisissez la <strong>Date de la vente</strong> — le jour du paiement. Par défaut : aujourd'hui.</li>
+    <li>Choisissez le <strong>Paiement du solde</strong> : Espèces, Virement ou Mobile Money.</li>
+    <li>Cliquez sur <span class="b">✓ Valider la vente</span>.</li>
+  </ol>
+
+  <div class="note">📅 <b>La date décide du mois de paie.</b> La commission compte dans la rémunération du mois de la date choisie. Si le client a payé le 28 du mois dernier, mettez cette date : la commission ira sur ce mois-là — sauf s'il est déjà clôturé.</div>
+
+  <p>La précommande passe alors au statut <span class="state ok">VENDUE</span> et la vente apparaît immédiatement dans l'onglet <strong>Ventes</strong>, avec la mention « Précommande du … — acompte … » en remarque.</p>
+
+  <h3>Les statuts</h3>
+  <table>
+    <thead><tr><th>Statut</th><th>Ce que ça veut dire</th><th>Ce qu'on peut faire</th></tr></thead>
+    <tbody>
+      <tr><td><span class="state en">EN ATTENTE</span></td><td>Réservée, pas encore payée ni remise. Ne compte nulle part.</td><td>Valider la vente · Annuler</td></tr>
+      <tr><td><span class="state ok">VENDUE</span></td><td>Devenue une vente : commission acquise, classements à jour.</td><td>Rien — elle vit désormais comme une vente</td></tr>
+      <tr><td><span class="state no">ANNULÉE</span></td><td>Abandonnée. Rien n'est comptabilisé.</td><td>Rien</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Annuler une précommande</h3>
+  <p>Bouton <span class="b ghost">Annuler</span> sur la ligne, avec un motif facultatif — « client injoignable », « parfum indisponible ». Le motif s'affiche ensuite sous le statut. Le remboursement éventuel de l'acompte se règle hors de la plateforme.</p>
+
+  <div class="tip">⏰ Une précommande dont la date prévue est dépassée s'affiche <b style="color:#c0392b">en retard</b> dans la colonne « Livraison prévue » : à traiter en priorité.</div>
+
+  <div class="foot"><span>KGroup Parfumery — Ventes &amp; Commandes</span><span>Page 6</span></div>
+</section>
+
+<!-- ============ 7. RÉATTRIBUER ============ -->
+<section class="page">
+  <div class="kicker">Pour les administrateurs</div>
+  <h2><span class="num">7.</span> Corriger une vente attribuée au mauvais commercial</h2>
+  <p class="lead">Une vente créditée à la mauvaise personne fausse ses classements et sa commission. Elle se corrige en deux clics.</p>
+
+  <h3>Comment les repérer</h3>
+  <p>Dans la colonne <strong>Commercial</strong>, une étiquette orange <b style="color:#8a6500">⚠ saisie par …</b> signale qu'une vente a été enregistrée depuis le compte d'une personne mais créditée à une autre. Quand il y en a, un bandeau apparaît en haut de la page.</p>
+
+  <div class="card brandbar">
+    <strong>Corriger toutes les ventes signalées d'un coup</strong>
+    <p style="margin:8px 0 0">Cliquez sur <span class="b">Les recréditer à leur auteur</span> dans le bandeau : chaque vente signalée revient à la personne qui l'a saisie. Le bandeau ne couvre que la <b>période affichée</b> — choisissez « Depuis le début » pour tout rattraper.</p>
+  </div>
+
+  <h3>Corriger une vente précise</h3>
+  <ol class="steps">
+    <li>Cliquez sur <span class="b ghost">Réattribuer</span> au bout de la ligne.</li>
+    <li>La fenêtre rappelle la vente, à qui elle est créditée aujourd'hui et qui l'a saisie.</li>
+    <li>Choisissez le <strong>nouveau commercial</strong>. Celui déjà crédité n'est pas proposé ; pour une vente signalée, l'auteur de la saisie est déjà sélectionné.</li>
+    <li>Cliquez sur <span class="b">Réattribuer</span>. La ligne modifiée s'allume un instant, et le message indique « ancien → nouveau ».</li>
+  </ol>
+
+  <h3>Ce qui se déplace avec la vente</h3>
+  <div class="tag-row">
+    <span class="tag">Nombre de ventes</span><span class="tag">Unités</span>
+    <span class="tag">Chiffre d'affaires</span><span class="tag">Commission</span>
+    <span class="tag">XP et niveau</span><span class="tag">Classements</span>
+    <span class="tag">Rémunération du mois</span>
+  </div>
+  <p>Les badges déjà gagnés ne sont jamais retirés, et le <strong>commercial responsable du client</strong> ne change pas : seule la vente est déplacée.</p>
+
+  <div class="note">🔒 <b>Un mois de paie clôturé est figé.</b> Une vente d'un mois déjà Clôturé, Validé ou Payé ne peut plus changer de commercial : la correction est refusée avec un message. Réglez-la hors plateforme, ou rouvrez le sujet avant la clôture du mois suivant.</div>
+
+  <div class="tip">🛡️ <b>Et pour l'avenir ?</b> Le problème est corrigé à la source : le formulaire garde le bon commercial après chaque enregistrement, et le serveur crédite toujours un commercial de ses propres ventes. Ces étiquettes ne devraient plus apparaître que pour d'anciennes ventes.</div>
+
+  <div class="foot"><span>KGroup Parfumery — Ventes &amp; Commandes</span><span>Page 7</span></div>
+</section>
+
+<!-- ============ 8. EXPORTS ============ -->
+<section class="page">
+  <div class="kicker">Partager &amp; archiver</div>
+  <h2><span class="num">8.</span> Exporter en PDF, Excel ou CSV</h2>
+  <p class="lead">Les trois boutons <span class="tag">PDF</span> <span class="tag">Excel</span> <span class="tag">CSV</span> produisent un fichier <strong>exactement conforme à ce qui est affiché</strong> : mêmes filtres, même période, même onglet.</p>
+
+  <h3>Quel format choisir</h3>
+  <table>
+    <thead><tr><th>Format</th><th>Pour quoi faire</th><th>Ce qu'il contient</th></tr></thead>
+    <tbody>
+      <tr><td><b>PDF</b></td><td>Imprimer, envoyer par e-mail ou WhatsApp, archiver</td><td>Un document mis en page : en-tête KGroup, indicateurs, tableaux, totaux, numéros de page</td></tr>
+      <tr><td><b>Excel</b></td><td>Retravailler les chiffres, faire ses propres calculs</td><td>Un classeur : montants et dates en vrais nombres, filtres, totaux en formules, une feuille « Résumé »</td></tr>
+      <tr><td><b>CSV</b></td><td>Importer dans un autre logiciel (comptabilité…)</td><td>Le tableau détaillé seul, en texte</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Où les trouver</h3>
+  <table>
+    <thead><tr><th>Page</th><th>Ce que vous exportez</th></tr></thead>
+    <tbody>
+      <tr><td><b>Commandes</b> — onglet Ventes</td><td>Le détail des ventes affichées + une synthèse par commercial</td></tr>
+      <tr><td><b>Commandes</b> — onglet Précommandes</td><td>Les précommandes du statut choisi, avec acomptes et restes à encaisser</td></tr>
+      <tr><td><b>Rémunération</b></td><td>La paie du mois pour toute l'équipe, ou le <b>Relevé</b> d'un seul commercial</td></tr>
+      <tr><td><b>Rapports</b></td><td>Trois rapports prêts à l'emploi : ventes, performance de l'équipe, synthèse du chiffre d'affaires — plus le <b>Rapport complet</b></td></tr>
+      <tr><td><b>Tableau de bord</b></td><td>Bouton <b>Exporter</b> : les ventes des 12 derniers mois</td></tr>
+    </tbody>
+  </table>
+
+  <div class="tip">📊 <b>Conseil :</b> pour un envoi à la direction, prenez le <b>PDF</b>. Pour vérifier des calculs ou faire un tableau croisé, prenez l'<b>Excel</b> : les montants y sont de vrais nombres, additionnables.</div>
+
+  <div class="note">🌍 <b>Noms en écriture arabe :</b> ils s'affichent correctement en Excel et en CSV. Dans le PDF, ils apparaissent en « ? » — préférez l'Excel dans ce cas.</div>
+
+  <p>Le fichier est fabriqué par votre navigateur et enregistré dans votre dossier <strong>Téléchargements</strong> : aucune donnée n'est envoyée à un autre service.</p>
+
+  <div class="foot"><span>KGroup Parfumery — Ventes &amp; Commandes</span><span>Page 8</span></div>
+</section>
+
+<!-- ============ 9. FAQ ============ -->
+<section class="page">
+  <div class="kicker">Aide-mémoire</div>
+  <h2><span class="num">9.</span> Questions fréquentes</h2>
+
+  <h3>Je ne retrouve pas une vente</h3>
+  <p>Trois vérifications, dans l'ordre : la <strong>période</strong> (« Ce mois-ci » par défaut — passez à « Depuis le début »), le filtre <strong>Commercial</strong>, puis le champ <strong>Rechercher</strong> qu'il faut peut-être vider.</p>
+
+  <h3>Les totaux ne correspondent pas à ce que j'attends</h3>
+  <p>Les <strong>précommandes en attente</strong> ne sont jamais comptées : ni dans le chiffre d'affaires, ni dans les commissions. Vérifiez l'onglet Précommandes — une réservation oubliée y attend peut-être d'être validée.</p>
+
+  <h3>Une vente est au nom d'un collègue</h3>
+  <p>Voir la page 7 : bandeau orange, bouton <span class="b ghost">Réattribuer</span>, ou correction groupée.</p>
+
+  <h3>Je ne vois pas le bouton « Réattribuer »</h3>
+  <p>Il est réservé aux administrateurs. Un commercial voit l'avertissement, mais c'est un administrateur qui corrige.</p>
+
+  <h3>« La paie de ce mois est clôturée »</h3>
+  <p>Le mois a été figé dans <strong>Rémunération</strong> : ni réattribution, ni nouvelle vente à une date de ce mois. Choisissez une date dans un mois ouvert, ou traitez le cas en dehors de la plateforme.</p>
+
+  <h3>Le client a payé mais n'a pas encore son parfum</h3>
+  <p>Validez quand même la vente, avec la <strong>date du paiement</strong> : c'est ce qui crédite la commission au bon mois. La remise du parfum n'a pas à être enregistrée.</p>
+
+  <h3>Mon fichier CSV s'ouvre en une seule colonne</h3>
+  <p>C'est un réglage d'Excel selon les pays. Ouvrez plutôt le fichier <strong>Excel (.xlsx)</strong>, prévu pour cela — ou, dans Excel, utilisez <em>Données → Convertir</em> avec le point-virgule comme séparateur.</p>
+
+  <h3>Sur téléphone</h3>
+  <p>Tout fonctionne : le menu se replie en ☰, les tableaux défilent latéralement, et les exports se téléchargent comme sur ordinateur.</p>
+
+  <div class="card brandbar">
+    <strong>Les boutons en un coup d'œil</strong>
+    <table style="margin-top:8px;margin-bottom:0">
+      <thead><tr><th>Bouton</th><th>Où</th><th>Effet</th></tr></thead>
+      <tbody>
+        <tr><td><span class="b">Nouvelle vente</span></td><td>Commandes</td><td>Ouvre le formulaire de vente</td></tr>
+        <tr><td><span class="b ghost">Nouvelle précommande</span></td><td>Commandes</td><td>Ouvre le formulaire en mode précommande</td></tr>
+        <tr><td><span class="b">Valider la vente</span></td><td>Précommandes</td><td>Transforme la réservation en vente</td></tr>
+        <tr><td><span class="b ghost">Annuler</span></td><td>Précommandes</td><td>Abandonne la réservation, avec un motif</td></tr>
+        <tr><td><span class="b ghost">Réattribuer</span></td><td>Ventes (admin)</td><td>Change le commercial crédité</td></tr>
+        <tr><td><span class="b">Les recréditer à leur auteur</span></td><td>Bandeau (admin)</td><td>Corrige toutes les ventes signalées</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="margin-top:24px;text-align:center;color:var(--muted);font-size:13px">
+    KGroup Parfumery — « La senteur du luxe »<br>
+    Guide complet de la plateforme : <a href="guide-utilisation.html">guide-utilisation.html</a>
+  </p>
+
+  <div class="foot"><span>KGroup Parfumery — Ventes &amp; Commandes</span><span>Page 9</span></div>
+</section>
+
+</body>
+</html>

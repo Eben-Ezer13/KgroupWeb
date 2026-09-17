@@ -13,9 +13,15 @@
 </head>
 <body data-app data-page="sales" data-title="Register Sale" data-role="Administrator">
 
-  <div class="page-head reveal">
-    <h2 data-i18n="head.sales.t">Register a Sale</h2>
-    <p data-i18n="head.sales.sub">Log a new transaction — it updates rankings, XP and challenges instantly.</p>
+  <div class="page-head reveal" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+    <div>
+      <h2 data-i18n="head.sales.t">Register a Sale</h2>
+      <p data-i18n="head.sales.sub">Log a new transaction — it updates rankings, XP and challenges instantly.</p>
+    </div>
+    <div class="row gap-2" style="flex-wrap:wrap">
+      <a href="guide-commandes.html" class="btn btn-ghost" target="_blank" rel="noopener" title="Guide : ventes, précommandes, exports"><span data-ic="help"></span> Guide</a>
+      <a href="orders.html" class="btn btn-ghost"><span data-ic="clipboard"></span> Mes commandes</a>
+    </div>
   </div>
 
   <div class="grid grid-2-1">
@@ -52,7 +58,7 @@
             <input class="input" id="clientBirthday" type="date">
           </div>
           <div class="field">
-            <label>Salesperson</label>
+            <label for="rep">Commercial</label>
             <select class="select" id="rep"></select>
           </div>
 
@@ -62,16 +68,16 @@
             <datalist id="perfumeNames"></datalist>
           </div>
           <div class="field">
-            <label>Product <span class="req">*</span></label>
+            <label for="product">Produit <span class="req">*</span></label>
             <select class="select" id="product"></select>
           </div>
 
           <div class="field">
-            <label>Quantity <span class="req">*</span></label>
+            <label for="qty">Quantité <span class="req">*</span></label>
             <input class="input" id="qty" type="number" min="1" value="1" required>
           </div>
           <div class="field">
-            <label>Unit Price (DHS)</label>
+            <label for="price">Prix unitaire (DHS)</label>
             <input class="input" id="price" type="number" readonly>
           </div>
 
@@ -102,7 +108,7 @@
           </div>
 
           <div class="field full">
-            <label id="payLabel">Payment Method</label>
+            <label id="payLabel">Mode de paiement</label>
             <div class="pay-options">
               <div class="pay-opt">
                 <input type="radio" name="pay" id="payCash" value="Espèces" checked>
@@ -120,19 +126,19 @@
           </div>
 
           <div class="field" id="dateField">
-            <label>Date</label>
+            <label for="date">Date de la vente</label>
             <input class="input" id="date" type="date">
           </div>
 
           <div class="field full">
-            <label>Remarks</label>
-            <textarea class="textarea" id="remarks" placeholder="Optional notes about this sale…"></textarea>
+            <label for="remarks">Remarques</label>
+            <textarea class="textarea" id="remarks" placeholder="Notes facultatives sur cette vente…"></textarea>
           </div>
         </div>
 
         <div class="row gap-3" style="margin-top:22px">
           <button type="submit" class="btn btn-primary"><span data-ic="check"></span> <span id="submitLabel">Register Sale</span></button>
-          <button type="reset" class="btn btn-ghost">Clear form</button>
+          <button type="reset" class="btn btn-ghost">Vider le formulaire</button>
         </div>
       </form>
     </div>
@@ -142,10 +148,10 @@
       <div class="card card-pad" style="position:sticky;top:96px">
         <div class="section-title"><h3 id="sumTitle">Order Summary</h3></div>
         <div style="display:flex;flex-direction:column;gap:14px">
-          <div class="row"><span class="muted grow">Product</span><b id="sumProduct" style="text-align:right;max-width:60%">—</b></div>
-          <div class="row"><span class="muted grow">Quantity</span><b id="sumQty">1</b></div>
-          <div class="row"><span class="muted grow">Unit price</span><b id="sumPrice">0 DHS</b></div>
-          <div class="row"><span class="muted grow">Payment</span><span class="badge green" id="sumPay">Espèces</span></div>
+          <div class="row"><span class="muted grow">Parfum</span><b id="sumProduct" style="text-align:right;max-width:60%">—</b></div>
+          <div class="row"><span class="muted grow">Quantité</span><b id="sumQty">1</b></div>
+          <div class="row"><span class="muted grow">Prix unitaire</span><b id="sumPrice">0 DHS</b></div>
+          <div class="row"><span class="muted grow">Paiement</span><span class="badge green" id="sumPay">Espèces</span></div>
           <hr style="border:none;border-top:1px dashed var(--line)">
           <div class="row"><span class="grow" style="font-weight:600">Total</span>
             <b id="sumTotal" style="font-family:var(--font-display);font-size:24px;color:var(--brand)">0 DHS</b></div>
@@ -158,7 +164,7 @@
             <b id="sumCommission" style="color:var(--brand)">0 DHS</b>
           </div>
           <div class="row gap-2" style="margin-top:10px" id="xpRow"><span data-ic="zap" style="color:var(--brand)"></span>
-          <span style="font-size:13px;font-weight:600">+<span id="xpGain">25</span> XP will be awarded</span></div>
+          <span style="font-size:13px;font-weight:600">+<span id="xpGain">25</span> XP seront gagnés</span></div>
         </div>
       </div>
     </div>
@@ -171,12 +177,12 @@
         <div class="stat-ico ico-green" style="width:72px;height:72px;margin:0 auto 18px;animation:popIn .5s var(--ease)">
           <span data-ic="check" style="transform:scale(1.4)"></span>
         </div>
-        <h3 style="font-size:22px;margin-bottom:8px" id="successTitle">Sale Registered!</h3>
-        <p class="muted" id="successMsg">Transaction saved successfully.</p>
+        <h3 style="font-size:22px;margin-bottom:8px" id="successTitle">Vente enregistrée !</h3>
+        <p class="muted" id="successMsg">Transaction enregistrée.</p>
         <div style="margin-top:22px;flex-wrap:wrap" class="row gap-3 center">
-          <button class="btn btn-ghost" data-modal-close>Register another</button>
+          <button class="btn btn-ghost" data-modal-close>Enregistrer une autre</button>
           <a href="orders.html" class="btn btn-ghost" id="successOrders">Voir les commandes</a>
-          <a href="dashboard.html" class="btn btn-primary" id="successHome">Back to dashboard</a>
+          <a href="dashboard.html" class="btn btn-primary" id="successHome">Retour au tableau de bord</a>
         </div>
       </div>
     </div>
@@ -321,7 +327,7 @@
       // Submit → persist through the API when reachable, else demo
       $("#saleForm").addEventListener("submit", async (e) => {
         e.preventDefault();
-        if (!$("#customer").value.trim()) { toast("error","Missing customer","Please enter a customer name."); $("#customer").focus(); return; }
+        if (!$("#customer").value.trim()) { toast("error","Nom du client manquant","Indiquez le nom du client."); $("#customer").focus(); return; }
         if (!$("#perfumeName").value.trim()) { toast("error","Nom du parfum manquant","Indiquez le nom du parfum vendu."); $("#perfumeName").focus(); return; }
 
         const btn = e.submitter || document.querySelector('#saleForm button[type=submit]');
@@ -371,20 +377,20 @@
           if (isPreorder && window.KGPreorders) await window.KGPreorders.create(sale);
           else if (!isPreorder && window.KGDB) await window.KGDB.addSale(sale); // no-op stub in demo mode
         } catch (err) {
-          toast("error", "Could not save", err.message || "Please try again.");
+          toast("error", "Enregistrement impossible", err.message || "Réessayez dans un instant.");
           btn && (btn.disabled = false);
           return;
         }
         btn && (btn.disabled = false);
 
         const deposit = isPreorder && sale.deposit ? ` — acompte ${esc(KG.fmt.money(sale.deposit))}` : "";
-        $("#successTitle").textContent = isPreorder ? "Précommande enregistrée !" : "Sale Registered!";
+        $("#successTitle").textContent = isPreorder ? "Précommande enregistrée !" : "Vente enregistrée !";
         $("#successMsg").innerHTML = `<b>${esc($("#sumProduct").textContent)}</b> ×${esc($("#sumQty").textContent)} — <b style="color:var(--brand)">${esc($("#sumTotal").textContent)}</b>${deposit}` +
           (isPreorder ? `<br><span style="font-size:12.5px">Elle comptera comme vente quand vous la validerez (paiement reçu ou parfum remis).</span>` : "");
         $("#successOrders").href = isPreorder ? "orders.html?tab=preorders" : "orders.html";
         window.kgModal.open("#successModal");
-        toast("success", isPreorder ? "Précommande enregistrée" : "Sale registered",
-          isPreorder ? "À valider en vente depuis la page Commandes." : "Rankings & XP updated.");
+        toast("success", isPreorder ? "Précommande enregistrée" : "Vente enregistrée",
+          isPreorder ? "À valider en vente depuis la page Commandes." : "Classements et XP mis à jour.");
         e.target.reset(); $("#date").value = today();
         lockRep();                    // keep the sale credited to the signed-in rep
         matchedClientId = null; setHint(""); setType(type);
