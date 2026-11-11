@@ -118,9 +118,10 @@ kgroup-platform/
 
 ## 🔐 Two modes
 
-**Demo mode** — works instantly, no setup. Open the HTML directly, or run without a
-database: any credentials log in and data comes from `data.js`. Great for
-previewing the UI.
+**Demo mode** — works instantly for local previews. Open the HTML directly or
+run locally without a database: any credentials log in and data comes from
+`data.js`. Hosted deployments never authenticate with demo credentials or show
+sample accounts when the API is unavailable.
 
 **Real accounts (Neon)** — genuine authentication and a cloud database with
 **two roles**:

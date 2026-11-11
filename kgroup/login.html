@@ -158,7 +158,7 @@
     // Show the demo banner (and prefill) only once we know the API is absent,
     // then skip this page entirely if a session already exists.
     (async () => {
-      if (!(await A.ready())) {
+      if (!(await A.ready()) && window.KG_DEMO_ALLOWED) {
         $("demoHint").classList.remove("hidden");
         $("email").value = "admin@kgroup.ma";
         $("password").value = "kgroup2026";

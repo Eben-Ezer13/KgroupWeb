@@ -12,9 +12,9 @@
    it, and enforces the very same rules the RLS policies used to (see
    server/policies.js).
 
-   The demo fallback is unchanged: when no API is reachable, every method
-   returns the same "use the local data" signal it did before, and the pages
-   keep rendering the sample data from data.js.
+   Sample data is available only in local previews. Hosted deployments fail
+   closed when the API is unavailable and never keep sample accounts when a
+   live data request fails.
 
    Exposes: window.KGAuth, window.KGDB, window.KGData, window.KGTraining,
             window.KGClients, window.KGPayroll, window.KGPreorders,
@@ -40,6 +40,9 @@
 
   const TOKEN_KEY = "kg-access-token";
   const DEMO_KEY = "kg-demo-session";
+  const DEMO_ALLOWED =
+    location.protocol === "file:" ||
+    ["localhost", "127.0.0.1", "::1", "[::1]"].includes(location.hostname);
 
   /* Optimistic: assume the API is there when we have a URL for it, so pages can
      read window.KG_API_CONFIGURED immediately. The health probe below corrects
@@ -97,6 +100,9 @@
     if (!CONFIG.apiUrl) {
       IS_CONFIGURED = false;
       window.KG_API_CONFIGURED = false;
+      if (!DEMO_ALLOWED) {
+        console.error("[KG] API unavailable — demo mode is disabled on hosted deployments.");
+      }
       _ready = Promise.resolve(false);
       return _ready;
     }
@@ -106,7 +112,10 @@
       .then((ok) => {
         IS_CONFIGURED = ok;
         window.KG_API_CONFIGURED = ok;
-        if (!ok) console.warn("[KG] API unreachable — running on the demo data in data.js.");
+        if (!ok) {
+          if (DEMO_ALLOWED) console.warn("[KG] API unreachable — running on local preview data.");
+          else console.error("[KG] API unavailable — demo mode is disabled on hosted deployments.");
+        }
         return ok;
       });
     return _ready;
@@ -125,7 +134,11 @@
     /* opts: { role: 'admin'|'salesperson', inviteCode: string } */
     async signUp(email, password, fullName, opts) {
       opts = opts || {};
-      if (!(await ready())) { localStorage.setItem(DEMO_KEY, email); return { demo: true }; }
+      if (!(await ready())) {
+        if (!DEMO_ALLOWED) throw new Error("The service is temporarily unavailable. Please try again later.");
+        localStorage.setItem(DEMO_KEY, email);
+        return { demo: true };
+      }
       const data = await request("/auth/signup", {
         method: "POST",
         body: {
@@ -142,7 +155,11 @@
     },
 
     async signIn(email, password) {
-      if (!(await ready())) { localStorage.setItem(DEMO_KEY, email); return { demo: true }; }
+      if (!(await ready())) {
+        if (!DEMO_ALLOWED) throw new Error("The service is temporarily unavailable. Please try again later.");
+        localStorage.setItem(DEMO_KEY, email);
+        return { demo: true };
+      }
       const data = await request("/auth/signin", { method: "POST", body: { email, password } });
       if (data.session) token.set(data.session.access_token);
       this._user = data.user || null;
@@ -151,7 +168,11 @@
     },
 
     async signInWithGoogle() {
-      if (!(await ready())) { localStorage.setItem(DEMO_KEY, "google-demo"); return { demo: true }; }
+      if (!(await ready())) {
+        if (!DEMO_ALLOWED) throw new Error("The service is temporarily unavailable. Please try again later.");
+        localStorage.setItem(DEMO_KEY, "google-demo");
+        return { demo: true };
+      }
       // Check first so an unconfigured provider produces a readable message
       // instead of a redirect to a JSON error page.
       const status = await request("/auth/google/status");
@@ -194,6 +215,7 @@
     _user: undefined,
     async user(force) {
       if (!(await ready())) {
+        if (!DEMO_ALLOWED) return null;
         const e = localStorage.getItem(DEMO_KEY);
         return e ? { email: e, user_metadata: { full_name: "Demo Admin" } } : null;
       }
@@ -210,7 +232,9 @@
     /* Current user's profile row (cached). Demo mode returns an admin stub. */
     _profile: null,
     async profile(force) {
-      if (!(await ready())) return { role: "admin", full_name: "Demo Admin" };
+      if (!(await ready())) {
+        return DEMO_ALLOWED ? { role: "admin", full_name: "Demo Admin" } : null;
+      }
       if (this._profile && !force) return this._profile;
       const u = await this.user();
       if (!u) return null;
@@ -600,11 +624,38 @@
   // below that, so coercing is safe and keeps the arithmetic below unchanged.
   const num = (v) => (v == null ? 0 : Number(v) || 0);
 
+  function clearSampleData(KG) {
+    KG.salespersons = [];
+    KG.recentSales = [];
+    KG.challenges = [];
+    KG.notifications = [];
+    KG.activity = [];
+    KG.teamNotifications = [];
+    KG.me = null;
+    KG.kpis = {
+      totalSales: 0,
+      totalRevenue: 0,
+      totalCommission: 0,
+      activeReps: 0,
+      challengeCount: 0,
+    };
+    KG.series = Object.assign({}, KG.series, {
+      salesSeries: (KG.series.months || []).map(() => 0),
+      revenueSeries: (KG.series.months || []).map(() => 0),
+      weekSeries: (KG.series.weekDays || []).map(() => 0),
+      targetSeries: (KG.series.months || []).map(() => 0),
+    });
+  }
+
   const KGData = {
     async hydrate() {
       const KG = window.KG;
       if (!KG) return;
-      if (!(await ready())) return;                  // demo mode → keep data.js data
+      if (!(await ready())) {
+        if (!DEMO_ALLOWED) clearSampleData(KG);
+        return;
+      }
+      clearSampleData(KG);
       try {
         const reps = await KGDB.listSalespersons();
         if (reps) {
@@ -700,7 +751,7 @@
           time: timeAgo(s.created_at),
         }));
       } catch (e) {
-        console.warn("KG hydrate failed, using demo data:", e);
+        console.warn("KG live data hydration failed:", e);
       }
     },
   };
@@ -717,6 +768,7 @@
   window.KGPreorders = KGPreorders;
   window.KG_API_READY = true;
   window.KG_API_CONFIGURED = IS_CONFIGURED;   // refined by the health probe
+  window.KG_DEMO_ALLOWED = DEMO_ALLOWED;
   window.KG_ROLE = window.KG_ROLE || "admin"; // default until hydrate resolves the real role
 
   ready(); // start probing immediately so pages rarely have to wait
