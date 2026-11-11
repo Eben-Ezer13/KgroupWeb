@@ -181,6 +181,37 @@ const DEFAULT_SETTINGS = {
   currency: "DHS",
 };
 
+const PRODUCT_COMPENSATION = {
+  "Parfum 30 ml": { unit_price: 50, commission: 5 },
+  "Parfum 50 ml": { unit_price: 80, commission: 8 },
+  "Parfum 100 ml": { unit_price: 150, commission: 15 },
+};
+
+/** Recalculates a preorder using the team's current rules at sale validation. */
+function commissionForSale(product, qty, amount, settings) {
+  const cfg = { ...DEFAULT_SETTINGS, ...(settings || {}) };
+  if (cfg.commission_mode === "percent") {
+    return {
+      amount: Math.round((Number(amount) || 0) * (Number(cfg.commission_rate) || 0) / 100),
+      snapshot: {
+        mode: "percent",
+        rate: Number(cfg.commission_rate) || 0,
+        currency: cfg.currency || "DHS",
+      },
+    };
+  }
+  const item = PRODUCT_COMPENSATION[String(product || "").trim()];
+  if (!item) throw new Error("Un produit du catalogue est requis pour calculer la commission.");
+  return {
+    amount: item.commission * qty,
+    snapshot: {
+      mode: "per_unit",
+      unit_commission: item.commission,
+      currency: cfg.currency || "DHS",
+    },
+  };
+}
+
 /**
  * Palier de bonus atteint pour un nombre de ventes mensuelles.
  * @returns {{tier: object|null, next: object|null, bonus: number}}
@@ -206,12 +237,9 @@ function computeCompensation(totals, settings) {
   const salesCount = Number(totals.sales_count) || 0;
   const revenue = Number(totals.revenue) || 0;
 
-  // Art. 3 — par défaut on somme les commissions déjà figées sur chaque vente,
-  // ce qui garde exactement le montant affiché au commercial au moment de la
-  // vente. Le mode 'percent' n'existe que si l'admin le choisit explicitement.
-  const commission = cfg.commission_mode === "percent"
-    ? Math.round(revenue * (Number(cfg.commission_rate) || 0) / 100)
-    : Number(totals.commission) || 0;
+  // The sale stores its commission at validation, including the selected
+  // percentage rule. Reapplying current settings here would rewrite history.
+  const commission = Number(totals.commission) || 0;
 
   const { tier, next, bonus } = bonusFor(salesCount, cfg.bonus_tiers);
   const salaryBase = Number(cfg.salary_base) || 0;
@@ -243,6 +271,8 @@ module.exports = {
   DEFAULT_COUNTRY_CODE,
   TIMEZONE,
   DEFAULT_SETTINGS,
+  PRODUCT_COMPENSATION,
+  commissionForSale,
   BIRTHDAY_TEMPLATE,
   normalizePhone,
   isValidPhone,

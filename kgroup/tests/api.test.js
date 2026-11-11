@@ -375,29 +375,18 @@ test("signin works, and wrong credentials are indistinguishable", async () => {
   assert.strictEqual(badPass.body.error, noUser.body.error, "no account enumeration");
 });
 
-test("a sale records the perfume name, trimmed, and rejects an over-long one", async () => {
+test("direct sale creation is disabled in favor of paid preorders", async () => {
   const c = await signUpAdmin("perfume@kgroup.test");
   const rep = await c.call("/api/salespersons", { method: "POST", body: { name: "Amine" } });
   const base = { customer: "Sofia", product: "Parfum 100 ml", qty: 1, amount: 150, commission: 15,
                  pay: "Espèces", rep_id: rep.body.id, rep_name: "Amine" };
 
-  const named = await c.call("/api/sales", { method: "POST", body: { ...base, perfume_name: "  Oud Royal  " } });
-  assert.strictEqual(named.status, 201, JSON.stringify(named.body));
-  assert.strictEqual(named.body.perfume_name, "Oud Royal");
-  assert.strictEqual(named.body.product, "Parfum 100 ml", "the catalogue format is kept for commissions and stats");
-
-  const blank = await c.call("/api/sales", { method: "POST", body: { ...base, perfume_name: "   " } });
-  assert.strictEqual(blank.status, 201);
-  assert.strictEqual(blank.body.perfume_name, null, "a blank name is stored as null");
-
-  const legacy = await c.call("/api/sales", { method: "POST", body: base });
-  assert.strictEqual(legacy.status, 201, "older clients that omit the field still work");
-
-  const tooLong = await c.call("/api/sales", { method: "POST", body: { ...base, perfume_name: "x".repeat(121) } });
-  assert.strictEqual(tooLong.status, 400);
+  const disabled = await c.call("/api/sales", { method: "POST", body: { ...base, perfume_name: "Oud Royal" } });
+  assert.strictEqual(disabled.status, 410, JSON.stringify(disabled.body));
+  assert.match(disabled.body.error, /précommande payée/);
 
   const list = await c.call("/api/sales");
-  assert.ok(list.body.some((s) => s.perfume_name === "Oud Royal"), "the list returns the perfume name");
+  assert.strictEqual(list.body.length, 0, "the rejected request does not create a sale");
 });
 
 test("full admin CRUD round-trip", async () => {
@@ -425,7 +414,7 @@ test("full admin CRUD round-trip", async () => {
   assert.strictEqual(updated.body.name, "Amine Updated");
   assert.strictEqual(updated.body.status, "Inactive");
 
-  // A sale rolls up onto the rep, exactly as apply_sale() does
+  // Direct sale creation is rejected; only the preorder lifecycle may create it.
   const sale = await c.call("/api/sales", {
     method: "POST",
     body: {
@@ -433,11 +422,11 @@ test("full admin CRUD round-trip", async () => {
       amount: 300, commission: 30, pay: "Espèces", rep_id: created.body.id, rep_name: "Amine El Amrani",
     },
   });
-  assert.strictEqual(sale.status, 201, JSON.stringify(sale.body));
+  assert.strictEqual(sale.status, 410, JSON.stringify(sale.body));
 
   const afterSale = await c.call("/api/salespersons");
-  assert.strictEqual(afterSale.body[0].sales, 2, "units rolled up");
-  assert.strictEqual(afterSale.body[0].revenue, 300, "revenue rolled up");
+  assert.strictEqual(afterSale.body[0].sales, 0, "a rejected sale does not roll up units");
+  assert.strictEqual(afterSale.body[0].revenue, 0, "a rejected sale does not roll up revenue");
 
   // UPDATE (own profile)
   const patched = await c.call("/api/profile", { method: "PATCH", body: { full_name: "Renamed", city: "Rabat" } });
@@ -488,7 +477,7 @@ test("teams cannot see each other's data", async () => {
     method: "POST",
     body: { customer: "X", product: "Y", qty: 1, amount: 100, rep_id: repA.body.id },
   });
-  assert.strictEqual(crossSale.status, 400);
+  assert.strictEqual(crossSale.status, 410);
 });
 
 test("salespersons are blocked from admin-only writes", async () => {
@@ -527,12 +516,12 @@ test("salespersons are blocked from admin-only writes", async () => {
   assert.strictEqual((await repClient.call("/api/salespersons/" + rep.body.id, { method: "DELETE" })).status, 403);
   assert.strictEqual((await repClient.call("/api/challenges", { method: "POST", body: { title: "Nope" } })).status, 403);
 
-  // Registering a sale is allowed for the whole team.
+  // A direct sale cannot bypass preorder validation.
   const sale = await repClient.call("/api/sales", {
     method: "POST",
     body: { customer: "Client", product: "Parfum 50 ml", qty: 1, amount: 80, commission: 8 },
   });
-  assert.strictEqual(sale.status, 201, JSON.stringify(sale.body));
+  assert.strictEqual(sale.status, 410, JSON.stringify(sale.body));
 
   // A used invite code stops resolving.
   const reused = await client().call("/api/auth/invite?code=" + code);

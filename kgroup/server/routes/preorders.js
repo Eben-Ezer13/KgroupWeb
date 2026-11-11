@@ -4,19 +4,19 @@
      GET    /api/preorders                 liste : status, rep_id, q, limit
      POST   /api/preorders                 enregistrer une précommande
      PATCH  /api/preorders/:id             modifier (acompte, date prévue…)
-     POST   /api/preorders/:id/deliver     valider en vente (paiement reçu ou
-                                           parfum remis) -> crée la vente
+     POST   /api/preorders/:id/deliver     confirmer la remise au client
+     POST   /api/preorders/:id/paid        confirmer le paiement complet
+     POST   /api/preorders/:id/validate    créer et créditer la vente
      POST   /api/preorders/:id/cancel      annuler
 
    PÉRIMÈTRE (clause WHERE, comme partout ailleurs)
      admin         toutes les précommandes de l'équipe
      autres rôles  celles qui leur sont créditées ou qu'ils ont saisies
 
-   Une précommande ne compte nulle part tant qu'elle n'est pas validée en
-   vente — quand le client a payé ou reçu son parfum. Une vente ordinaire est
-   alors insérée : les triggers apply_sale() et apply_sale_client() mettent à
-   jour le commercial et le client, et la commission entre dans la paie du
-   mois de la date de vente choisie.
+   Une précommande ne compte nulle part avant d'être livrée, payée en totalité
+   puis validée en vente. La vente est créée dans la même transaction, et les
+   triggers apply_sale() et apply_sale_client() mettent à jour le commercial
+   et le client. Sa commission est calculée et figée à la validation.
    ========================================================================= */
 "use strict";
 
@@ -31,8 +31,9 @@ const { ensurePreorderSchema } = require("../preorders");
 
 const router = express.Router();
 
-const STATUSES = ["EN_ATTENTE", "LIVREE", "ANNULEE"];
+const STATUSES = ["pending", "delivered", "paid", "validated", "cancelled"];
 const TEXT_MAX = { customer: 120, product: 60, perfume_name: 120, pay: 40, remarks: 1000, cancel_reason: 300, client_phone: 40 };
+const MAX_LIMIT = 1000;
 
 /* ------------------------------------------------------------------ *
  * Validation                                                          *
@@ -89,8 +90,25 @@ function decorate(row, today) {
     deposit,
     balance: Math.max(0, amt - deposit),
     expected_at: expected,
-    overdue: row.status === "EN_ATTENTE" && Boolean(expected) && expected < today,
+    overdue: row.status === "pending" && Boolean(expected) && expected < today,
   };
+}
+
+async function writeEvent(client, req, preorder, action, fromStatus, toStatus, details = {}) {
+  await client.query(
+    `insert into public.preorder_events
+       (team_id, preorder_id, actor_id, action, from_status, to_status, details)
+     values ($1,$2,$3,$4,$5,$6,$7::jsonb)`,
+    [preorder.team_id, preorder.id, req.user.id, action, fromStatus, toStatus, JSON.stringify(details)]
+  );
+}
+
+async function settingsForTeam(client, teamId) {
+  const { rows } = await client.query(
+    `select * from public.compensation_settings where team_id = $1`,
+    [teamId]
+  );
+  return { ...crm.DEFAULT_SETTINGS, ...(rows[0] || {}) };
 }
 
 async function findInScope(client, req, id, lock) {
@@ -139,10 +157,10 @@ router.get("/preorders", requireUser, async (req, res, next) => {
       params
     );
 
-    const status = String(req.query.status || "").toUpperCase();
+    const status = String(req.query.status || "").trim().toLowerCase();
     const listFilters = [baseWhere];
     const listParams = [...params];
-    if (status && status !== "ALL") {
+    if (status && status !== "all") {
       if (!STATUSES.includes(status)) throw new HttpError(400, "Statut invalide.");
       listParams.push(status);
       listFilters.push(`p.status = $${listParams.length}`);
@@ -155,7 +173,7 @@ router.get("/preorders", requireUser, async (req, res, next) => {
          from public.preorders p
          left join public.salespersons r on r.id = p.rep_id
         where ${listFilters.join(" and ")}
-        order by case when p.status = 'EN_ATTENTE' then 0 else 1 end,
+        order by case when p.status = 'pending' then 0 else 1 end,
                  p.expected_at asc nulls last, p.created_at desc
         limit $${listParams.length}`,
       listParams
@@ -179,6 +197,27 @@ router.get("/preorders", requireUser, async (req, res, next) => {
   }
 });
 
+router.get("/preorders/audit", requireUser, async (req, res, next) => {
+  try {
+    if (!isAdmin(req)) throw new HttpError(403, "Seul un administrateur peut consulter le journal des précommandes.");
+    await ensurePreorderSchema();
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 200, 1), 1000);
+    const rows = await db.many(
+      `select e.*, u.email as actor_email, p.customer, p.rep_name
+         from public.preorder_events e
+         join public.preorders p on p.id = e.preorder_id
+         left join public.users u on u.id = e.actor_id
+        where e.team_id = $1
+        order by e.created_at desc
+        limit $2`,
+      [teamScope(req), limit]
+    );
+    return res.json(rows);
+  } catch (err) {
+    return next(err);
+  }
+});
+
 /* ------------------------------------------------------------------ *
  * CRÉATION                                                            *
  * ------------------------------------------------------------------ */
@@ -190,16 +229,25 @@ router.post("/preorders", requireUser, async (req, res, next) => {
 
     const customer = text(b.customer, "customer", { required: true, label: "Le nom du client" });
     const product = text(b.product, "product", { required: true, label: "Le produit" });
+    const catalogItem = crm.PRODUCT_COMPENSATION[product];
+    if (!catalogItem) throw new HttpError(400, "Choisissez un produit du catalogue Kgroup.");
     const perfumeName = text(b.perfume_name, "perfume_name", { label: "Le nom du parfum" });
     const qty = Number(b.qty === undefined ? 1 : b.qty);
     if (!Number.isInteger(qty) || qty < 1 || qty > 1000) {
       throw new HttpError(400, "La quantité doit être un nombre entier entre 1 et 1000.");
     }
-    const unitPrice = amount(b.unit_price, "Le prix unitaire");
-    const total = b.amount === undefined || b.amount === null || b.amount === ""
-      ? unitPrice * qty
-      : amount(b.amount, "Le montant");
-    const commission = amount(b.commission, "La commission");
+    const unitPrice = catalogItem.unit_price;
+    if (b.unit_price !== undefined && Number(b.unit_price) !== unitPrice) {
+      throw new HttpError(400, "Le prix unitaire ne correspond pas au catalogue.");
+    }
+    const total = unitPrice * qty;
+    const previewSettings = await db.one(
+      `select * from public.compensation_settings where team_id = $1`,
+      [teamId]
+    );
+    const commission = crm.commissionForSale(
+      product, qty, total, { ...crm.DEFAULT_SETTINGS, ...(previewSettings || {}) }
+    ).amount;
     const deposit = amount(b.deposit, "L'acompte");
     if (deposit > total) throw new HttpError(400, "L'acompte ne peut pas dépasser le montant de la précommande.");
     const expectedAt = day(b.expected_at, "La date de livraison prévue");
@@ -210,18 +258,22 @@ router.post("/preorders", requireUser, async (req, res, next) => {
     const rep = await resolveRep(req, teamId, b.rep_id || null);
     const clientId = await resolveClient(req, teamId, b, { customer, rep_id: rep ? rep.id : null });
 
-    const { rows } = await db.query(
-      `insert into public.preorders
-         (team_id, owner, rep_id, rep_name, client_id, customer, client_phone, product,
-          perfume_name, qty, unit_price, amount, commission, deposit, pay, expected_at, remarks)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
-       returning *`,
-      [teamId, req.user.id, rep ? rep.id : null, rep ? rep.name : null, clientId, customer,
-       text(b.client_phone, "client_phone", { label: "Le numéro de téléphone" }), product, perfumeName, qty, unitPrice, total,
-       commission, deposit, text(b.pay, "pay", { label: "Le mode de paiement" }), expectedAt,
-       text(b.remarks, "remarks", { label: "La remarque" })]
-    );
-    return res.status(201).json(decorate(rows[0], crm.todayLocal()));
+    const preorder = await db.tx(async (client) => {
+      const { rows } = await client.query(
+        `insert into public.preorders
+           (team_id, owner, rep_id, rep_name, client_id, customer, client_phone, product,
+            perfume_name, qty, unit_price, amount, commission, deposit, pay, expected_at, remarks)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+         returning *`,
+        [teamId, req.user.id, rep ? rep.id : null, rep ? rep.name : null, clientId, customer,
+         text(b.client_phone, "client_phone", { label: "Le numéro de téléphone" }), product, perfumeName, qty, unitPrice, total,
+         commission, deposit, text(b.pay, "pay", { label: "Le mode de paiement" }), expectedAt,
+         text(b.remarks, "remarks", { label: "La remarque" })]
+      );
+      await writeEvent(client, req, rows[0], "created", null, "pending", { amount: total, qty });
+      return rows[0];
+    });
+    return res.status(201).json(decorate(preorder, crm.todayLocal()));
   } catch (err) {
     return next(err);
   }
@@ -236,7 +288,7 @@ router.patch("/preorders/:id", requireUser, async (req, res, next) => {
     const b = req.body || {};
     const updated = await db.tx(async (client) => {
       const po = await findInScope(client, req, req.params.id, true);
-      if (po.status !== "EN_ATTENTE") throw new HttpError(409, "Seule une précommande en attente peut être modifiée.");
+      if (po.status !== "pending") throw new HttpError(409, "Seule une précommande en attente peut être modifiée.");
 
       const sets = {};
       if (b.deposit !== undefined) {
@@ -255,6 +307,7 @@ router.patch("/preorders/:id", requireUser, async (req, res, next) => {
           where id = $1 returning *`,
         [po.id, ...keys.map((k) => sets[k])]
       );
+      await writeEvent(client, req, po, "updated", po.status, po.status, { fields: keys });
       return rows[0];
     });
     return res.json(decorate(updated, crm.todayLocal()));
@@ -264,25 +317,71 @@ router.patch("/preorders/:id", requireUser, async (req, res, next) => {
 });
 
 /* ------------------------------------------------------------------ *
- * VALIDATION EN VENTE (paiement reçu ou parfum remis)                 *
- * -------------------------------------------------------------------
- * body: { pay, sale_date }
- *   pay        mode de paiement du solde
- *   sale_date  jour de la vente (AAAA-MM-JJ), aujourd'hui par défaut : le
- *              jour où le client a payé. C'est lui qui décide du mois de paie
- *              où la commission est comptée.
+ * ÉTAPES MÉTIER : livraison au client, paiement complet, vente         *
  * ------------------------------------------------------------------ */
 router.post("/preorders/:id/deliver", requireUser, async (req, res, next) => {
+  try {
+    await ensurePreorderSchema();
+    const updated = await db.tx(async (client) => {
+      const po = await findInScope(client, req, req.params.id, true);
+      if (po.status !== "pending") {
+        throw new HttpError(409, "Seule une précommande en attente peut être marquée comme livrée.");
+      }
+      const { rows } = await client.query(
+        `update public.preorders set status = 'delivered', delivered_to_client_at = now()
+          where id = $1 returning *`,
+        [po.id]
+      );
+      await writeEvent(client, req, po, "delivered", po.status, "delivered");
+      return rows[0];
+    });
+    return res.json(decorate(updated, crm.todayLocal()));
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post("/preorders/:id/paid", requireUser, async (req, res, next) => {
+  try {
+    await ensurePreorderSchema();
+    const pay = text((req.body || {}).pay, "pay", { required: true, label: "Le mode de paiement" });
+    if (!["Espèces", "Virement", "Mobile Money"].includes(pay)) {
+      throw new HttpError(400, "Choisissez un mode de paiement valide.");
+    }
+    const updated = await db.tx(async (client) => {
+      const po = await findInScope(client, req, req.params.id, true);
+      if (po.status !== "delivered") {
+        throw new HttpError(409, "La précommande doit être livrée avant d'enregistrer le paiement.");
+      }
+      const { rows } = await client.query(
+        `update public.preorders
+            set status = 'paid', pay = $2, paid_at = now(), paid_amount = amount
+          where id = $1 returning *`,
+        [po.id, pay]
+      );
+      await writeEvent(client, req, po, "paid", po.status, "paid", {
+        amount: Number(po.amount) || 0,
+        pay,
+      });
+      return rows[0];
+    });
+    return res.json(decorate(updated, crm.todayLocal()));
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post("/preorders/:id/validate", requireUser, async (req, res, next) => {
   try {
     await ensurePreorderSchema();
     const b = req.body || {};
     const saleDay = day(b.sale_date, "La date de la vente");
     const result = await db.tx(async (client) => {
       const po = await findInScope(client, req, req.params.id, true);
-      if (po.status !== "EN_ATTENTE") {
-        throw new HttpError(409, po.status === "LIVREE"
+      if (po.status !== "paid") {
+        throw new HttpError(409, po.status === "validated"
           ? "Cette précommande est déjà validée en vente."
-          : "Cette précommande est annulée : elle ne peut plus devenir une vente.");
+          : "La précommande doit être livrée et payée avant sa validation en vente.");
       }
 
       const today = crm.todayLocal();
@@ -293,8 +392,10 @@ router.post("/preorders/:id/deliver", requireUser, async (req, res, next) => {
       if (saleDay && saleDay < orderedDay) {
         throw new HttpError(400, `La vente ne peut pas précéder la précommande (${frDate(po.created_at)}).`);
       }
-      // Un mois de paie clôturé est figé : y ajouter une vente créerait une
-      // commission que la paie déjà arrêtée n'inclut pas.
+      if (Number(po.paid_amount) < Number(po.amount)) {
+        throw new HttpError(409, "Le montant total doit être encaissé avant de valider la vente.");
+      }
+
       if (po.rep_id) {
         const { rows: locked } = await client.query(
           `select 1 as locked from public.payroll_periods
@@ -308,36 +409,44 @@ router.post("/preorders/:id/deliver", requireUser, async (req, res, next) => {
         }
       }
 
-      const deposit = Number(po.deposit) || 0;
+      const settings = await settingsForTeam(client, po.team_id);
+      let commission;
+      try {
+        commission = crm.commissionForSale(po.product, Number(po.qty), Number(po.amount), settings);
+      } catch (err) {
+        throw new HttpError(400, err.message);
+      }
       const remarks = [
         `Précommande du ${frDate(po.created_at)}`,
-        deposit > 0 ? `acompte ${deposit} DHS` : null,
+        Number(po.deposit) > 0 ? `acompte ${Number(po.deposit)} DHS` : null,
         po.remarks,
       ].filter(Boolean).join(" — ");
 
-      // La vente garde son auteur (le compte qui a pris la précommande) : elle
-      // apparaît dans SON activité, même si c'est l'administrateur qui valide.
-      // Aujourd'hui : l'heure exacte ; un jour passé : midi, heure du Maroc.
       const { rows: saleRows } = await client.query(
         `insert into public.sales
-           (owner, team_id, rep_id, rep_name, client_id, customer, product, perfume_name,
-            qty, amount, commission, pay, remarks, created_at)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
-                 coalesce(($14::date + time '12:00') at time zone 'Africa/Casablanca', now()))
+           (owner, team_id, rep_id, rep_name, client_id, preorder_id, customer, product,
+            perfume_name, qty, amount, commission, commission_snapshot, pay, remarks, created_at)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14,$15,
+                 coalesce(($16::date + time '12:00') at time zone 'Africa/Casablanca', now()))
          returning *`,
-        [po.owner || req.user.id, po.team_id, po.rep_id, po.rep_name, po.client_id, po.customer,
-         po.product, po.perfume_name, po.qty, po.amount, po.commission,
-         text(b.pay, "pay", { label: "Le mode de paiement" }) || po.pay || null, remarks,
+        [po.owner || req.user.id, po.team_id, po.rep_id, po.rep_name, po.client_id, po.id,
+         po.customer, po.product, po.perfume_name, po.qty, po.amount, commission.amount,
+         JSON.stringify(commission.snapshot), po.pay, remarks,
          saleDay && saleDay !== today ? saleDay : null]
       );
       const sale = saleRows[0];
-
-      // delivered_at = date de la vente : la liste affiche « vente du … ».
       const { rows } = await client.query(
-        `update public.preorders set status = 'LIVREE', sale_id = $2, delivered_at = $3
+        `update public.preorders
+            set status = 'validated', sale_id = $2, delivered_at = $3, commission = $4
           where id = $1 returning *`,
-        [po.id, sale.id, sale.created_at]
+        [po.id, sale.id, sale.created_at, commission.amount]
       );
+      await writeEvent(client, req, po, "validated", po.status, "validated", {
+        sale_id: sale.id,
+        amount: Number(po.amount) || 0,
+        commission: commission.amount,
+        commission_snapshot: commission.snapshot,
+      });
       return { preorder: rows[0], sale };
     });
     return res.json({ preorder: decorate(result.preorder, crm.todayLocal()), sale: result.sale });
@@ -352,17 +461,19 @@ router.post("/preorders/:id/deliver", requireUser, async (req, res, next) => {
 router.post("/preorders/:id/cancel", requireUser, async (req, res, next) => {
   try {
     await ensurePreorderSchema();
+    if (!isAdmin(req)) throw new HttpError(403, "Seul un administrateur peut annuler une précommande.");
     const reason = text((req.body || {}).reason, "cancel_reason", { label: "Le motif" });
     const updated = await db.tx(async (client) => {
       const po = await findInScope(client, req, req.params.id, true);
-      if (po.status !== "EN_ATTENTE") {
-        throw new HttpError(409, "Seule une précommande en attente peut être annulée.");
+      if (!["pending", "delivered", "paid"].includes(po.status)) {
+        throw new HttpError(409, "Une vente validée ne peut pas être annulée depuis le parcours de précommande.");
       }
       const { rows } = await client.query(
-        `update public.preorders set status = 'ANNULEE', cancelled_at = now(), cancel_reason = $2
+        `update public.preorders set status = 'cancelled', cancelled_at = now(), cancel_reason = $2
           where id = $1 returning *`,
         [po.id, reason]
       );
+      await writeEvent(client, req, po, "cancelled", po.status, "cancelled", { reason });
       return rows[0];
     });
     return res.json(decorate(updated, crm.todayLocal()));

@@ -210,6 +210,23 @@ npm run build
 npm test
 ```
 
+### Preorder lifecycle migration
+
+`npm run db:migrate` applies `db/schema-preorders.sql`. Back up Neon before
+running it on production. Existing records and sales are retained:
+
+- `EN_ATTENTE` becomes `pending`, and `ANNULEE` becomes `cancelled`.
+- `LIVREE` with a linked sale becomes `validated`.
+- An unlinked `LIVREE` becomes `pending` with `migration_review = true` so an
+  administrator can verify it in the sales follow-up page.
+- Each converted legacy record receives a migration event in the audit log.
+
+The legacy status is retained in `legacy_status`. The manual
+`db/rollback-preorder-lifecycle.sql` refuses to collapse new `delivered` or
+`paid` records into the old model unless they have a legacy status. It restores
+the old status values but deliberately keeps event history, sale links, and
+commission snapshots; it is not a destructive schema cleanup.
+
 ### Data import guarantees
 
 - Primary keys, foreign keys and timestamps are copied verbatim → every relation

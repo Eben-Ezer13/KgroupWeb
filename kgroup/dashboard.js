@@ -91,17 +91,17 @@
   ----------------------------------------------------------------------- */
   const DICT = {
     en: {
-      "nav.dashboard":"Dashboard","nav.sales":"Sales","nav.salespersons":"Salespersons",
+      "nav.dashboard":"Dashboard","nav.sales":"New Preorder","nav.salespersons":"Salespersons",
       "nav.ranking":"Rankings","nav.challenges":"Challenges","nav.rewards":"Rewards",
       "nav.reports":"Reports","nav.notifications":"Notifications","nav.settings":"Settings","nav.logout":"Logout",
-      "nav.formation":"Training","nav.clients":"Clients","nav.remuneration":"Payroll","nav.orders":"Orders","nav.guide":"Guide",
+      "nav.formation":"Training","nav.clients":"Clients","nav.remuneration":"Payroll","nav.history":"Sales follow-up","nav.guide":"Guide",
       "group.main":"Main","group.insights":"Insights","group.system":"System",
       "topbar.search":"Search anything…","lang.title":"Language","topbar.collapse":"Collapse sidebar",
       "greeting.morning":"Good morning","common.viewAll":"View all",
-      "btn.newSale":"New Sale","btn.export":"Export","btn.addSalesperson":"Add Salesperson",
-      "btn.registerSale":"Register Sale","btn.createChallenge":"Create Challenge",
+      "btn.newSale":"New Preorder","btn.export":"Export","btn.addSalesperson":"Add Salesperson",
+      "btn.registerSale":"Register Preorder","btn.createChallenge":"Create Challenge",
       "head.dashboard.sub":"Here's what's happening across KGROUP Parfumery today.",
-      "head.sales.t":"Register a Sale","head.sales.sub":"Log a new transaction — it updates rankings, XP and challenges instantly.",
+      "head.sales.t":"New Preorder","head.sales.sub":"Record a reservation; create the sale only after delivery and full payment.",
       "head.salespersons.t":"Salespersons","head.salespersons.sub":"Manage your luxury fragrance sales team",
       "head.ranking.t":"Rankings 🏆","head.ranking.sub":"Celebrate your top performers across every timeframe.",
       "head.challenges.t":"Challenges 🚩","head.challenges.sub":"Gamified competitions that keep your team hungry and motivated.",
@@ -117,17 +117,17 @@
       "empty.noSales":"No sales registered yet — your data will appear here.",
     },
     fr: {
-      "nav.dashboard":"Tableau de bord","nav.sales":"Ventes","nav.salespersons":"Vendeurs",
+      "nav.dashboard":"Tableau de bord","nav.sales":"Nouvelle précommande","nav.salespersons":"Vendeurs",
       "nav.ranking":"Classements","nav.challenges":"Défis","nav.rewards":"Récompenses",
       "nav.reports":"Rapports","nav.notifications":"Notifications","nav.settings":"Paramètres","nav.logout":"Déconnexion",
-      "nav.formation":"Formation","nav.clients":"Clients","nav.remuneration":"Rémunération","nav.orders":"Commandes","nav.guide":"Guide",
+      "nav.formation":"Formation","nav.clients":"Clients","nav.remuneration":"Rémunération","nav.history":"Suivi des ventes","nav.guide":"Guide",
       "group.main":"Principal","group.insights":"Analyses","group.system":"Système",
       "topbar.search":"Rechercher…","lang.title":"Langue","topbar.collapse":"Replier le menu",
       "greeting.morning":"Bonjour","common.viewAll":"Voir tout",
-      "btn.newSale":"Nouvelle vente","btn.export":"Exporter","btn.addSalesperson":"Ajouter un vendeur",
-      "btn.registerSale":"Enregistrer la vente","btn.createChallenge":"Créer un défi",
+      "btn.newSale":"Nouvelle précommande","btn.export":"Exporter","btn.addSalesperson":"Ajouter un vendeur",
+      "btn.registerSale":"Enregistrer la précommande","btn.createChallenge":"Créer un défi",
       "head.dashboard.sub":"Voici l'activité de KGROUP Parfumery aujourd'hui.",
-      "head.sales.t":"Enregistrer une vente","head.sales.sub":"Ajoutez une transaction — classements, XP et défis sont mis à jour instantanément.",
+      "head.sales.t":"Nouvelle précommande","head.sales.sub":"Enregistrez une réservation; la vente sera créée après livraison et paiement complet.",
       "head.salespersons.t":"Vendeurs","head.salespersons.sub":"Gérez votre équipe de vente de parfums de luxe",
       "head.ranking.t":"Classements 🏆","head.ranking.sub":"Mettez à l'honneur vos meilleurs vendeurs sur chaque période.",
       "head.challenges.t":"Défis 🚩","head.challenges.sub":"Des compétitions ludiques qui motivent votre équipe.",
@@ -324,7 +324,7 @@
   const NAV = [
     { key: "dashboard",    label: "Dashboard",    icon: "grid",   group: "Main",     roles: ["admin","salesperson","relation_client"] },
     { key: "sales",        label: "Sales",        icon: "bag",    group: "Main",     roles: ["admin","salesperson","relation_client"], href: "sales.html" },
-    { key: "orders",       label: "Orders",       icon: "clipboard", group: "Main",  roles: ["admin","salesperson","relation_client"], href: "orders.html" },
+    { key: "history",      label: "Sales follow-up", icon: "clipboard", group: "Main", roles: ["admin","salesperson","relation_client"], href: "orders.html" },
     { key: "salespersons", label: "Salespersons", icon: "users",  group: "Main",     roles: ["admin"],               href: "salespersons.html" },
     { key: "ranking",      label: "Rankings",     icon: "trophy", group: "Main",     roles: ["admin","salesperson","relation_client"], href: "ranking.html" },
     { key: "challenges",   label: "Challenges",   icon: "flag",   group: "Main",     roles: ["admin","salesperson","relation_client"], href: "challenges.html" },
@@ -1017,7 +1017,7 @@
   window.KGTable = initTable;
 
   /* -----------------------------------------------------------------------
-     10b. PERIODES — choix de période partagé (Commandes, Rapports)
+     10b. PERIODES — choix de période partagé (Suivi des ventes, Rapports)
      Dates locales « AAAA-MM-JJ », bornes incluses, comme l'API
      /api/sales/history.
   ----------------------------------------------------------------------- */
@@ -1131,7 +1131,7 @@
       const role = await window.KGAuth.role();
       window.KG_ROLE = role;
       if (role === "relation_client") {
-        const allowedPage = ["clients", "settings", "formation", "challenges", "ranking", "dashboard", "sales", "orders", "guide"].includes(document.body.dataset.page);
+        const allowedPage = ["clients", "settings", "formation", "challenges", "ranking", "dashboard", "sales", "history", "guide"].includes(document.body.dataset.page);
         if (document.body.hasAttribute("data-admin-only") || !allowedPage) {
           window.location.replace("clients.html"); return;
         }

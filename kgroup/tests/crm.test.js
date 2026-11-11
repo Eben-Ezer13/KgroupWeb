@@ -201,13 +201,13 @@ test("des paliers désordonnés sont triés avant application", () => {
   assert.strictEqual(crm.computeCompensation(TOTALS(45, 0, 0), desordre).bonus, 300);
 });
 
-test("le mode pourcentage calcule sur le chiffre d'affaires", () => {
+test("le mode pourcentage est figé dans chaque vente et n'est pas recalculé", () => {
   const r = crm.computeCompensation(
     TOTALS(20, 25000, 1250),
-    { commission_mode: "percent", commission_rate: 5 }
+    { commission_mode: "percent", commission_rate: 90 }
   );
-  assert.strictEqual(r.commission, 1250, "5 % de 25 000");
-  // Le mode per_unit ignore le taux et somme les commissions réelles.
+  assert.strictEqual(r.commission, 1250, "la modification du taux ne réécrit pas les ventes validées");
+  // Le mode per_unit also sums recorded commissions.
   const u = crm.computeCompensation(TOTALS(20, 25000, 999), { commission_rate: 5 });
   assert.strictEqual(u.commission, 999);
 });

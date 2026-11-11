@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Register Sale — KGROUP Sales Performance Platform</title>
+  <title>Nouvelle précommande — KGROUP Sales Performance Platform</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -11,16 +11,16 @@
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="crm.css" />
 </head>
-<body data-app data-page="sales" data-title="Register Sale" data-role="Administrator">
+<body data-app data-page="sales" data-title="Nouvelle précommande" data-role="Administrator">
 
   <div class="page-head reveal" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
     <div>
-      <h2 data-i18n="head.sales.t">Register a Sale</h2>
-      <p data-i18n="head.sales.sub">Log a new transaction — it updates rankings, XP and challenges instantly.</p>
+      <h2>Nouvelle précommande</h2>
+      <p>Enregistrez la réservation. La vente et sa commission seront créées après livraison et encaissement.</p>
     </div>
     <div class="row gap-2" style="flex-wrap:wrap">
       <a href="guide-commandes.html" class="btn btn-ghost" title="Guide visuel : ventes, précommandes, exports"><span data-ic="help"></span> Guide</a>
-      <a href="orders.html" class="btn btn-ghost"><span data-ic="clipboard"></span> Mes commandes</a>
+      <a href="orders.html" class="btn btn-ghost"><span data-ic="clipboard"></span> Suivi des ventes</a>
     </div>
   </div>
 
@@ -28,14 +28,7 @@
     <!-- ============ FORM ============ -->
     <div class="card card-pad reveal">
       <form id="saleForm" novalidate>
-        <!-- ---- TYPE : vente immediate ou precommande ---- -->
-        <div class="kc-type">
-          <div class="seg" id="typeSeg" role="tablist" aria-label="Type d'enregistrement">
-            <button type="button" data-type="sale" class="on" role="tab">🛍️ Vente</button>
-            <button type="button" data-type="preorder" role="tab">⏳ Précommande</button>
-          </div>
-          <span class="hint" id="typeHint"></span>
-        </div>
+        <p class="hint" id="typeHint">La vente ne sera enregistrée qu'après la livraison au client et l'encaissement complet.</p>
 
         <div class="form-grid">
           <!-- ---- CLIENT ---- -->
@@ -97,12 +90,12 @@
               <div class="hint" style="margin-top:10px">
                 Une précommande ne compte ni dans le chiffre d'affaires ni dans la commission tant qu'elle
                 n'est pas validée. Dès que le client a payé (ou reçu son parfum), cliquez « Valider la vente »
-                dans la page <a class="link" href="orders.html?tab=preorders">Commandes</a> : la vente est alors enregistrée
+                dans la page <a class="link" href="orders.html?tab=preorders">Suivi des ventes</a> : la vente est alors enregistrée
                 et créditée au commercial.
               </div>
               <div class="hint hidden" id="paidHint" style="margin-top:8px;color:var(--brand-600);font-weight:600">
-                ✅ Paiement complet : la précommande apparaîtra « Payée ». Validez-la en vente dans Commandes pour
-                créditer la commission — ou choisissez directement 🛍️ Vente si le client repart avec son parfum.
+                ✅ Paiement complet : la précommande apparaîtra « Payée ». Validez-la en vente dans le suivi des ventes pour
+                créditer la commission.
               </div>
             </div>
           </div>
@@ -125,11 +118,6 @@
             </div>
           </div>
 
-          <div class="field" id="dateField">
-            <label for="date">Date de la vente</label>
-            <input class="input" id="date" type="date">
-          </div>
-
           <div class="field full">
             <label for="remarks">Remarques</label>
             <textarea class="textarea" id="remarks" placeholder="Notes facultatives sur cette vente…"></textarea>
@@ -146,7 +134,7 @@
     <!-- ============ LIVE SUMMARY ============ -->
     <div class="reveal">
       <div class="card card-pad" style="position:sticky;top:96px">
-        <div class="section-title"><h3 id="sumTitle">Order Summary</h3></div>
+        <div class="section-title"><h3 id="sumTitle">Récapitulatif de la précommande</h3></div>
         <div style="display:flex;flex-direction:column;gap:14px">
           <div class="row"><span class="muted grow">Parfum</span><b id="sumProduct" style="text-align:right;max-width:60%">—</b></div>
           <div class="row"><span class="muted grow">Quantité</span><b id="sumQty">1</b></div>
@@ -218,48 +206,33 @@
         $("#rep").disabled = true;
       }
       lockRep();
-      $("#product").innerHTML = KG.products.map(p=>`<option value="${p.id}" data-price="${p.price}" data-commission="${p.commission}">${p.name} — ${KG.fmt.money(p.price)}</option>`).join("");
+      $("#product").innerHTML = KG.products.map(p=>`<option value="${p.id}" data-price="${p.price}">${p.name} — ${KG.fmt.money(p.price)}</option>`).join("");
 
       // Defaults — real current date (local day, not UTC)
       const today = () => window.KGPeriod.isoDay(new Date());
-      $("#date").value = today();
-      $("#date").max = today();          // no future-dated sales
       $("#expectedAt").min = today();    // a pre-order is delivered later, never in the past
       $("#successHome").href = isRep ? "salesperson.html" : "dashboard.html";
 
-      /* ---- Vente immediate ou precommande ------------------------------ */
-      let type = new URLSearchParams(location.search).get("type") === "preorder" ? "preorder" : "sale";
-      const TYPE_TEXT = {
-        sale: {
-          hint: "Vente conclue : elle compte tout de suite dans le chiffre d'affaires, les classements et la commission.",
-          submit: "Enregistrer la vente", summary: "Récapitulatif de la vente", pay: "Mode de paiement",
-          commission: "💸 Commission (Art. 3)",
-        },
-        preorder: {
-          hint: "Précommande : le client réserve ; la vente et la commission sont enregistrées quand vous la validez (paiement reçu ou parfum remis).",
-          submit: "Enregistrer la précommande", summary: "Récapitulatif de la précommande", pay: "Paiement de l'acompte",
-          commission: "💸 Commission — acquise à la validation",
-        },
+      const type = "preorder";
+      const t = {
+        hint: "Précommande : la vente et la commission sont enregistrées après livraison au client et encaissement complet.",
+        submit: "Enregistrer la précommande",
+        summary: "Récapitulatif de la précommande",
+        pay: "Paiement de l'acompte",
+        commission: "💸 Commission — calculée à la validation",
       };
-      function setType(next) {
-        type = next;
-        const t = TYPE_TEXT[type];
-        const pre = type === "preorder";
-        document.querySelectorAll("#typeSeg [data-type]").forEach(b => b.classList.toggle("on", b.dataset.type === type));
+      function setType() {
         $("#typeHint").textContent = t.hint;
         $("#submitLabel").textContent = t.submit;
         $("#sumTitle").textContent = t.summary;
         $("#payLabel").textContent = t.pay;
         $("#sumCommissionLabel").textContent = t.commission;
-        $("#preorderFields").classList.toggle("hidden", !pre);
-        $("#dateField").classList.toggle("hidden", pre);
-        $("#sumDepositRow").classList.toggle("hidden", !pre);
-        $("#sumBalanceRow").classList.toggle("hidden", !pre);
-        $("#xpRow").classList.toggle("hidden", pre);
+        $("#preorderFields").classList.remove("hidden");
+        $("#sumDepositRow").classList.remove("hidden");
+        $("#sumBalanceRow").classList.remove("hidden");
+        $("#xpRow").classList.add("hidden");
         update();
       }
-      document.querySelectorAll("#typeSeg [data-type]").forEach(b =>
-        b.addEventListener("click", () => setType(b.dataset.type)));
 
       // Perfume names already sold by the team, offered as suggestions.
       const saleLabel = window.KGNotifFeed.saleLabel;
@@ -269,17 +242,16 @@
       const productName = () => $("#product").selectedOptions[0].textContent.replace(/\s*—.*/,"");
 
       function selPrice() { const o = $("#product").selectedOptions[0]; return +(o?.dataset.price || 0); }
-      function selCommission() { const o = $("#product").selectedOptions[0]; return +(o?.dataset.commission || 0); }
       const payClass = (p) => p === "Espèces" ? "green" : p === "Virement" ? "blue" : "gold";
       function update() {
         const price = selPrice(), qty = Math.max(1, +$("#qty").value || 1);
-        const total = price * qty, commission = selCommission() * qty;
+        const total = price * qty;
         $("#price").value = price;
         $("#sumProduct").textContent = saleLabel(productName(), $("#perfumeName").value);
         $("#sumQty").textContent = qty;
         $("#sumPrice").textContent = KG.fmt.money(price);
         $("#sumTotal").textContent = KG.fmt.money(total);
-        $("#sumCommission").textContent = KG.fmt.money(commission);
+        $("#sumCommission").textContent = "À la validation";
         $("#xpGain").textContent = Math.max(10, Math.round(total/60));
         const deposit = Math.min(total, Math.max(0, +$("#deposit").value || 0));
         $("#sumDeposit").textContent = KG.fmt.money(deposit);
@@ -324,7 +296,7 @@
         }, 350);
       });
 
-      // Submit → persist through the API when reachable, else demo
+      // Une vente ne peut être créée que par la validation d'une précommande payée.
       $("#saleForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         if (!$("#customer").value.trim()) { toast("error","Nom du client manquant","Indiquez le nom du client."); $("#customer").focus(); return; }
@@ -332,13 +304,11 @@
 
         const btn = e.submitter || document.querySelector('#saleForm button[type=submit]');
         const price = selPrice(), qty = Math.max(1, +$("#qty").value || 1);
-        const isPreorder = type === "preorder";
         const sale = {
           customer: $("#customer").value.trim(),
           product: productName(),
           perfume_name: $("#perfumeName").value.trim(),
           qty, amount: price * qty,
-          commission: selCommission() * qty,
           pay: document.querySelector('input[name="pay"]:checked').value,
           rep_id: $("#rep").value || null,
           rep_name: $("#rep").selectedOptions[0] ? $("#rep").selectedOptions[0].textContent.replace(/\s*—.*/,"") : null,
@@ -350,32 +320,22 @@
           client_birthday: $("#clientBirthday").value || null,
         };
 
-        if (isPreorder) {
-          sale.unit_price = price;
-          sale.deposit = Math.max(0, Math.round(+$("#deposit").value || 0));
-          sale.expected_at = $("#expectedAt").value || null;
-          if (sale.deposit > sale.amount) {
-            toast("error", "Acompte trop élevé", "L'acompte ne peut pas dépasser le montant de la précommande.");
-            $("#deposit").focus(); return;
-          }
-          if (sale.expected_at && sale.expected_at < today()) {
-            toast("error", "Date de livraison passée", "Choisissez une date à venir, ou laissez le champ vide.");
-            $("#expectedAt").focus(); return;
-          }
-        } else {
-          // Real timestamp: today's sale uses the exact current time; a back-dated
-          // one keeps the chosen day. The DB would default to now() too, but we set
-          // it explicitly so the picked date is always honoured.
-          const dateVal = $("#date").value;
-          sale.created_at = (dateVal && dateVal !== today())
-            ? new Date(dateVal + "T12:00:00").toISOString()
-            : new Date().toISOString();
+        sale.unit_price = price;
+        sale.deposit = Math.max(0, Math.round(+$("#deposit").value || 0));
+        sale.expected_at = $("#expectedAt").value || null;
+        if (sale.deposit > sale.amount) {
+          toast("error", "Acompte trop élevé", "L'acompte ne peut pas dépasser le montant de la précommande.");
+          $("#deposit").focus(); return;
+        }
+        if (sale.expected_at && sale.expected_at < today()) {
+          toast("error", "Date de livraison passée", "Choisissez une date à venir, ou laissez le champ vide.");
+          $("#expectedAt").focus(); return;
         }
 
         try {
           btn && (btn.disabled = true);
-          if (isPreorder && window.KGPreorders) await window.KGPreorders.create(sale);
-          else if (!isPreorder && window.KGDB) await window.KGDB.addSale(sale); // no-op stub in demo mode
+          if (!window.KGPreorders) throw new Error("Le service des précommandes est indisponible.");
+          await window.KGPreorders.create(sale);
         } catch (err) {
           toast("error", "Enregistrement impossible", err.message || "Réessayez dans un instant.");
           btn && (btn.disabled = false);
@@ -383,22 +343,20 @@
         }
         btn && (btn.disabled = false);
 
-        const deposit = isPreorder && sale.deposit ? ` — acompte ${esc(KG.fmt.money(sale.deposit))}` : "";
-        $("#successTitle").textContent = isPreorder ? "Précommande enregistrée !" : "Vente enregistrée !";
+        const deposit = sale.deposit ? ` — acompte ${esc(KG.fmt.money(sale.deposit))}` : "";
+        $("#successTitle").textContent = "Précommande enregistrée !";
         $("#successMsg").innerHTML = `<b>${esc($("#sumProduct").textContent)}</b> ×${esc($("#sumQty").textContent)} — <b style="color:var(--brand)">${esc($("#sumTotal").textContent)}</b>${deposit}` +
-          (isPreorder ? `<br><span style="font-size:12.5px">Elle comptera comme vente quand vous la validerez (paiement reçu ou parfum remis).</span>` : "");
-        $("#successOrders").href = isPreorder ? "orders.html?tab=preorders" : "orders.html";
+          `<br><span style="font-size:12.5px">Elle comptera comme vente après livraison au client et encaissement complet.</span>`;
+        $("#successOrders").href = "orders.html?tab=preorders";
         window.kgModal.open("#successModal");
-        toast("success", isPreorder ? "Précommande enregistrée" : "Vente enregistrée",
-          isPreorder ? "À valider en vente depuis la page Commandes." : "Classements et XP mis à jour.");
-        e.target.reset(); $("#date").value = today();
+        toast("success", "Précommande enregistrée", "Le suivi de son avancement est disponible dans la page Suivi des ventes.");
+        e.target.reset();
         lockRep();                    // keep the sale credited to the signed-in rep
-        matchedClientId = null; setHint(""); setType(type);
+        matchedClientId = null; setHint(""); setType();
       });
 
       // "Clear form" resets the inputs natively: restore what reset() cannot know.
       $("#saleForm").addEventListener("reset", () => setTimeout(() => {
-        $("#date").value = today();
         lockRep();
         matchedClientId = null; setHint(""); update();
       }, 0));

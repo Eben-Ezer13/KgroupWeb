@@ -32,7 +32,7 @@ kgroup-platform/
 ├── dashboard.html      # Administrator dashboard
 ├── salesperson.html    # Salesperson (gamified) dashboard
 ├── salespersons.html   # Team management table
-├── sales.html          # Sale / pre-order registration form
+├── sales.html          # New preorder form
 ├── orders.html         # Commandes: sales history per salesperson + pre-orders
 ├── ranking.html        # Rankings + animated podium
 ├── challenges.html     # Challenges + rewards + leaderboard
@@ -95,17 +95,19 @@ kgroup-platform/
   (Art. 4), calcule depuis les ventes reelles et remis a jour a chaque vente.
   Vue commerciale, vue administrateur, historique, et cloture mensuelle qui
   **fige** les montants avec les parametres en vigueur.
-- **Commandes** — historique complet des ventes, filtrable par commercial, par
+- **Suivi des ventes** — historique complet des ventes, filtrable par commercial, par
   période et par recherche, avec une synthèse par commercial (ventes, unités,
   CA, commission, précommandes en attente). Une vente saisie depuis le compte
   d'un commercial mais créditée à un autre est signalée, et l'administrateur
   la réattribue en un clic — statistiques comprises. Le serveur crédite
   toujours un commercial de ses propres ventes.
-- **Précommandes** — acompte et date de livraison prévue. Une précommande ne
-  compte nulle part tant qu'elle n'est pas validée ; « Valider la vente »
-  (paiement reçu ou parfum remis) crée la vente à la date du paiement, qui
-  passe par les mêmes triggers qu'une vente directe.
-- **Exports PDF / Excel / CSV** — sur Commandes, Rémunération (dont un relevé
+- **Précommandes** — acompte et date de livraison prévue, puis progression
+  `pending → delivered → paid → validated`. La vente est créée uniquement
+  après confirmation de la remise au client et du paiement complet. La
+  commission est calculée côté serveur et figée à la validation; un journal
+  d'audit est consultable par les administrateurs. Les ventes directes par
+  `POST /api/sales` sont désactivées.
+- **Exports PDF / Excel / CSV** — sur Suivi des ventes, Rémunération (dont un relevé
   par commercial), Rapports et le tableau de bord. Fichiers produits dans le
   navigateur par `exports.js` : PDF en polices standard, XLSX Office Open XML
   (nombres et dates typés, totaux en formules), CSV UTF-8 « ; » pour Excel.

@@ -162,11 +162,16 @@
 }
 
 /* ---------- Commandes & précommandes (orders.html, sales.html) ---------- */
-.kc-status.EN_ATTENTE { background: rgba(240,160,32,.16); color: #9A6208; }
-.kc-status.LIVREE     { background: var(--brand-100); color: var(--brand-600); }
-.kc-status.ANNULEE    { background: rgba(226,76,75,.12); color: #C43535; }
-[data-theme="dark"] .kc-status.EN_ATTENTE { color: #F2C860; }
-[data-theme="dark"] .kc-status.LIVREE { color: var(--brand-300); }
+.kc-status.pending   { background: rgba(240,160,32,.16); color: #9A6208; }
+.kc-status.delivered { background: rgba(37,99,235,.12); color: #1D4ED8; }
+.kc-status.paid      { background: rgba(22,150,94,.12); color: #087443; }
+.kc-status.validated { background: var(--brand-100); color: var(--brand-600); }
+.kc-status.cancelled { background: rgba(226,76,75,.12); color: #C43535; }
+[data-theme="dark"] .kc-status.pending { color: #F2C860; }
+[data-theme="dark"] .kc-status.delivered { color: #93C5FD; }
+[data-theme="dark"] .kc-status.paid { color: #6EE7B7; }
+[data-theme="dark"] .kc-status.validated { color: var(--brand-300); }
+[data-theme="dark"] .kc-status.cancelled { color: #FCA5A5; }
 
 /* Signalement : vente saisie par un commercial mais créditée à un autre. */
 .kc-warn {

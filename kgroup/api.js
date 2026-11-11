@@ -525,9 +525,8 @@
   /* ------------------------------------------------------------------ *
    * 6b. PRECOMMANDES                                                    *
    * -------------------------------------------------------------------
-   * Une precommande ne compte nulle part avant d etre validee en vente
-   * (paiement recu ou parfum remis) ; deliver() la convertit en vente cote
-   * serveur (commission, classement, client), a la date choisie.
+   * Une précommande ne compte qu'après livraison au client, paiement complet
+   * et validation finale en vente côté serveur.
    * ------------------------------------------------------------------ */
   const KGPreorders = {
     /* filters: { status, rep_id, q, limit } -> { rows, summary, today }. */
@@ -537,23 +536,38 @@
     },
 
     async create(preorder) {
-      if (!(await ready())) return { demo: true };
+      if (!(await ready())) throw new Error("Le service des précommandes est indisponible. Réessayez lorsque l'API sera accessible.");
       return request("/preorders", { method: "POST", body: preorder });
     },
 
     async update(id, fields) {
-      if (!(await ready())) return { demo: true };
+      if (!(await ready())) throw new Error("Le service des précommandes est indisponible.");
       return request("/preorders/" + encodeURIComponent(id), { method: "PATCH", body: fields });
     },
 
-    /* body: { pay, sale_date } — paiement du solde, jour de la vente (AAAA-MM-JJ). */
-    async deliver(id, body) {
-      if (!(await ready())) return { demo: true };
-      return request("/preorders/" + encodeURIComponent(id) + "/deliver", { method: "POST", body: body || {} });
+    async markDelivered(id) {
+      if (!(await ready())) throw new Error("Le service des précommandes est indisponible.");
+      return request("/preorders/" + encodeURIComponent(id) + "/deliver", { method: "POST", body: {} });
+    },
+
+    async markPaid(id, pay) {
+      if (!(await ready())) throw new Error("Le service des précommandes est indisponible.");
+      return request("/preorders/" + encodeURIComponent(id) + "/paid", { method: "POST", body: { pay } });
+    },
+
+    /* body: { sale_date } — le montant encaissé doit déjà être confirmé. */
+    async validateSale(id, body) {
+      if (!(await ready())) throw new Error("Le service des précommandes est indisponible.");
+      return request("/preorders/" + encodeURIComponent(id) + "/validate", { method: "POST", body: body || {} });
+    },
+
+    async audit(filters) {
+      if (!(await ready())) return null;
+      return request("/preorders/audit" + qs(filters));
     },
 
     async cancel(id, reason) {
-      if (!(await ready())) return { demo: true };
+      if (!(await ready())) throw new Error("Le service des précommandes est indisponible.");
       return request("/preorders/" + encodeURIComponent(id) + "/cancel", { method: "POST", body: { reason } });
     },
   };

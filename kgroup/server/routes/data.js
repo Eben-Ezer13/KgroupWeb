@@ -7,7 +7,7 @@
      supabase.from("salespersons").insert()                   -> POST   /api/salespersons
      supabase.from("salespersons").delete().eq("id", …)       -> DELETE /api/salespersons/:id
      supabase.from("sales").select().order("created_at").limit -> GET   /api/sales?limit=
-     supabase.from("sales").insert()                          -> POST   /api/sales
+     supabase.from("sales").insert()                          -> POST   /api/sales (retired)
      supabase.from("profiles").select().eq("id", uid).single() -> GET   /api/profile
      supabase.from("profiles").update().eq("id", uid)         -> PATCH  /api/profile
      supabase.from("challenges").select().order("created_at") -> GET    /api/challenges
@@ -37,7 +37,7 @@ const db = require("../db");
 const { requireUser } = require("../auth");
 const { HttpError, teamScope, requireAdmin, canMutateSale, isAdmin } = require("../policies");
 const crm = require("../crm");
-const { resolveRep, resolveClient, applySaleToRep, localDay } = require("../sales");
+const { applySaleToRep, localDay } = require("../sales");
 
 const router = express.Router();
 
@@ -194,16 +194,6 @@ router.delete("/salespersons/:id", requireUser, async (req, res, next) => {
 /* ------------------------------------------------------------------ *
  * SALES                                                               *
  * ------------------------------------------------------------------ */
-const SALE_FIELDS = [
-  "customer", "product", "perfume_name", "qty", "amount", "commission",
-  "pay", "rep_id", "rep_name", "remarks", "created_at",
-];
-const PERFUME_NAME_MAX = 120;
-
-/* Le client d'une vente (section CLIENT du formulaire : client_id,
-   client_phone, client_birthday) est résolu par resolveClient(), partagé
-   avec les précommandes dans server/sales.js. */
-
 router.get("/sales", requireUser, async (req, res, next) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 40, 1), 5000);
@@ -218,48 +208,9 @@ router.get("/sales", requireUser, async (req, res, next) => {
 });
 
 router.post("/sales", requireUser, async (req, res, next) => {
-  try {
-    const teamId = teamScope(req);
-    const fields = pick(req.body || {}, SALE_FIELDS);
-
-    if (!fields.customer || !String(fields.customer).trim()) {
-      throw new HttpError(400, "A sale needs a customer.");
-    }
-    if (!fields.product || !String(fields.product).trim()) {
-      throw new HttpError(400, "A sale needs a product.");
-    }
-    // Nom du parfum : facultatif pour l'API (anciens clients, imports), mais
-    // toujours propre en base — texte coupé, vide ramené à null.
-    if (fields.perfume_name !== undefined) {
-      const name = String(fields.perfume_name || "").trim();
-      if (name.length > PERFUME_NAME_MAX) {
-        throw new HttpError(400, `Perfume name is too long (${PERFUME_NAME_MAX} characters max).`);
-      }
-      fields.perfume_name = name || null;
-    }
-    // Le commercial credite : impose pour un commercial (le sien), choisi et
-    // verifie dans l'equipe pour un administrateur. Le nom enregistre est
-    // celui du roster, pas un libelle recopie depuis le formulaire.
-    const rep = await resolveRep(req, teamId, fields.rep_id || null);
-    fields.rep_id = rep ? rep.id : null;
-    if (rep) fields.rep_name = rep.name;
-    else if (!isAdmin(req)) fields.rep_name = null;
-
-    // Le client est resolu AVANT l insertion : le trigger on_sale_insert_client
-    // met a jour ses totaux au moment ou la vente est ecrite.
-    const clientId = await resolveClient(req, teamId, req.body || {}, fields);
-
-    const { text, values } = insertSql("sales", {
-      owner: req.user.id,
-      team_id: teamId,
-      ...(clientId ? { client_id: clientId } : {}),
-      ...fields,
-    });
-    const { rows } = await db.query(text, values);
-    return res.status(201).json(rows[0]);
-  } catch (err) {
-    return next(err);
-  }
+  return res.status(410).json({
+    error: "Les ventes doivent désormais être validées depuis une précommande payée.",
+  });
 });
 
 /* ------------------------------------------------------------------ *

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Guide — Ventes &amp; Commandes — KGROUP</title>
-  <meta name="description" content="Guide visuel : enregistrer une vente ou une précommande, suivre les commandes par commercial, valider une précommande, corriger une attribution et exporter." />
+  <title>Guide — Suivi des ventes — KGROUP</title>
+  <meta name="description" content="Guide visuel : enregistrer une précommande, suivre les ventes et ses étapes, corriger une attribution et exporter." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -18,69 +18,53 @@
   <!-- ============ OUVERTURE ============ -->
   <div class="g-hero reveal">
     <div class="g-hero-emoji">🧾</div>
-    <h2>Ventes &amp; Commandes</h2>
-    <p id="heroIntro">Enregistrer une vente ou une précommande, retrouver qui a vendu quoi, et sortir un rapport — en images.</p>
+    <h2>Suivi des ventes</h2>
+    <p id="heroIntro">Enregistrer une précommande, suivre sa livraison et son paiement, puis retrouver les ventes et les rapports — en images.</p>
     <div class="g-flow">
-      <div class="g-flow-step"><b>1 · Saisir</b><span>Menu Ventes : vente ou précommande</span></div>
-      <div class="g-flow-step"><b>2 · Suivre</b><span>Menu Commandes : par commercial</span></div>
-      <div class="g-flow-step"><b>3 · Valider</b><span>La précommande devient une vente</span></div>
+      <div class="g-flow-step"><b>1 · Saisir</b><span>Créer une précommande</span></div>
+      <div class="g-flow-step"><b>2 · Livrer</b><span>Confirmer la remise au client</span></div>
+      <div class="g-flow-step"><b>3 · Valider</b><span>Après paiement complet, créer la vente</span></div>
       <div class="g-flow-step"><b>4 · Exporter</b><span>PDF, Excel ou CSV</span></div>
     </div>
   </div>
 
-  <!-- ============ 1. VENTE OU PRÉCOMMANDE ============ -->
+  <!-- ============ 1. PRÉCOMMANDE ============ -->
   <section class="g-section reveal">
-    <h3><span class="g-num">1</span> Vente ou précommande ?</h3>
-    <p class="g-sub">Le formulaire est le même, un seul bouton change tout. Cliquez pour comparer.</p>
-
-    <div class="seg" id="choiceSeg" style="margin-bottom:16px">
-      <button type="button" data-choice="sale" class="on">🛍️ Vente</button>
-      <button type="button" data-choice="preorder">⏳ Précommande</button>
-    </div>
+    <h3><span class="g-num">1</span> Créer une précommande</h3>
+    <p class="g-sub">Toute vente commence par une précommande. La vente et la commission sont créées seulement après les étapes de livraison, paiement complet et validation.</p>
 
     <div class="g-compare">
-      <div class="g-choice on" data-choice-card="sale">
-        <h4>🛍️ Vente</h4>
-        <div class="g-when">Le client repart avec son parfum, ou il a payé et vous le lui remettez.</div>
-        <ul>
-          <li><span class="ic">✅</span><span>Comptée <b>tout de suite</b> dans le chiffre d'affaires</span></li>
-          <li><span class="ic">💸</span><span>Commission acquise immédiatement</span></li>
-          <li><span class="ic">🏆</span><span>Classements, XP et badges mis à jour</span></li>
-          <li><span class="ic">📍</span><span>Se retrouve dans <b>Commandes → Ventes</b></span></li>
-        </ul>
-      </div>
-      <div class="g-choice" data-choice-card="preorder">
+      <div class="g-choice on">
         <h4>⏳ Précommande</h4>
-        <div class="g-when">Le client réserve un parfum que vous n'avez pas encore, souvent avec un acompte.</div>
+        <div class="g-when">Enregistrez la réservation, que le parfum soit disponible ou non.</div>
         <ul>
-          <li><span class="ic">⏸️</span><span>Ne compte <b>nulle part</b> tant qu'elle n'est pas validée</span></li>
-          <li><span class="ic">💸</span><span>Commission acquise le jour de la validation</span></li>
-          <li><span class="ic">💰</span><span>Acompte et reste à payer suivis pour vous</span></li>
-          <li><span class="ic">📍</span><span>Se retrouve dans <b>Commandes → Précommandes</b></span></li>
+          <li><span class="ic">⏸️</span><span>Ne compte pas dans les ventes ni la commission avant validation</span></li>
+          <li><span class="ic">📦</span><span>Confirmez d'abord que le parfum a été remis au client</span></li>
+          <li><span class="ic">💰</span><span>Confirmez ensuite le paiement complet</span></li>
+          <li><span class="ic">📍</span><span>Le suivi est dans <b>Suivi des ventes → Précommandes</b></span></li>
         </ul>
       </div>
     </div>
 
     <div class="g-note" style="margin-top:16px">
       <span class="g-note-ico">💡</span>
-      <div><b>Dans le doute :</b> argent encaissé <b>et</b> parfum remis → une vente. Tout le reste → une précommande,
-        que vous validerez en vente le jour du paiement.</div>
+      <div>Une vente est créée uniquement lorsque la livraison au client et le paiement complet sont confirmés. Vous pourrez alors valider la précommande en vente.</div>
     </div>
   </section>
 
   <!-- ============ 2. ENREGISTRER ============ -->
   <section class="g-section reveal">
     <h3><span class="g-num">2</span> Enregistrer, écran par écran</h3>
-    <p class="g-sub">Voici le formulaire du menu <b>Ventes</b>. Cliquez sur un numéro pour savoir à quoi sert le champ.</p>
+    <p class="g-sub">Voici le formulaire de précommande. Cliquez sur un numéro pour savoir à quoi sert le champ.</p>
 
     <div class="g-with-legend">
       <div class="g-mock">
-        <div class="g-mock-bar"><i></i><i></i><i></i> KGROUP • Enregistrer une vente</div>
+        <div class="g-mock-bar"><i></i><i></i><i></i> KGROUP • Nouvelle précommande</div>
         <div class="g-mock-body">
           <div class="g-block">
             <span class="g-mark" data-step="1">1</span>
-            <div class="g-block-title">Type</div>
-            <div class="seg" style="pointer-events:none"><button class="on">🛍️ Vente</button><button>⏳ Précommande</button></div>
+            <div class="g-block-title">Parcours précommande</div>
+            <div class="hint">La vente sera créée après livraison, paiement complet et validation.</div>
           </div>
 
           <div class="g-block">
@@ -123,7 +107,7 @@
           </div>
 
           <div class="row gap-2" style="flex-wrap:wrap">
-            <span class="btn btn-primary btn-sm" style="pointer-events:none">✓ Enregistrer la vente</span>
+            <span class="btn btn-primary btn-sm" style="pointer-events:none">✓ Enregistrer la précommande</span>
             <span class="btn btn-ghost btn-sm" style="pointer-events:none">Vider le formulaire</span>
           </div>
         </div>
@@ -132,11 +116,11 @@
       <div class="g-legend" id="formLegend">
         <div class="g-legend-item" data-step="1">
           <span class="g-mark">1</span>
-          <div><b>Vente ou précommande</b><p>Le premier choix à faire. En mode précommande, deux champs supplémentaires apparaissent (repère 4) et rien n'est compté avant la validation.</p></div>
+          <div><b>Précommande</b><p>Le formulaire crée une précommande. Elle ne compte pas comme vente avant livraison, paiement complet et validation.</p></div>
         </div>
         <div class="g-legend-item" data-step="2">
           <span class="g-mark">2</span>
-          <div><b>Le téléphone reconnaît le client</b><p>Tapez le numéro : si le client existe, son nom et son anniversaire se remplissent seuls. Sinon sa fiche est créée avec la vente. <code>0612345678</code> et <code>+212612345678</code> sont le même client — aucun doublon.</p></div>
+          <div><b>Le téléphone reconnaît le client</b><p>Tapez le numéro : si le client existe, son nom et son anniversaire se remplissent seuls. Sinon sa fiche est créée avec la précommande. <code>0612345678</code> et <code>+212612345678</code> sont le même client — aucun doublon.</p></div>
         </div>
         <div class="g-legend-item" data-step="3">
           <span class="g-mark">3</span>
@@ -144,29 +128,28 @@
         </div>
         <div class="g-legend-item" data-step="4">
           <span class="g-mark">4</span>
-          <div><b>Acompte et date prévue</b><p>Visibles uniquement en mode précommande. L'acompte peut rester à 0. Si l'acompte couvre tout le montant, la précommande s'affichera « Payée ».</p></div>
+          <div><b>Acompte et date prévue</b><p>L'acompte peut rester à 0. Le statut « Payée » n'apparaît qu'après confirmation du paiement complet dans le suivi.</p></div>
         </div>
         <div class="g-legend-item" data-step="5">
           <span class="g-mark">5</span>
-          <div><b>La vente est à votre nom</b><p>Un commercial ne peut pas enregistrer au nom d'un collègue : le champ est verrouillé, et il le reste après chaque enregistrement. Seul un administrateur choisit le commercial à créditer.</p></div>
+          <div><b>Le crédit commercial</b><p>Un commercial ne peut pas enregistrer au nom d'un collègue : le champ est verrouillé. Seul un administrateur choisit le commercial à créditer.</p></div>
         </div>
       </div>
     </div>
 
     <div class="g-cta" style="margin-top:18px">
-      <a href="sales.html" class="btn btn-primary"><span data-ic="plus"></span> Enregistrer une vente</a>
-      <a href="sales.html?type=preorder" class="btn btn-ghost"><span data-ic="hourglass"></span> Enregistrer une précommande</a>
+      <a href="sales.html?type=preorder" class="btn btn-primary"><span data-ic="plus"></span> Enregistrer une précommande</a>
     </div>
   </section>
 
   <!-- ============ 3. LA PAGE COMMANDES ============ -->
   <section class="g-section reveal">
     <h3><span class="g-num">3</span> Retrouver les ventes d'un commercial</h3>
-    <p class="g-sub">La page <b>Commandes</b>, telle qu'elle apparaît à un administrateur.</p>
+    <p class="g-sub">La page <b>Suivi des ventes</b>, telle qu'elle apparaît à un administrateur.</p>
 
     <div class="g-with-legend">
       <div class="g-mock">
-        <div class="g-mock-bar"><i></i><i></i><i></i> KGROUP • Commandes</div>
+        <div class="g-mock-bar"><i></i><i></i><i></i> KGROUP • Suivi des ventes</div>
         <div class="g-mock-body">
           <div class="g-block">
             <span class="g-mark" data-step="6">6</span>
@@ -180,7 +163,7 @@
           <div class="g-block">
             <span class="g-mark" data-step="7">7</span>
             <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
-              <div class="seg" style="pointer-events:none"><button class="on">Ventes <span class="kc-status LIVREE">12</span></button><button>Précommandes <span class="kc-status EN_ATTENTE">3</span></button></div>
+              <div class="seg" style="pointer-events:none"><button class="on">Ventes <span class="kc-status validated">12</span></button><button>Précommandes <span class="kc-status pending">3</span></button></div>
               <div class="export-bar" style="pointer-events:none">
                 <span class="export-label">Exporter</span>
                 <span class="btn btn-ghost btn-sm btn-export"><span class="fmt-dot fmt-pdf"></span>PDF</span>
@@ -207,7 +190,7 @@
               <table class="table kc-table">
                 <thead><tr><th>Commercial</th><th class="num">Ventes</th><th class="num">CA</th><th class="num">Commission</th><th class="num">Précom.</th><th>Dernière vente</th></tr></thead>
                 <tbody>
-                  <tr class="kc-rep-row on"><td><b>Sofia Benali</b></td><td class="num">7</td><td class="num">910 DHS</td><td class="num">91 DHS</td><td class="num"><span class="kc-status EN_ATTENTE">2</span></td><td>15/09/2026</td></tr>
+                  <tr class="kc-rep-row on"><td><b>Sofia Benali</b></td><td class="num">7</td><td class="num">910 DHS</td><td class="num">91 DHS</td><td class="num"><span class="kc-status pending">2</span></td><td>15/09/2026</td></tr>
                   <tr class="kc-rep-row"><td><b>Amine El Amrani</b></td><td class="num">5</td><td class="num">540 DHS</td><td class="num">54 DHS</td><td class="num">0</td><td>14/09/2026</td></tr>
                   <tr class="kc-rep-row"><td><b>Nadia Idrissi</b></td><td class="num">0</td><td class="num">0 DHS</td><td class="num">0 DHS</td><td class="num">0</td><td><span class="muted">aucune sur la période</span></td></tr>
                 </tbody>
@@ -268,36 +251,46 @@
 
     <div class="g-life" style="margin-bottom:18px">
       <div class="g-life-card">
-        <h5><span class="kc-status EN_ATTENTE">En attente</span></h5>
+        <h5><span class="kc-status pending">En attente</span></h5>
         <p>Réservée. Ne compte ni dans le CA, ni dans la commission, ni dans les classements.</p>
       </div>
       <span class="g-arrow">→</span>
       <div class="g-life-card">
-        <h5><span class="kc-status LIVREE">Vendue</span></h5>
-        <p>Le client a payé ou reçu son parfum : la vente est créée et la commission acquise.</p>
+        <h5><span class="kc-status delivered">Livrée au client</span></h5>
+        <p>La remise du parfum est confirmée. Aucune vente n'est encore créée.</p>
+      </div>
+      <span class="g-arrow">→</span>
+      <div class="g-life-card">
+        <h5><span class="kc-status paid">Payée</span></h5>
+        <p>Le paiement complet est confirmé. La vente attend sa validation.</p>
+      </div>
+      <span class="g-arrow">→</span>
+      <div class="g-life-card">
+        <h5><span class="kc-status validated">Vente validée</span></h5>
+        <p>La vente et sa commission sont créées; le calcul est figé.</p>
       </div>
       <span class="g-arrow">ou</span>
       <div class="g-life-card">
-        <h5><span class="kc-status ANNULEE">Annulée</span></h5>
-        <p>Abandonnée, avec un motif facultatif. Rien n'est comptabilisé.</p>
+        <h5><span class="kc-status cancelled">Annulée</span></h5>
+        <p>Un administrateur peut l'annuler avant la vente, avec un motif facultatif.</p>
       </div>
     </div>
 
     <div class="g-mock">
-      <div class="g-mock-bar"><i></i><i></i><i></i> KGROUP • Commandes → Précommandes</div>
+      <div class="g-mock-bar"><i></i><i></i><i></i> KGROUP • Suivi des ventes → Précommandes</div>
       <div class="g-mock-body">
         <div class="g-line" id="demoLine">
           <div class="grow"><b>Lina Cherkaoui</b><div class="g-line-note">Bois d'Argan · Parfum 100 ml ×2</div></div>
           <div><span class="g-line-note">Montant</span><br><b>300 DHS</b></div>
           <div><span class="g-line-note">Acompte</span><br><b>100 DHS</b></div>
           <div><span class="g-line-note" id="demoRestLabel">Reste</span><br><b id="demoRest">200 DHS</b></div>
-          <div><span class="kc-status EN_ATTENTE" id="demoStatus">En attente</span></div>
-          <button class="btn btn-primary btn-sm" id="demoBtn">Valider la vente</button>
+          <div><span class="kc-status pending" id="demoStatus">En attente</span></div>
+          <button class="btn btn-primary btn-sm" id="demoBtn">Marquer livrée</button>
         </div>
         <div id="demoResult" class="hidden">
           <div class="g-note" style="margin-top:4px">
             <span class="g-note-ico">✅</span>
-            <div>Une <b>vente de 300 DHS</b> vient d'être créée au nom de Sofia Benali, à la date que vous avez choisie.
+            <div>La <b>vente de 300 DHS</b> est créée au nom de Sofia Benali, à la date choisie.
               Sa <b>commission de 30 DHS</b> compte dans la rémunération de ce mois-là, et la vente apparaît dans l'onglet « Ventes ».</div>
           </div>
           <div class="g-cta" style="margin-top:12px">
@@ -311,15 +304,15 @@
       <div class="g-legend">
         <div class="g-legend-item on">
           <span class="g-mark">A</span>
-          <div><b>Quand valider ?</b><p>Dès que <b>le client a payé</b>, ou que vous lui avez <b>remis son parfum</b> — le premier des deux. Inutile d'attendre la livraison si l'argent est encaissé.</p></div>
+          <div><b>Quand valider ?</b><p>Après avoir confirmé <b>la remise au client</b> puis <b>le paiement complet</b>. Le paiement seul ou la livraison seule ne crée pas encore de vente.</p></div>
         </div>
         <div class="g-legend-item on">
           <span class="g-mark">B</span>
-          <div><b>La date décide du mois de paie</b><p>La fenêtre propose une <b>date de la vente</b> : mettez le jour du paiement. La commission comptera dans la rémunération de ce mois — sauf s'il est déjà clôturé.</p></div>
+          <div><b>La date décide du mois de paie</b><p>À la validation, choisissez la <b>date de vente</b> : mettez le jour du paiement. La commission comptera dans la rémunération de ce mois — sauf s'il est déjà clôturé.</p></div>
         </div>
         <div class="g-legend-item on">
           <span class="g-mark">C</span>
-          <div><b>Annuler</b><p>Bouton <b>Annuler</b> sur la ligne, avec un motif facultatif (« client injoignable »). Le remboursement éventuel de l'acompte se règle hors plateforme.</p></div>
+          <div><b>Annuler</b><p>Un administrateur peut annuler une précommande avant sa validation, avec un motif facultatif. Le remboursement éventuel de l'acompte se règle hors plateforme.</p></div>
         </div>
       </div>
       <div class="g-note warn" style="align-self:start">
@@ -335,7 +328,7 @@
     <p class="g-sub">Réservé aux administrateurs. Voici à quoi ressemble une vente mal créditée, et ce que fait la correction.</p>
 
     <div class="g-mock">
-      <div class="g-mock-bar"><i></i><i></i><i></i> KGROUP • Commandes → Ventes</div>
+      <div class="g-mock-bar"><i></i><i></i><i></i> KGROUP • Suivi des ventes → Ventes</div>
       <div class="g-mock-body">
         <div class="g-line" id="fixLine">
           <div class="grow"><b>Cliente égarée</b><div class="g-line-note">Oud Royal · Parfum 100 ml</div></div>
@@ -409,8 +402,8 @@
       <table class="table kc-table">
         <thead><tr><th>Où</th><th>Ce que vous obtenez</th></tr></thead>
         <tbody>
-          <tr><td><b>Commandes</b> — Ventes</td><td>Le détail des ventes affichées, plus une synthèse par commercial</td></tr>
-          <tr><td><b>Commandes</b> — Précommandes</td><td>Les précommandes du statut choisi, avec acomptes et restes à encaisser</td></tr>
+          <tr><td><b>Suivi des ventes</b> — Ventes</td><td>Le détail des ventes affichées, plus une synthèse par commercial</td></tr>
+          <tr><td><b>Suivi des ventes</b> — Précommandes</td><td>Les précommandes du statut choisi, avec acomptes et restes à encaisser</td></tr>
           <tr><td><b>Rémunération</b></td><td>La paie du mois pour l'équipe, ou le <b>relevé</b> d'un seul commercial</td></tr>
           <tr><td><b>Rapports</b></td><td>Ventes, performance de l'équipe, synthèse du CA — et le rapport complet</td></tr>
           <tr><td><b>Tableau de bord</b></td><td>Bouton <b>Exporter</b> : les ventes des 12 derniers mois</td></tr>
@@ -475,7 +468,7 @@
 
     <div class="g-cta" style="margin-top:22px">
       <a href="orders.html" class="btn btn-primary"><span data-ic="clipboard"></span> Ouvrir les commandes</a>
-      <a href="sales.html" class="btn btn-ghost"><span data-ic="plus"></span> Enregistrer une vente</a>
+      <a href="sales.html?type=preorder" class="btn btn-ghost"><span data-ic="plus"></span> Nouvelle précommande</a>
       <a href="guide-utilisation.html" class="btn btn-ghost" target="_blank" rel="noopener"><span data-ic="book"></span> Guide complet de la plateforme</a>
     </div>
   </section>
@@ -495,19 +488,10 @@
         // Un commercial ne voit que ses propres ventes : on le dit, et la
         // section réservée à l'administration est signalée comme telle.
         $("#heroIntro").textContent =
-          "Enregistrer une vente ou une précommande, retrouver vos ventes et sortir un rapport — en images.";
+          "Enregistrer une précommande, suivre sa livraison et son paiement, puis retrouver vos ventes et sortir un rapport — en images.";
         $("#reassignSection").querySelector(".g-sub").textContent =
           "Cette correction est réservée aux administrateurs : signalez-lui simplement la vente concernée.";
       }
-
-      /* ---- Vente / précommande : la comparaison suit le bouton choisi ---- */
-      $$("#choiceSeg [data-choice]").forEach(b => b.addEventListener("click", () => {
-        $$("#choiceSeg [data-choice]").forEach(x => x.classList.toggle("on", x === b));
-        $$("[data-choice-card]").forEach(c => c.classList.toggle("on", c.dataset.choiceCard === b.dataset.choice));
-        // Le bloc « précommande uniquement » du formulaire s'estompe en mode vente.
-        $("#mockPreorder").classList.toggle("dim", b.dataset.choice !== "preorder");
-      }));
-      $("#mockPreorder").classList.add("dim");
 
       /* ---- Pastilles numérotées <-> explications ---- */
       function highlight(step) {
@@ -521,22 +505,36 @@
       $$(".g-mark[data-step]").forEach(m => m.addEventListener("click", () => highlight(m.dataset.step)));
       $$(".g-legend-item[data-step]").forEach(item => item.addEventListener("click", () => highlight(item.dataset.step)));
 
-      /* ---- Démonstration : valider une précommande ---- */
+      /* ---- Démonstration : étapes d'une précommande ---- */
+      let demoStage = 0;
       $("#demoBtn").addEventListener("click", () => {
-        $("#demoStatus").className = "kc-status LIVREE";
-        $("#demoStatus").textContent = "Vendue";
-        $("#demoRestLabel").textContent = "Encaissé";
-        $("#demoRest").textContent = "300 DHS";
-        $("#demoLine").classList.add("moved");
-        $("#demoBtn").classList.add("hidden");
-        $("#demoResult").classList.remove("hidden");
+        demoStage++;
+        if (demoStage === 1) {
+          $("#demoStatus").className = "kc-status delivered";
+          $("#demoStatus").textContent = "Livrée au client";
+          $("#demoBtn").textContent = "Enregistrer le paiement";
+        } else if (demoStage === 2) {
+          $("#demoStatus").className = "kc-status paid";
+          $("#demoStatus").textContent = "Payée";
+          $("#demoRestLabel").textContent = "Reste à payer";
+          $("#demoRest").textContent = "0 DHS";
+          $("#demoBtn").textContent = "Valider la vente";
+        } else {
+          $("#demoStatus").className = "kc-status validated";
+          $("#demoStatus").textContent = "Vente validée";
+          $("#demoLine").classList.add("moved");
+          $("#demoBtn").classList.add("hidden");
+          $("#demoResult").classList.remove("hidden");
+        }
       });
       $("#demoReset").addEventListener("click", () => {
-        $("#demoStatus").className = "kc-status EN_ATTENTE";
+        demoStage = 0;
+        $("#demoStatus").className = "kc-status pending";
         $("#demoStatus").textContent = "En attente";
         $("#demoRestLabel").textContent = "Reste";
         $("#demoRest").textContent = "200 DHS";
         $("#demoLine").classList.remove("moved");
+        $("#demoBtn").textContent = "Marquer livrée";
         $("#demoBtn").classList.remove("hidden");
         $("#demoResult").classList.add("hidden");
       });

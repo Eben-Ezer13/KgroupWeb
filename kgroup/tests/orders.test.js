@@ -29,7 +29,7 @@ const uuid = () => crypto.randomUUID();
  * Données                                                             *
  * ------------------------------------------------------------------ */
 const store = {
-  users: [], profiles: [], salespersons: [], sales: [], preorders: [], clients: [],
+  users: [], profiles: [], salespersons: [], sales: [], preorders: [], preorderEvents: [], clients: [],
   payroll: [], settings: [], ddl: 0,
 };
 
@@ -178,7 +178,8 @@ function execute(sql, params = []) {
   }
 
   /* ---- DDL des précommandes ---- */
-  if (q.includes("create table if not exists public.preorders")) { store.ddl++; return ok([]); }
+  if (q.includes("create table if not exists public.preorders")) store.ddl++;
+  if (/^(create|alter) (table|index)/.test(q)) return ok([]);
 
   /* ---- salespersons ---- */
   if (q.startsWith("select id, name from public.salespersons where id = $1 and team_id = $2") ||
@@ -304,20 +305,43 @@ function execute(sql, params = []) {
     const keep = preorderFilter(q, params);
     return ok(store.preorders.filter(keep).map((p) => ({ ...p })));
   }
+  if (q.startsWith("select e.*, u.email as actor_email") && q.includes("from public.preorder_events e")) {
+    const rows = store.preorderEvents.filter((e) => e.team_id === params[0]).map((e) => {
+      const preorder = store.preorders.find((p) => p.id === e.preorder_id) || {};
+      const actor = store.users.find((u) => u.id === e.actor_id) || {};
+      return { ...e, customer: preorder.customer, rep_name: preorder.rep_name, actor_email: actor.email };
+    });
+    return ok(rows.slice(0, params[1]));
+  }
   if (q.startsWith("insert into public.preorders")) {
-    const row = { id: uuid(), status: "EN_ATTENTE", created_at: new Date(), sale_id: null };
+    const row = { id: uuid(), status: "pending", created_at: new Date(), sale_id: null };
     insertColumns(sql, "preorders").forEach((c, i) => { row[c] = params[i]; });
     store.preorders.push(row);
     return ok([{ ...row }]);
   }
-  if (q.startsWith("update public.preorders set status = 'livree'")) {
+  if (q.startsWith("insert into public.preorder_events")) {
+    store.preorderEvents.push({ team_id: params[0], preorder_id: params[1], actor_id: params[2],
+      action: params[3], from_status: params[4], to_status: params[5], details: JSON.parse(params[6]) });
+    return ok([]);
+  }
+  if (q.startsWith("update public.preorders set status = 'delivered'")) {
     const p = store.preorders.find((x) => x.id === params[0]);
-    Object.assign(p, { status: "LIVREE", sale_id: params[1], delivered_at: params[2] });
+    Object.assign(p, { status: "delivered", delivered_to_client_at: new Date() });
     return ok([{ ...p }]);
   }
-  if (q.startsWith("update public.preorders set status = 'annulee'")) {
+  if (q.startsWith("update public.preorders") && q.includes("set status = 'paid'")) {
     const p = store.preorders.find((x) => x.id === params[0]);
-    Object.assign(p, { status: "ANNULEE", cancelled_at: new Date(), cancel_reason: params[1] });
+    Object.assign(p, { status: "paid", pay: params[1], paid_at: new Date(), paid_amount: p.amount });
+    return ok([{ ...p }]);
+  }
+  if (q.startsWith("update public.preorders") && q.includes("set status = 'validated'")) {
+    const p = store.preorders.find((x) => x.id === params[0]);
+    Object.assign(p, { status: "validated", sale_id: params[1], delivered_at: params[2], commission: params[3] });
+    return ok([{ ...p }]);
+  }
+  if (q.startsWith("update public.preorders set status = 'cancelled'")) {
+    const p = store.preorders.find((x) => x.id === params[0]);
+    Object.assign(p, { status: "cancelled", cancelled_at: new Date(), cancel_reason: params[1] });
     return ok([{ ...p }]);
   }
   if (q.startsWith("update public.preorders set")) {
@@ -396,26 +420,14 @@ function seedSale(fields) {
 /* ------------------------------------------------------------------ *
  * Attribution des ventes                                              *
  * ------------------------------------------------------------------ */
-test("une vente saisie par une commerciale lui est toujours créditée", async () => {
-  const before = { s1: repOf(S1).sales, s2: repOf(S2).sales };
-  // Le formulaire réinitialisé envoyait le premier commercial de la liste.
-  const res = await sofia("POST", "/api/sales", { ...SALE, rep_id: S2.id, rep_name: "Amine El Amrani" });
-  assert.strictEqual(res.status, 201, JSON.stringify(res.body));
-  assert.strictEqual(res.body.rep_id, S1.id, "le rep_id envoyé est ignoré pour un commercial");
-  assert.strictEqual(res.body.rep_name, "Sofia Benali", "le nom vient du roster");
-  assert.strictEqual(res.body.owner, u1.id);
-  assert.strictEqual(repOf(S1).sales, before.s1 + 1, "ses statistiques progressent");
-  assert.strictEqual(repOf(S2).sales, before.s2, "celles du collègue ne bougent pas");
-});
-
-test("un administrateur choisit le commercial, dans son équipe seulement", async () => {
-  const res = await admin("POST", "/api/sales", { ...SALE, rep_id: S2.id, rep_name: "Nom falsifié" });
-  assert.strictEqual(res.status, 201);
-  assert.strictEqual(res.body.rep_id, S2.id);
-  assert.strictEqual(res.body.rep_name, "Amine El Amrani");
-
-  const cross = await admin("POST", "/api/sales", { ...SALE, rep_id: SB.id });
-  assert.strictEqual(cross.status, 400, "un commercial d'une autre équipe est refusé");
+test("les ventes directes sont refusées au profit du parcours précommande", async () => {
+  const before = store.sales.length;
+  for (const actor of [sofia, admin]) {
+    const res = await actor("POST", "/api/sales", SALE);
+    assert.strictEqual(res.status, 410, JSON.stringify(res.body));
+    assert.match(res.body.error, /précommande payée/);
+  }
+  assert.strictEqual(store.sales.length, before, "aucune vente ne peut contourner le parcours");
 });
 
 /* ------------------------------------------------------------------ *
@@ -551,22 +563,26 @@ test("le SQL de la table précommandes est le même que celui de la migration", 
 
 test("une précommande est créditée à son auteur et ne compte pas encore", async () => {
   store.preorders.length = 0;
+  store.preorderEvents.length = 0;
   const before = { ...repOf(S1) };
   const res = await sofia("POST", "/api/preorders", { ...PRE, rep_id: S2.id });
   assert.strictEqual(res.status, 201, JSON.stringify(res.body));
-  assert.strictEqual(res.body.status, "EN_ATTENTE");
+  assert.strictEqual(res.body.status, "pending");
   assert.strictEqual(res.body.rep_id, S1.id, "une commerciale précommande à son nom");
   assert.strictEqual(res.body.amount, 300, "montant = prix unitaire × quantité");
   assert.strictEqual(res.body.balance, 200, "reste à payer = montant − acompte");
+  assert.strictEqual(res.body.commission, 30, "la commission est calculée côté serveur");
   assert.ok(res.body.client_id, "le client est rattaché par son numéro");
   assert.strictEqual(repOf(S1).sales, before.sales, "aucune vente n'est comptée avant la livraison");
   assert.strictEqual(repOf(S1).commission, before.commission);
+  assert.deepStrictEqual(store.preorderEvents.map((e) => e.action), ["created"]);
   assert.ok(store.ddl >= 1, "la table est vérifiée avant usage");
 });
 
 test("une précommande invalide est refusée avec un message clair", async () => {
   const cases = [
     [{ ...PRE, deposit: 500 }, /acompte/i],
+    [{ ...PRE, unit_price: 1 }, /prix unitaire/i],
     [{ ...PRE, qty: 0 }, /quantité/i],
     [{ ...PRE, customer: "  " }, /client/i],
     [{ ...PRE, expected_at: "2000-01-01" }, /passée/i],
@@ -592,8 +608,8 @@ test("chacun voit ses précommandes, l'administrateur celles de l'équipe", asyn
 
   const team = await admin("GET", "/api/preorders");
   assert.strictEqual(team.body.rows.length, 3);
-  assert.strictEqual(team.body.summary.EN_ATTENTE.count, 3);
-  assert.strictEqual(team.body.summary.EN_ATTENTE.deposit, 300);
+  assert.strictEqual(team.body.summary.pending.count, 3);
+  assert.strictEqual(team.body.summary.pending.deposit, 300);
 
   const amineOnly = await admin("GET", `/api/preorders?rep_id=${S2.id}`);
   assert.deepStrictEqual(amineOnly.body.rows.map((r) => r.customer).sort(), ["Lina", "Reda"]);
@@ -602,17 +618,38 @@ test("chacun voit ses précommandes, l'administrateur celles de l'équipe", asyn
   assert.strictEqual((await admin("GET", "/api/preorders?status=PERDUE")).status, 400);
 });
 
-test("livrer une précommande crée la vente et crédite le commercial", async () => {
+test("le journal des précommandes est réservé aux admins", async () => {
   store.preorders.length = 0;
+  store.preorderEvents.length = 0;
+  await sofia("POST", "/api/preorders", PRE);
+  assert.strictEqual((await sofia("GET", "/api/preorders/audit")).status, 403);
+  const res = await admin("GET", "/api/preorders/audit");
+  assert.strictEqual(res.status, 200, JSON.stringify(res.body));
+  assert.strictEqual(res.body.length, 1);
+  assert.strictEqual(res.body[0].action, "created");
+  assert.strictEqual(res.body[0].customer, PRE.customer);
+});
+
+test("livrer puis payer et valider crée une vente une seule fois", async () => {
+  store.preorders.length = 0;
+  store.preorderEvents.length = 0;
   const created = (await sofia("POST", "/api/preorders", PRE)).body;
   const before = { ...repOf(S1) };
 
   // Un collègue ne peut pas livrer la précommande d'un autre.
   assert.strictEqual((await amine("POST", `/api/preorders/${created.id}/deliver`, {})).status, 404);
 
-  const res = await admin("POST", `/api/preorders/${created.id}/deliver`, { pay: "Virement" });
+  const delivered = await admin("POST", `/api/preorders/${created.id}/deliver`, {});
+  assert.strictEqual(delivered.status, 200, JSON.stringify(delivered.body));
+  assert.strictEqual(delivered.body.status, "delivered");
+  assert.strictEqual((await sofia("POST", `/api/preorders/${created.id}/deliver`, {})).status, 409);
+
+  const paid = await admin("POST", `/api/preorders/${created.id}/paid`, { pay: "Virement" });
+  assert.strictEqual(paid.status, 200, JSON.stringify(paid.body));
+  assert.strictEqual(paid.body.status, "paid");
+  const res = await admin("POST", `/api/preorders/${created.id}/validate`, {});
   assert.strictEqual(res.status, 200, JSON.stringify(res.body));
-  assert.strictEqual(res.body.preorder.status, "LIVREE");
+  assert.strictEqual(res.body.preorder.status, "validated");
   assert.strictEqual(res.body.preorder.sale_id, res.body.sale.id);
   const sale = res.body.sale;
   assert.strictEqual(sale.owner, u1.id, "la vente garde l'auteur de la précommande");
@@ -621,12 +658,33 @@ test("livrer une précommande crée la vente et crédite le commercial", async (
   assert.strictEqual(Number(sale.commission), 30);
   assert.strictEqual(sale.pay, "Virement");
   assert.match(sale.remarks, /Précommande du .* — acompte 100 DHS/);
-  assert.strictEqual(repOf(S1).sales, before.sales + 2, "les unités comptent à la livraison");
+  assert.strictEqual(repOf(S1).sales, before.sales + 2, "les unités comptent à la validation");
   assert.strictEqual(repOf(S1).commission, before.commission + 30, "la commission aussi");
+  const again = await sofia("POST", `/api/preorders/${created.id}/validate`, {});
+  assert.strictEqual(again.status, 409, "une vente ne peut pas être validée deux fois");
+  assert.deepStrictEqual(store.preorderEvents.map((e) => e.action), ["created", "delivered", "paid", "validated"]);
+});
 
-  const again = await sofia("POST", `/api/preorders/${created.id}/deliver`, {});
-  assert.strictEqual(again.status, 409, "on ne livre pas deux fois");
-  assert.strictEqual((await sofia("POST", `/api/preorders/${created.id}/cancel`, {})).status, 409);
+test("la commission est recalculée et figée selon les règles à la validation", async () => {
+  store.preorders.length = 0;
+  store.settings = [{ team_id: TEAM_A, commission_mode: "percent", commission_rate: 7 }];
+  const created = await sofia("POST", "/api/preorders", { ...PRE, commission: 9999 });
+  assert.strictEqual(created.status, 201);
+  assert.strictEqual(created.body.commission, 21, "la commission envoyée par le client est ignorée");
+
+  await sofia("POST", `/api/preorders/${created.body.id}/deliver`, {});
+  await sofia("POST", `/api/preorders/${created.body.id}/paid`, { pay: "Espèces" });
+  const validated = await sofia("POST", `/api/preorders/${created.body.id}/validate`, {});
+  assert.strictEqual(validated.status, 200, JSON.stringify(validated.body));
+  assert.strictEqual(Number(validated.body.sale.commission), 21);
+  assert.deepStrictEqual(JSON.parse(validated.body.sale.commission_snapshot), {
+    mode: "percent", rate: 7, currency: "DHS",
+  });
+
+  store.settings[0].commission_rate = 90;
+  assert.strictEqual(Number(store.sales.find((s) => s.id === validated.body.sale.id).commission), 21,
+    "une modification ultérieure des règles ne change pas la vente validée");
+  store.settings.length = 0;
 });
 
 test("une précommande payée plus tôt devient une vente datée du jour du paiement", async () => {
@@ -641,17 +699,19 @@ test("une précommande payée plus tôt devient une vente datée du jour du paie
   const future = localDay(Date.now() + 2 * 86400000);
   const tooEarly = localDay(Date.now() - 20 * 86400000);
 
-  assert.strictEqual((await sofia("POST", `/api/preorders/${po.id}/deliver`, { sale_date: future })).status, 400, "pas de vente future");
-  const early = await sofia("POST", `/api/preorders/${po.id}/deliver`, { sale_date: tooEarly });
+  await sofia("POST", `/api/preorders/${po.id}/deliver`, {});
+  await sofia("POST", `/api/preorders/${po.id}/paid`, { pay: "Mobile Money" });
+  assert.strictEqual((await sofia("POST", `/api/preorders/${po.id}/validate`, { sale_date: future })).status, 400, "pas de vente future");
+  const early = await sofia("POST", `/api/preorders/${po.id}/validate`, { sale_date: tooEarly });
   assert.strictEqual(early.status, 400, "pas avant la précommande");
   assert.match(early.body.error, /précéder la précommande/);
 
   // Mois de paie clôturé pour la commerciale : refusé.
   store.payroll.push({ team_id: TEAM_A, rep_id: S1.id, period: `${paid.slice(0, 7)}-01`, status: "PAYEE" });
-  assert.strictEqual((await sofia("POST", `/api/preorders/${po.id}/deliver`, { sale_date: paid })).status, 409);
+  assert.strictEqual((await sofia("POST", `/api/preorders/${po.id}/validate`, { sale_date: paid })).status, 409);
   store.payroll.length = 0;
 
-  const res = await sofia("POST", `/api/preorders/${po.id}/deliver`, { sale_date: paid, pay: "Mobile Money" });
+  const res = await sofia("POST", `/api/preorders/${po.id}/validate`, { sale_date: paid });
   assert.strictEqual(res.status, 200, JSON.stringify(res.body));
   assert.strictEqual(localDay(res.body.sale.created_at), paid, "la vente porte la date du paiement");
   assert.strictEqual(localDay(res.body.preorder.delivered_at), paid, "la précommande affiche la même date");
@@ -667,9 +727,10 @@ test("annuler ou modifier une précommande en attente", async () => {
   assert.strictEqual(edited.body.balance, 50);
   assert.strictEqual((await sofia("PATCH", `/api/preorders/${created.id}`, { deposit: 999 })).status, 400);
 
-  const cancelled = await sofia("POST", `/api/preorders/${created.id}/cancel`, { reason: "Client injoignable" });
+  assert.strictEqual((await sofia("POST", `/api/preorders/${created.id}/cancel`, { reason: "Client injoignable" })).status, 403);
+  const cancelled = await admin("POST", `/api/preorders/${created.id}/cancel`, { reason: "Client injoignable" });
   assert.strictEqual(cancelled.status, 200);
-  assert.strictEqual(cancelled.body.status, "ANNULEE");
+  assert.strictEqual(cancelled.body.status, "cancelled");
   assert.strictEqual(cancelled.body.cancel_reason, "Client injoignable");
   assert.strictEqual((await sofia("POST", `/api/preorders/${created.id}/deliver`, {})).status, 409);
   assert.strictEqual((await sofia("PATCH", `/api/preorders/${created.id}`, { deposit: 0 })).status, 409);

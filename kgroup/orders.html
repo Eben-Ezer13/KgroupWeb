@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Commandes — KGROUP Sales Performance Platform</title>
-  <meta name="description" content="Historique des ventes et des précommandes KGROUP Parfumery, par commercial." />
+  <title>Suivi des ventes — KGROUP Sales Performance Platform</title>
+  <meta name="description" content="Suivi des précommandes et historique des ventes validées KGROUP Parfumery." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -12,17 +12,16 @@
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="crm.css" />
 </head>
-<body data-app data-page="orders" data-title="Commandes">
+<body data-app data-page="history" data-title="Suivi des ventes">
 
   <div class="page-head reveal" style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
     <div>
-      <h2>Commandes &amp; ventes 🧾</h2>
+      <h2>Suivi des ventes 🧾</h2>
       <p id="scopeNote">Historique des ventes et des précommandes.</p>
     </div>
     <div class="row gap-2" style="flex-wrap:wrap">
       <a href="guide-commandes.html" class="btn btn-ghost" title="Guide visuel : ventes, précommandes, exports"><span data-ic="help"></span> Guide</a>
       <a href="sales.html?type=preorder" class="btn btn-ghost"><span data-ic="hourglass"></span> Nouvelle précommande</a>
-      <a href="sales.html" class="btn btn-primary"><span data-ic="plus"></span> Nouvelle vente</a>
     </div>
   </div>
 
@@ -140,9 +139,11 @@
       <div class="section-title" style="flex-wrap:wrap;gap:12px">
         <div><h3>Précommandes</h3><div class="sub" id="preSub">Paiement reçu ou parfum remis : « Valider la vente » la transforme en vente, avec sa commission.</div></div>
         <div class="row gap-2" id="statusChips" style="flex-wrap:wrap">
-          <button type="button" class="chip on" data-status="EN_ATTENTE">En attente</button>
-          <button type="button" class="chip" data-status="LIVREE">Vendues</button>
-          <button type="button" class="chip" data-status="ANNULEE">Annulées</button>
+          <button type="button" class="chip on" data-status="pending">En attente</button>
+          <button type="button" class="chip" data-status="delivered">Livrées</button>
+          <button type="button" class="chip" data-status="paid">Payées</button>
+          <button type="button" class="chip" data-status="validated">Ventes validées</button>
+          <button type="button" class="chip" data-status="cancelled">Annulées</button>
           <button type="button" class="chip" data-status="ALL">Toutes</button>
         </div>
       </div>
@@ -157,23 +158,33 @@
         </table>
       </div>
     </div>
+    <details class="card card-pad reveal adm" id="auditDetails" style="margin-top:16px">
+      <summary style="cursor:pointer;font-weight:700">Journal des précommandes</summary>
+      <p class="sub">Historique des créations, changements d'étape, annulations et migrations.</p>
+      <div class="table-wrap">
+        <table class="table kc-table">
+          <thead><tr><th>Date</th><th>Client</th><th>Commercial</th><th>Action</th><th>Étape</th><th>Détails</th></tr></thead>
+          <tbody id="auditBody"><tr><td colspan="6" class="muted">Ouvrez le journal pour le charger.</td></tr></tbody>
+        </table>
+      </div>
+    </details>
   </section>
 
   <!-- ============ MODAL VALIDATION EN VENTE ============ -->
   <div class="modal-overlay" id="deliverModal">
     <div class="modal">
-      <div class="modal-head"><h3>Valider la vente</h3><button class="icon-btn" data-modal-close><span data-ic="x"></span></button></div>
+      <div class="modal-head"><h3 id="advanceTitle">Suivi de la précommande</h3><button class="icon-btn" data-modal-close><span data-ic="x"></span></button></div>
       <div class="modal-body">
-        <p class="muted" style="font-size:13px;margin-top:0">
-          Le client a payé ou a reçu son parfum : la précommande devient une vente, créditée au commercial.
+        <p class="muted" id="advanceDescription" style="font-size:13px;margin-top:0">
+          Avancez la précommande à son étape suivante.
         </p>
         <div id="deliverSummary" class="kc-fiche"></div>
-        <div class="field" style="margin-bottom:16px">
+        <div class="field hidden" id="saleDateField" style="margin-bottom:16px">
           <label for="dDate">Date de la vente (jour du paiement)</label>
           <input class="input" type="date" id="dDate">
           <div class="hint">La commission compte dans la rémunération du mois de cette date.</div>
         </div>
-        <div class="field">
+        <div class="field hidden" id="paymentField">
           <label>Paiement du solde</label>
           <div class="pay-options">
             <div class="pay-opt"><input type="radio" name="dPay" id="dCash" value="Espèces" checked><label for="dCash"><span data-ic="cash"></span>Espèces</label></div>
@@ -185,7 +196,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn btn-ghost" data-modal-close>Annuler</button>
-        <button class="btn btn-primary" id="confirmDeliver"><span data-ic="check"></span> Valider la vente</button>
+        <button class="btn btn-primary" id="confirmDeliver"><span data-ic="check"></span> Confirmer</button>
       </div>
     </div>
   </div>
@@ -255,7 +266,10 @@
         const sub = [x.perfume_name ? x.product : "", x.remarks || ""].filter(Boolean).map(esc).join(" · ");
         return `${esc(x.perfume_name || x.product || "—")}${sub ? `<div class="kc-sub">${sub}</div>` : ""}`;
       };
-      const STATUS_LABEL = { EN_ATTENTE: "En attente", LIVREE: "Vendue", ANNULEE: "Annulée" };
+      const STATUS_LABEL = {
+        pending: "En attente", delivered: "Livrée au client", paid: "Payée",
+        validated: "Vente validée", cancelled: "Annulée",
+      };
 
       /* ---------- État (lu depuis l'URL : liens depuis Vendeurs / Rémunération) ---------- */
       const params = new URLSearchParams(location.search);
@@ -264,13 +278,14 @@
         tab: params.get("tab") === "preorders" ? "preorders" : "sales",
         rep: isAdmin && reps.some(r => r.id === params.get("rep")) ? params.get("rep") : "",
         period: Period.labels[params.get("period")] ? params.get("period") : "month",
-        status: "EN_ATTENTE",
+        status: "pending",
         shown: 50,
       };
       let salesData = null;      // réponse /api/sales/history
       let preorders = null;    // réponse /api/preorders
       let pendingBy = {};      // précommandes en attente par commercial
       let flashId = null;      // vente à mettre en évidence après une réattribution
+      let auditLoaded = false;
 
       $("#scopeNote").textContent = isAdmin
         ? "Toutes les ventes et précommandes de l'équipe, par commercial."
@@ -344,12 +359,53 @@
           preorders = { rows: [], summary: {}, error: err.message };
         }
         pendingBy = {};
-        (preorders.rows || []).filter(p => p.status === "EN_ATTENTE").forEach(p => {
+        (preorders.rows || []).filter(p => p.status === "pending").forEach(p => {
           pendingBy[p.rep_id || ""] = (pendingBy[p.rep_id || ""] || 0) + 1;
         });
         renderPreorders();
         if (salesData) renderByRep();
       }
+
+      async function loadAudit() {
+        const body = $("#auditBody");
+        body.innerHTML = '<tr><td colspan="6" class="muted">Chargement…</td></tr>';
+        try {
+          const events = await window.KGPreorders.audit({ limit: 500 });
+          const labels = {
+            created: "Créée", updated: "Modifiée", delivered: "Livrée au client",
+            paid: "Paiement reçu", validated: "Vente validée", cancelled: "Annulée",
+            migration: "Migration",
+          };
+          body.innerHTML = events.length ? events.map((event) => {
+            const details = event.details && typeof event.details === "object"
+              ? JSON.stringify(event.details) : String(event.details || "");
+            const transition = event.from_status || event.to_status
+              ? `${STATUS_LABEL[event.from_status] || event.from_status || "—"} → ${STATUS_LABEL[event.to_status] || event.to_status || "—"}`
+              : "—";
+            return `<tr>
+              <td style="white-space:nowrap">${dateTime(event.created_at).day} ${dateTime(event.created_at).time}</td>
+              <td>${esc(event.customer || "—")}</td>
+              <td>${esc(event.rep_name || "—")}</td>
+              <td>${esc(labels[event.action] || event.action)}</td>
+              <td>${esc(transition)}</td>
+              <td>${esc(details || "—")}</td>
+            </tr>`;
+          }).join("") : '<tr><td colspan="6" class="muted">Aucun événement enregistré.</td></tr>';
+          auditLoaded = true;
+        } catch (err) {
+          body.innerHTML = `<tr><td colspan="6" class="muted">${esc(err.message || "Impossible de charger le journal.")}</td></tr>`;
+          auditLoaded = false;
+        }
+      }
+
+      $("#auditDetails").addEventListener("toggle", () => {
+        if (!$("#auditDetails").open || auditLoaded) return;
+        if (!live) {
+          $("#auditBody").innerHTML = '<tr><td colspan="6" class="muted">Le journal nécessite une connexion à l’API.</td></tr>';
+          return;
+        }
+        loadAudit();
+      });
 
       /* ---------- Rendu : ventes ---------- */
       function renderByRep() {
@@ -363,7 +419,7 @@
             <td class="num">${num(g.units)}</td>
             <td class="num"><b>${money(g.revenue)}</b></td>
             <td class="num">${money(g.commission)}</td>
-            <td class="num">${pendingBy[g.rep_id || ""] ? `<span class="kc-status EN_ATTENTE">${pendingBy[g.rep_id || ""]}</span>` : '<span class="muted">0</span>'}</td>
+            <td class="num">${pendingBy[g.rep_id || ""] ? `<span class="kc-status pending">${pendingBy[g.rep_id || ""]}</span>` : '<span class="muted">0</span>'}</td>
             <td>${g.last_sale_at ? Period.frDay(dayOf(g.last_sale_at)) : '<span class="muted">aucune sur la période</span>'}</td>
           </tr>`).join("");
         $$("#byRepBody [data-rep]").forEach(tr => tr.addEventListener("click", () => {
@@ -453,11 +509,11 @@
       function renderPreorders() {
         const p = preorders || { rows: [], summary: {} };
         const sum = p.summary || {};
-        const pend = sum.EN_ATTENTE || { count: 0, amount: 0, deposit: 0 };
+        const pend = sum.pending || { count: 0, amount: 0, deposit: 0 };
         $("#pPending").textContent = num(pend.count);
         $("#pAmount").textContent = money(pend.amount);
         $("#pDeposit").textContent = money(pend.deposit);
-        $("#pDelivered").textContent = num((sum.LIVREE || {}).count);
+        $("#pDelivered").textContent = num((sum.validated || {}).count);
         $("#nPre").textContent = num(pend.count);
 
         if (p.demo || p.error) {
@@ -474,9 +530,16 @@
         }
         $("#preBody").innerHTML = rows.map(r => {
           const exp = r.expected_at ? Period.frDay(r.expected_at) : "—";
-          const statusDetail = r.status === "LIVREE" && r.delivered_at
-            ? `<div class="kc-sub">vente du ${Period.frDay(dayOf(r.delivered_at))}</div>`
-            : r.status === "ANNULEE" && r.cancel_reason ? `<div class="kc-sub">${esc(r.cancel_reason)}</div>` : "";
+          const statusDetail = r.migration_review
+            ? '<div class="kc-sub">À vérifier · historique migré</div>'
+            : r.status === "validated" && r.delivered_at
+              ? `<div class="kc-sub">vente du ${Period.frDay(dayOf(r.delivered_at))}</div>`
+              : r.status === "cancelled" && r.cancel_reason ? `<div class="kc-sub">${esc(r.cancel_reason)}</div>` : "";
+          const nextAction = {
+            pending: "Marquer livrée",
+            delivered: "Enregistrer le paiement",
+            paid: "Valider la vente",
+          }[r.status];
           return `<tr>
             <td style="white-space:nowrap">${Period.frDay(dayOf(r.created_at))}</td>
             <td><b>${esc(r.customer)}</b>${r.client_phone ? `<div class="kc-sub">${esc(r.client_phone)}</div>` : ""}</td>
@@ -484,17 +547,18 @@
             <td class="num">${num(r.qty)}</td>
             <td class="num"><b>${money(r.amount)}</b></td>
             <td class="num">${money(r.deposit)}</td>
-            <td class="num">${r.status !== "EN_ATTENTE" ? '<span class="muted">—</span>'
+            <td class="num">${!["pending", "delivered"].includes(r.status) ? '<span class="muted">—</span>'
               : r.balance > 0 ? `<b>${money(r.balance)}</b>` : '<span class="badge green" title="Acompte = montant total">Payée</span>'}</td>
             <td style="white-space:nowrap">${r.overdue ? `<span class="kc-late">${exp} · en retard</span>` : exp}</td>
             <td>${esc(r.current_rep_name || r.rep_name || "—")}</td>
             <td><span class="kc-status ${esc(r.status)}">${STATUS_LABEL[r.status] || esc(r.status)}</span>${statusDetail}</td>
-            <td>${r.status === "EN_ATTENTE" ? `<div class="kc-actions">
-              <button class="btn btn-primary btn-sm" data-deliver="${esc(r.id)}" title="Paiement reçu ou parfum remis : enregistrer la vente">Valider la vente</button>
-              <button class="btn btn-ghost btn-sm" data-cancel="${esc(r.id)}">Annuler</button></div>` : ""}</td>
+            <td>${nextAction || (isAdmin && ["pending", "delivered", "paid"].includes(r.status)) ? `<div class="kc-actions">
+              ${nextAction ? `<button class="btn btn-primary btn-sm" data-advance="${esc(r.id)}">${nextAction}</button>` : ""}
+              ${isAdmin && ["pending", "delivered", "paid"].includes(r.status) ? `<button class="btn btn-ghost btn-sm" data-cancel="${esc(r.id)}">Annuler</button>` : ""}
+            </div>` : ""}</td>
           </tr>`;
         }).join("");
-        $$("[data-deliver]").forEach(b => b.addEventListener("click", () => openDeliver(b.dataset.deliver)));
+        $$("[data-advance]").forEach(b => b.addEventListener("click", () => openDeliver(b.dataset.advance)));
         $$("[data-cancel]").forEach(b => b.addEventListener("click", () => openCancel(b.dataset.cancel)));
       }
 
@@ -552,9 +616,12 @@
         if (!p) return;
         const day = $("#dDate").value || Period.isoDay(new Date());
         const who = p.current_rep_name || p.rep_name;
-        $("#deliverNote").textContent =
-          `Une vente de ${money(p.amount)} sera enregistrée le ${Period.frDay(day)}${who ? ` au nom de ${who}` : ""} : ` +
-          `la commission de ${money(p.commission)} compte dans la rémunération de ${monthName(day)}.`;
+        $("#deliverNote").textContent = p.status === "paid"
+          ? `La vente de ${money(p.amount)} sera enregistrée le ${Period.frDay(day)}${who ? ` au nom de ${who}` : ""}. ` +
+            `La commission définitive sera calculée côté serveur selon les règles de rémunération actives.`
+          : p.status === "delivered"
+            ? `Confirmez l'encaissement complet de ${money(p.amount)} avant de valider la vente.`
+            : "Confirmez que le parfum a bien été livré au client.";
       }
       function openDeliver(id) {
         current = findPre(id);
@@ -567,6 +634,33 @@
           <div><span>Acompte déjà versé</span><b>${money(p.deposit)}</b></div>
           <div><span>Reste à encaisser</span><b style="color:var(--brand)">${p.balance > 0 ? money(p.balance) : "rien — déjà payée"}</b></div>
           <div><span>Commercial crédité</span><b>${esc(p.current_rep_name || p.rep_name || "—")}</b></div>`;
+        const transitions = {
+          pending: {
+            title: "Confirmer la livraison",
+            description: "Le parfum a été remis au client. La précommande n'est pas encore une vente.",
+            button: "Marquer comme livrée",
+            payment: false, date: false,
+          },
+          delivered: {
+            title: "Enregistrer le paiement",
+            description: "Confirmez que le client a payé la totalité avant de poursuivre.",
+            button: "Confirmer l'encaissement",
+            payment: true, date: false,
+          },
+          paid: {
+            title: "Valider la vente",
+            description: "La vente sera créée avec une commission calculée et figée côté serveur.",
+            button: "Valider la vente",
+            payment: false, date: true,
+          },
+        };
+        const step = transitions[p.status];
+        if (!step) return;
+        $("#advanceTitle").textContent = step.title;
+        $("#advanceDescription").textContent = step.description;
+        $("#confirmDeliver").lastChild.textContent = " " + step.button;
+        $("#paymentField").classList.toggle("hidden", !step.payment);
+        $("#saleDateField").classList.toggle("hidden", !step.date);
         const today = Period.isoDay(new Date());
         $("#dDate").max = today;
         $("#dDate").min = dayOf(p.created_at);
@@ -582,13 +676,21 @@
         const btn = e.currentTarget;
         btn.disabled = true;
         try {
-          const pay = document.querySelector('input[name="dPay"]:checked').value;
-          await window.KGPreorders.deliver(current.id, { pay, sale_date: $("#dDate").value || undefined });
+          if (current.status === "pending") {
+            await window.KGPreorders.markDelivered(current.id);
+          } else if (current.status === "delivered") {
+            const pay = document.querySelector('input[name="dPay"]:checked').value;
+            await window.KGPreorders.markPaid(current.id, pay);
+          } else if (current.status === "paid") {
+            await window.KGPreorders.validateSale(current.id, { sale_date: $("#dDate").value || undefined });
+          }
           window.kgModal.close($("#deliverModal"));
-          const who = current.current_rep_name || current.rep_name;
-          toast("success", "Vente enregistrée",
-            `La précommande de ${current.customer} est devenue une vente${who ? `, créditée à ${who}` : ""}.`);
+          const nextMessage = current.status === "pending" ? "Livraison enregistrée."
+            : current.status === "delivered" ? "Paiement complet enregistré."
+              : "La vente et la commission sont enregistrées.";
+          toast("success", "Étape enregistrée", nextMessage);
           await reload();
+          if ($("#auditDetails").open) await loadAudit();
         } catch (err) {
           toast("error", "Validation impossible", err.message);
         } finally { btn.disabled = false; }
@@ -611,6 +713,7 @@
           window.kgModal.close($("#cancelModal"));
           toast("success", "Précommande annulée", current.customer);
           await loadPreorders();
+          if ($("#auditDetails").open) await loadAudit();
         } catch (err) {
           toast("error", "Annulation impossible", err.message);
         } finally { btn.disabled = false; }
@@ -693,10 +796,10 @@
             subtitle: `Statut : ${state.status === "ALL" ? "toutes" : STATUS_LABEL[state.status].toLowerCase()} · ${rows.length} précommande(s)`,
             meta, orientation: "landscape",
             kpis: [
-              { label: "En attente", value: num((s.EN_ATTENTE || {}).count) },
-              { label: "Montant attendu", value: money((s.EN_ATTENTE || {}).amount) },
-              { label: "Acomptes perçus", value: money((s.EN_ATTENTE || {}).deposit) },
-              { label: "Validées en vente", value: num((s.LIVREE || {}).count) },
+              { label: "En attente", value: num((s.pending || {}).count) },
+              { label: "Montant attendu", value: money((s.pending || {}).amount) },
+              { label: "Acomptes perçus", value: money((s.pending || {}).deposit) },
+              { label: "Validées en vente", value: num((s.validated || {}).count) },
             ],
             sections: [{
               name: "Précommandes", title: "Détail des précommandes", totals: true, rows,
@@ -709,7 +812,7 @@
                 { key: "qty", label: "Qté", type: "int", total: "sum" },
                 { key: "amount", label: "Montant", type: "money", total: "sum" },
                 { key: "deposit", label: "Acompte", type: "money", total: "sum" },
-                { label: "Reste", type: "money", get: (p) => (p.status === "EN_ATTENTE" ? p.balance : 0) },
+                { label: "Reste", type: "money", get: (p) => (["pending", "delivered"].includes(p.status) ? p.balance : 0) },
                 { key: "expected_at", label: "Livraison prévue", type: "date" },
                 { label: "Commercial", type: "text", get: (p) => p.current_rep_name || p.rep_name || "" },
                 { label: "Statut", type: "text", get: (p) => STATUS_LABEL[p.status] || p.status },
