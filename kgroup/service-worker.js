@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "kgroup-pwa-v1";
+const CACHE_NAME = "kgroup-pwa-v2";
 const APP_SHELL = [
   "./login.html",
   "./offline.html",
@@ -13,7 +13,6 @@ const APP_SHELL = [
   "./favicon.svg",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",
-  "./assets/images/logo.jpeg",
 ];
 const SCOPE_URL = new URL(self.registration.scope);
 const API_PREFIX = new URL("api/", SCOPE_URL).pathname;

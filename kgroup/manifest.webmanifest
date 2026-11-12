@@ -7,8 +7,8 @@
   "start_url": "./login.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f4f7f6",
-  "theme_color": "#0b7a4b",
+  "background_color": "#f3f3ee",
+  "theme_color": "#123b2b",
   "categories": ["business", "productivity"],
   "icons": [
     {
@@ -30,9 +30,9 @@
       "purpose": "any"
     },
     {
-      "src": "assets/images/logo.jpeg",
-      "sizes": "1600x1600",
-      "type": "image/jpeg",
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
     }
   ],

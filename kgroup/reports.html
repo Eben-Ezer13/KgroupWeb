@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0b7a4b" />
+  <meta name="theme-color" content="#123b2b" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="icon" type="image/jpeg" href="assets/images/logo.jpeg" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body data-app data-admin-only data-page="reports" data-title="Rapports" data-role="Administrator">
@@ -256,12 +256,12 @@
         $("#unitSub").textContent = b.daily ? "Par jour" : "Par mois";
         KGCharts.lineChart($("#revChart"), {
           labels: b.labels, height: 260,
-          series: [{ values: b.revenue.map(v => v / 1000), color: "#0B7A4B", fill: "rgba(11,122,75,.18)" }],
+          series: [{ values: b.revenue.map(v => v / 1000), color: "#123b2b", fill: "rgba(11,122,75,.18)" }],
         });
         KGCharts.barChart($("#unitChart"), { values: b.units, labels: b.labels, height: 260 });
         const cats = {};
         (data.rows || []).forEach(r => { const c = CAT(r.product); cats[c] = (cats[c] || 0) + (Number(r.qty) || 0); });
-        const palette = ["#0B7A4B", "#2563EB", "#D89A28", "#7C3AED", "#E24C4B", "#16965E"];
+        const palette = ["#123b2b", "#2563EB", "#D89A28", "#7C3AED", "#E24C4B", "#16965E"];
         const segs = Object.entries(cats).map(([name, value], i) => ({ name, value, color: palette[i % palette.length] }));
         KGCharts.donutChart($("#catChart"), segs);
         $("#catLegend").innerHTML = segs.map(s => `

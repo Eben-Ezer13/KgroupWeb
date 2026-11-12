@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0b7a4b" />
+  <meta name="theme-color" content="#123b2b" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="icon" type="image/jpeg" href="assets/images/logo.jpeg" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <!-- data-app enables the shared shell; data-page highlights the active nav item -->
@@ -183,7 +183,7 @@
       window.animateCounters();
 
       // Sparklines derived from the real 12-month series (flat when there's no data)
-      KGCharts.sparkline(document.querySelector('[data-spark="sales"]'), KG.series.salesSeries.slice(-8), "#0B7A4B");
+      KGCharts.sparkline(document.querySelector('[data-spark="sales"]'), KG.series.salesSeries.slice(-8), "#123b2b");
       KGCharts.sparkline(document.querySelector('[data-spark="rev"]'), KG.series.revenueSeries.slice(-8), "#2563EB");
 
       // Real monthly target = team units achieved vs sum of reps' targets
@@ -203,7 +203,7 @@
           KGCharts.lineChart(c, {
             labels: KG.series.months, height: 300,
             series: [
-              { values: KG.series.revenueSeries.map(v=>v/1000), color: "#0B7A4B", fill: "rgba(11,122,75,.18)" },
+              { values: KG.series.revenueSeries.map(v=>v/1000), color: "#123b2b", fill: "rgba(11,122,75,.18)" },
               { values: KG.series.salesSeries, color: "#4C9AFF" },
             ]
           });
@@ -274,7 +274,7 @@
         const cat = p ? p.cat : "Other";
         cats[cat] = (cats[cat]||0) + s.qty;
       });
-      const palette = ["#0B7A4B","#2563EB","#D89A28","#7C3AED","#E24C4B","#16965E"];
+      const palette = ["#123b2b","#2563EB","#D89A28","#7C3AED","#E24C4B","#16965E"];
       const segs = Object.entries(cats).map(([name,value],i)=>({name,value,color:palette[i%palette.length]}));
       KGCharts.donutChart(document.getElementById("donut"), segs);
       document.getElementById("donutLegend").innerHTML = segs.map(s=>`

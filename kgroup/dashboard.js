@@ -74,14 +74,7 @@
   window.icon = icon;
 
   // Emerald KGROUP logo mark (SVG) — clean perfume bottle + K monogram
-  const LOGO = `<svg class="logo-mark" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="KGROUP Parfumery">
-    <circle cx="24" cy="24" r="23" fill="#0B7A4B"/>
-    <rect x="20.5" y="7.5" width="7" height="6.6" rx="1.6" fill="#fff"/>
-    <rect x="22.2" y="13.6" width="3.6" height="3" fill="#fff"/>
-    <path d="M15.5 21.6c0-2.5 3-4.1 8.5-4.1s8.5 1.6 8.5 4.1v10.4c0 3-3 5-8.5 5s-8.5-2-8.5-5z" fill="#fff"/>
-    <path d="M22 23v9.4M22 28l5-5M22 27.8l5.2 5" stroke="#0B7A4B" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M18.5 12.5l2.4 2.4M17.8 16l3 .8" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.9"/>
-  </svg>`;
+  const LOGO = `<img class="logo-mark" src="favicon.svg" alt="KGROUP Parfumery"/>`;
   window.KG_LOGO = LOGO;
 
   /* -----------------------------------------------------------------------
