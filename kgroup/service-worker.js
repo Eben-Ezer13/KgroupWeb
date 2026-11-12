@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "kgroup-pwa-v4";
+const CACHE_NAME = "kgroup-pwa-v5";
 const APP_SHELL = [
   "./login.html",
   "./offline.html",
@@ -10,7 +10,7 @@ const APP_SHELL = [
   "./dashboard.js",
   "./notifications.js",
   "./manifest.webmanifest",
-  "./favicon.svg",
+  "./favicon.svg?v=5",
   "./assets/images/logo.jpeg",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",

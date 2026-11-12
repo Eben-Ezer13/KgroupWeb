@@ -24,13 +24,13 @@
       "purpose": "any"
     },
     {
-      "src": "favicon.svg",
+      "src": "favicon.svg?v=5",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "favicon.svg",
+      "src": "favicon.svg?v=5",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
@@ -41,13 +41,13 @@
       "name": "Messagerie",
       "short_name": "Messages",
       "url": "./messages.html",
-      "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "favicon.svg?v=5", "sizes": "any", "type": "image/svg+xml" }]
     },
     {
       "name": "Tableau de bord",
       "short_name": "Dashboard",
       "url": "./dashboard.html",
-      "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "favicon.svg?v=5", "sizes": "any", "type": "image/svg+xml" }]
     }
   ]
 }
