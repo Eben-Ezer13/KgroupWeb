@@ -234,6 +234,257 @@
   };
   const tutL = (k) => (TUT_L[KGI18N.lang] || TUT_L.en)[k];
 
+  const PAGE_TOURS = {
+    dashboard: [
+      { selector: ["#kSales", "#heroLevel"], icon: "📊", en: ["Your activity", "These figures summarize your sales and progress. They update from your team's recorded activity."], fr: ["Votre activité", "Ces chiffres résument vos ventes et votre progression. Ils évoluent avec l'activité enregistrée."] },
+      { selector: ["#mainChart", "#xpFill"], icon: "📈", en: ["Track progress", "Use this chart or progress bar to follow results over time."], fr: ["Suivre la progression", "Ce graphique ou cette barre permet de suivre les résultats au fil du temps."] },
+      { selector: ["#topList", "#board"], icon: "🏆", en: ["Team ranking", "See how the team is performing and where you stand."], fr: ["Classement de l'équipe", "Consultez les résultats de l'équipe et votre position."] },
+    ],
+    sales: [
+      { selector: ["#customer"], icon: "👤", en: ["Customer", "Enter the customer's name. Add a phone number to link the preorder to their client record."], fr: ["Client", "Saisissez le nom du client. Ajoutez son téléphone pour relier la précommande à sa fiche."] },
+      { selector: ["#perfumeName", "#product"], icon: "🌸", en: ["Product", "Choose the perfume and format. The unit price is set by the catalog."], fr: ["Produit", "Choisissez le parfum et son format. Le prix unitaire est défini par le catalogue."] },
+      { selector: ["#deposit", "#qty"], icon: "🧾", en: ["Reservation details", "Enter the quantity and any deposit. The summary shows the amount due."], fr: ["Détails de la réservation", "Indiquez la quantité et l'acompte éventuel. Le récapitulatif affiche le montant dû."] },
+      { selector: ["#saleForm button[type=submit]"], icon: "✅", en: ["Save the preorder", "This records a preorder, not a completed sale. Confirm delivery and full payment later in Sales follow-up."], fr: ["Enregistrer la précommande", "Cela enregistre une précommande, pas une vente finalisée. Confirmez ensuite la livraison et le paiement complet dans le suivi des ventes."] },
+    ],
+    history: [
+      { selector: ["#tabs"], icon: "🔀", en: ["Sales and preorders", "Switch between completed sales and preorders that are still moving through the workflow."], fr: ["Ventes et précommandes", "Basculez entre les ventes finalisées et les précommandes encore en cours."] },
+      { selector: ["#fSearch", "#fPeriod"], icon: "🔎", en: ["Find a record", "Filter the list by customer, perfume, salesperson, or period."], fr: ["Retrouver une opération", "Filtrez la liste par client, parfum, commercial ou période."] },
+      { selector: ["#exportBar"], icon: "📥", en: ["Export", "Download the current follow-up data in an available format."], fr: ["Exporter", "Téléchargez les données du suivi dans un format disponible."] },
+      { selector: ["#statusChips", "#tabPre"], icon: "🧭", en: ["Advance a preorder", "Use the status filters and row actions to record delivery, payment, and final sale validation."], fr: ["Faire avancer une précommande", "Utilisez les filtres et actions des lignes pour enregistrer livraison, paiement et validation finale en vente."] },
+    ],
+    salespersons: [
+      { selector: ["#repSearch"], icon: "🔎", en: ["Search the team", "Find a salesperson by name, city, or contact details."], fr: ["Rechercher dans l'équipe", "Retrouvez un commercial par son nom, sa ville ou ses coordonnées."] },
+      { selector: ["#cityFilter"], icon: "📍", en: ["Filter by city", "Narrow the roster to a particular city."], fr: ["Filtrer par ville", "Limitez la liste à une ville en particulier."] },
+      { selector: ['[data-modal-open="#addModal"]'], icon: "➕", en: ["Add a salesperson", "Create a team record and prepare an invite so the salesperson can join."], fr: ["Ajouter un commercial", "Créez sa fiche et préparez une invitation pour qu'il puisse rejoindre l'équipe."] },
+      { selector: ["#repTable"], icon: "👥", en: ["Manage team members", "Open a row to review the member's details and available actions."], fr: ["Gérer les membres", "Ouvrez une ligne pour consulter la fiche et les actions disponibles."] },
+    ],
+    ranking: [
+      { selector: ["#periodSeg"], icon: "🗓️", en: ["Choose a period", "Change the ranking period to compare weekly, monthly, or yearly results."], fr: ["Choisir une période", "Changez la période du classement : semaine, mois ou année."] },
+      { selector: ["#podium"], icon: "🥇", en: ["The podium", "The top three performers for the selected period appear here."], fr: ["Le podium", "Les trois meilleurs résultats de la période sélectionnée apparaissent ici."] },
+      { selector: ["#board"], icon: "📋", en: ["Full ranking", "Browse the team's ranking and compare progress."], fr: ["Classement complet", "Parcourez le classement de l'équipe et comparez les progressions."] },
+    ],
+    challenges: [
+      { selector: ['[data-modal-open="#newChallenge"]'], icon: "🚩", en: ["Create a challenge", "Set a goal, an end date, and a reward to motivate the team."], fr: ["Créer un défi", "Définissez un objectif, une échéance et une récompense pour motiver l'équipe."] },
+      { selector: ["#challengeGrid"], icon: "🎯", en: ["Follow challenges", "Review active challenges and the team's progress toward each goal."], fr: ["Suivre les défis", "Consultez les défis actifs et la progression de l'équipe vers chaque objectif."] },
+      { selector: ["#chBoard"], icon: "🏅", en: ["Challenge leaderboard", "See who is contributing to the current competition."], fr: ["Classement des défis", "Consultez les contributions à la compétition en cours."] },
+    ],
+    rewards: [
+      { selector: ["#rewardsGrid"], icon: "🎁", en: ["Contract rewards", "Review monthly bonus tiers and the rewards attached to them."], fr: ["Récompenses du contrat", "Consultez les paliers de bonus mensuels et les récompenses associées."] },
+      { selector: ["#challengeGrid"], icon: "🚩", en: ["Team challenges", "Challenges are listed above the rewards and help the team work toward shared goals."], fr: ["Défis d'équipe", "Les défis figurent au-dessus des récompenses et aident l'équipe à viser des objectifs communs."] },
+    ],
+    clients: [
+      { selector: ["#fSearch"], icon: "🔎", en: ["Search clients", "Find a client by name or phone number."], fr: ["Rechercher un client", "Retrouvez une fiche par le nom ou le numéro de téléphone."] },
+      { selector: ["#fRep", "#fMonth"], icon: "🧰", en: ["Filter the portfolio", "Narrow the client list by salesperson or birthday month."], fr: ["Filtrer le portefeuille", "Limitez la liste par commercial ou par mois d'anniversaire."] },
+      { selector: ['[data-modal-open="#newClient"]'], icon: "➕", en: ["Add a client", "Create a client record, including language, WhatsApp consent, and an alert."], fr: ["Ajouter un client", "Créez une fiche client avec sa langue, son consentement WhatsApp et un point d'attention."] },
+      { selector: ["#clientBody"], icon: "📇", en: ["Open a client record", "Select a client to view purchase history and update their contact preferences."], fr: ["Ouvrir une fiche", "Sélectionnez un client pour voir ses achats et modifier ses préférences de contact."] },
+    ],
+    formation: [
+      { selector: ["#overallCard"], icon: "📊", en: ["Your progress", "This card tracks completed lessons and passed quizzes."], fr: ["Votre progression", "Cette carte suit les leçons terminées et les quiz réussis."] },
+      { selector: ["#daysWrap"], icon: "📚", en: ["Lessons and quizzes", "Open each lesson, then take its quiz to validate what you learned."], fr: ["Leçons et quiz", "Consultez chaque leçon, puis passez son quiz pour valider vos acquis."] },
+      { selector: ["#adminSection"], icon: "👥", en: ["Team progress", "Administrators can review the team's training progress and notifications here."], fr: ["Progression de l'équipe", "Les administrateurs consultent ici la progression de l'équipe et ses notifications."] },
+    ],
+    messages: [
+      { selector: ["#recipient"], icon: "💬", en: ["Choose a conversation", "Send a message to the whole team or select one teammate for a private conversation."], fr: ["Choisir une conversation", "Écrivez à toute l'équipe ou sélectionnez un membre pour une conversation privée."] },
+      { selector: ["#messageContent"], icon: "✍️", en: ["Write your message", "Type your message here. Private conversations are visible only to their participants."], fr: ["Écrire un message", "Saisissez votre texte ici. Une conversation privée n'est visible que par ses participants."] },
+      { selector: ["#mentionMembers"], icon: "🔔", en: ["Mention teammates", "Select teammates to notify them about a team message."], fr: ["Mentionner des collègues", "Sélectionnez les membres à notifier dans un message d'équipe."] },
+      { selector: ["#messageList"], icon: "📨", en: ["Conversation history", "Recent messages appear here. Use the button below to load older messages."], fr: ["Historique des messages", "Les messages récents apparaissent ici. Le bouton en bas permet d'en charger d'anciens."] },
+    ],
+    remuneration: [
+      { selector: ["#month"], icon: "🗓️", en: ["Choose a month", "Select the payroll period you want to review."], fr: ["Choisir un mois", "Sélectionnez la période de paie à consulter."] },
+      { selector: ["#payBody"], icon: "🧮", en: ["Payroll details", "Review each salesperson's sales, commission, bonus, and total."], fr: ["Détail des rémunérations", "Consultez les ventes, commissions, bonus et totaux de chaque commercial."] },
+      { selector: ["#payExport"], icon: "📥", en: ["Export payroll", "Download a payroll summary or an individual statement."], fr: ["Exporter la paie", "Téléchargez le récapitulatif ou un relevé individuel."] },
+      { selector: ["#closeBtn"], icon: "🔒", en: ["Close a payroll period", "After the month ends, freeze the calculations and advance the payroll status."], fr: ["Clôturer une période", "Après la fin du mois, figez les calculs et faites avancer le statut de la paie."] },
+    ],
+    reports: [
+      { selector: ["#rangeSel"], icon: "🗓️", en: ["Select a reporting period", "Choose the date range used by the report."], fr: ["Choisir la période", "Sélectionnez la période de dates utilisée par le rapport."] },
+      { selector: ["#pdfBtn"], icon: "📄", en: ["Download the report", "Generate a PDF summary for the selected period."], fr: ["Télécharger le rapport", "Générez un résumé PDF pour la période choisie."] },
+      { selector: ["#reportRows"], icon: "📊", en: ["Compare salespeople", "Review sales, units, revenue, and commission by salesperson."], fr: ["Comparer les commerciaux", "Consultez les ventes, unités, chiffre d'affaires et commissions par commercial."] },
+    ],
+    settings: [
+      { selector: ["#fName"], icon: "👤", en: ["Update your profile", "Change the personal details displayed on your account."], fr: ["Modifier votre profil", "Mettez à jour les informations personnelles affichées sur votre compte."] },
+      { selector: ["#themeSeg"], icon: "🌗", en: ["Choose a theme", "Switch the site between light and dark appearance."], fr: ["Choisir un thème", "Basculez entre l'apparence claire et sombre du site."] },
+      { selector: ["#langSeg"], icon: "🌐", en: ["Choose a language", "Change the interface language between French and English."], fr: ["Choisir une langue", "Changez la langue de l'interface entre français et anglais."] },
+      { selector: ["#changePass"], icon: "🔐", en: ["Account security", "Change your password or sign out from this section."], fr: ["Sécurité du compte", "Changez votre mot de passe ou déconnectez-vous depuis cette section."] },
+    ],
+    guide: [
+      { selector: [".page-head"], icon: "📘", en: ["This guide", "Use this page for step-by-step help with sales, preorders, and exports."], fr: ["Ce guide", "Cette page présente les étapes pour les ventes, les précommandes et les exports."] },
+      { selector: [".sidebar-nav"], icon: "🧭", en: ["Move between sections", "Choose another item in the sidebar to open its own first-visit guide."], fr: ["Changer de rubrique", "Choisissez une autre option du menu pour découvrir son guide de première visite."] },
+    ],
+  };
+
+  const PAGE_TOUR_LABELS = {
+    en: { next: "Next", back: "Back", done: "Got it", skip: "Skip guide", step: "Step", title: "Quick guide", reopen: "Open this section's guide" },
+    fr: { next: "Suivant", back: "Retour", done: "Compris", skip: "Passer le guide", step: "Étape", title: "Guide rapide", reopen: "Ouvrir le guide de cette rubrique" },
+  };
+
+  function pageTourLanguage() {
+    return PAGE_TOUR_LABELS[KGI18N.lang] || PAGE_TOUR_LABELS.en;
+  }
+
+  function initPageTour() {
+    const user = window.KGAuth && window.KGAuth._user;
+    const userKey = (user && user.id) || "local";
+    const seenKey = (key) => `kg-guide-seen:${encodeURIComponent(userKey)}:${key}`;
+    const overlay = document.createElement("div");
+    overlay.id = "kgPageTour";
+    overlay.className = "kg-tour hidden";
+    overlay.innerHTML = `
+      <svg class="kg-tour-shade" aria-hidden="true">
+        <path class="kg-tour-dim" fill-rule="evenodd"></path>
+        <rect class="kg-tour-blocker" fill="transparent"></rect>
+      </svg>
+      <span class="kg-tour-cursor" aria-hidden="true">👆</span>
+      <section class="kg-tour-card" role="dialog" aria-modal="true" aria-labelledby="kgTourTitle">
+        <div class="kg-tour-card-head"><span class="kg-tour-icon" id="kgTourIcon"></span><span class="kg-tour-step" id="kgTourStep"></span></div>
+        <h2 id="kgTourTitle"></h2>
+        <p id="kgTourBody"></p>
+        <div class="kg-tour-actions">
+          <button type="button" class="btn btn-ghost btn-sm" id="kgTourSkip"></button>
+          <div class="row gap-2"><button type="button" class="btn btn-ghost btn-sm" id="kgTourBack"></button>
+          <button type="button" class="btn btn-primary btn-sm" id="kgTourNext"></button></div>
+        </div>
+      </section>`;
+    document.body.appendChild(overlay);
+
+    const card = overlay.querySelector(".kg-tour-card");
+    const path = overlay.querySelector(".kg-tour-dim");
+    const blocker = overlay.querySelector(".kg-tour-blocker");
+    const cursor = overlay.querySelector(".kg-tour-cursor");
+    const targetClass = "kg-tour-highlight";
+    let activeKey = null;
+    let steps = [];
+    let index = 0;
+    let target = null;
+
+    function findVisibleTarget(step) {
+      for (const selector of step.selector) {
+        const element = document.querySelector(selector);
+        if (element && element.getClientRects().length && getComputedStyle(element).visibility !== "hidden") return element;
+      }
+      return null;
+    }
+
+    function positionTour() {
+      if (!target || overlay.classList.contains("hidden")) return;
+      const rect = target.getBoundingClientRect();
+      const pad = 8;
+      const x = Math.max(4, rect.left - pad);
+      const y = Math.max(4, rect.top - pad);
+      const width = Math.min(window.innerWidth - x - 4, rect.width + pad * 2);
+      const height = Math.min(window.innerHeight - y - 4, rect.height + pad * 2);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      overlay.querySelector(".kg-tour-shade").setAttribute("viewBox", `0 0 ${w} ${h}`);
+      path.setAttribute("d", `M0 0H${w}V${h}H0Z M${x} ${y}H${x + width}V${y + height}H${x}Z`);
+      blocker.setAttribute("x", x);
+      blocker.setAttribute("y", y);
+      blocker.setAttribute("width", width);
+      blocker.setAttribute("height", height);
+      const cardWidth = Math.min(380, w - 32);
+      card.style.width = `${cardWidth}px`;
+      const left = Math.max(16, Math.min(rect.left, w - cardWidth - 16));
+      const below = rect.bottom + 20;
+      const top = below + card.offsetHeight <= h - 16
+        ? below
+        : Math.max(16, rect.top - card.offsetHeight - 20);
+      card.style.left = `${left}px`;
+      card.style.top = `${top}px`;
+      cursor.style.left = `${Math.max(4, Math.min(rect.right - 20, w - 36))}px`;
+      cursor.style.top = `${Math.max(4, Math.min(rect.bottom - 10, h - 40))}px`;
+    }
+
+    function closeTour() {
+      if (target) target.classList.remove(targetClass);
+      target = null;
+      overlay.classList.add("hidden");
+      document.body.classList.remove("kg-tour-open");
+      if (activeKey) localStorage.setItem(seenKey(activeKey), "1");
+      activeKey = null;
+    }
+
+    function renderStep() {
+      while (index < steps.length && !findVisibleTarget(steps[index])) index++;
+      if (index >= steps.length) {
+        closeTour();
+        return;
+      }
+      if (target) target.classList.remove(targetClass);
+      target = findVisibleTarget(steps[index]);
+      if (!target) return renderStep();
+      target.classList.add(targetClass);
+      target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      const lang = KGI18N.lang === "fr" ? "fr" : "en";
+      const copy = steps[index][lang];
+      const labels = pageTourLanguage();
+      overlay.querySelector("#kgTourIcon").textContent = steps[index].icon;
+      overlay.querySelector("#kgTourTitle").textContent = copy[0];
+      overlay.querySelector("#kgTourBody").textContent = copy[1];
+      overlay.querySelector("#kgTourStep").textContent = `${labels.step} ${index + 1} / ${steps.length}`;
+      overlay.querySelector("#kgTourBack").textContent = labels.back;
+      overlay.querySelector("#kgTourBack").disabled = index === 0;
+      overlay.querySelector("#kgTourNext").textContent = index === steps.length - 1 ? labels.done : labels.next;
+      overlay.querySelector("#kgTourSkip").textContent = labels.skip;
+      requestAnimationFrame(positionTour);
+    }
+
+    function open(key) {
+      const pageKey = key || (location.hash === "#rewards" ? "rewards" : document.body.dataset.page);
+      steps = (PAGE_TOURS[pageKey] || PAGE_TOURS[document.body.dataset.page] || PAGE_TOURS.guide)
+        .filter((step) => findVisibleTarget(step));
+      if (!steps.length) return false;
+      activeKey = pageKey;
+      index = 0;
+      overlay.querySelector("#kgTourTitle").textContent = pageTourLanguage().title;
+      overlay.classList.remove("hidden");
+      document.body.classList.add("kg-tour-open");
+      renderStep();
+      overlay.querySelector("#kgTourNext").focus({ preventScroll: true });
+      return true;
+    }
+
+    overlay.querySelector("#kgTourNext").addEventListener("click", () => {
+      if (index >= steps.length - 1) closeTour();
+      else { index++; renderStep(); }
+    });
+    overlay.querySelector("#kgTourBack").addEventListener("click", () => {
+      if (index > 0) { index--; renderStep(); }
+    });
+    overlay.querySelector("#kgTourSkip").addEventListener("click", closeTour);
+    document.addEventListener("keydown", (event) => {
+      if (overlay.classList.contains("hidden")) return;
+      if (event.key === "Escape") closeTour();
+      if (event.key === "ArrowRight" && index < steps.length - 1) { index++; renderStep(); }
+      if (event.key === "ArrowLeft" && index > 0) { index--; renderStep(); }
+    });
+    window.addEventListener("resize", positionTour);
+    window.addEventListener("scroll", positionTour, true);
+    window.addEventListener("kg:lang", () => {
+      if (!overlay.classList.contains("hidden")) renderStep();
+      overlay.querySelector("#kgTourSkip").textContent = pageTourLanguage().skip;
+    });
+
+    const helpButton = document.getElementById("helpBtn");
+    if (helpButton) {
+      helpButton.title = pageTourLanguage().reopen;
+      helpButton.setAttribute("aria-label", pageTourLanguage().reopen);
+      helpButton.addEventListener("click", () => open());
+    }
+
+    const pending = sessionStorage.getItem("kg-guide-pending");
+    if (pending) {
+      sessionStorage.removeItem("kg-guide-pending");
+      try {
+        const request = JSON.parse(pending);
+        if (request.userId === userKey && !localStorage.getItem(seenKey(request.key))) {
+          setTimeout(() => open(request.key), 350);
+        }
+      } catch (error) {
+        console.warn("[KG] Could not read the first-visit guide request:", error);
+      }
+    }
+    window.KGPageTour = { open };
+  }
+
   function initTutorial() {
     if (document.getElementById("tutorialModal")) return;   // build once
     const role = ["salesperson", "relation_client"].includes(window.KG_ROLE) ? "salesperson" : "admin";
@@ -302,8 +553,6 @@
     window.addEventListener("kg:lang", () => { if (overlay.classList.contains("open")) render(); });
 
     window.KGTutorial = { open };
-    // Auto-open the very first time this role visits
-    if (!localStorage.getItem("kg-tut-" + role)) setTimeout(open, 900);
   }
   window.KG_initTutorial = initTutorial;
 
@@ -462,11 +711,27 @@
 
     // Wire interactions
     wireShell();
+    $$(".sidebar-nav a[data-nav]").forEach((link) => {
+      link.addEventListener("click", async (event) => {
+        const key = link.dataset.nav;
+        if (!key || key === "logout" || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        try {
+          const user = await window.KGAuth.user();
+          if (user) {
+            sessionStorage.setItem("kg-guide-pending", JSON.stringify({ userId: user.id || "local", key }));
+          }
+        } catch (error) {
+          console.warn("[KG] Could not schedule the first-visit guide:", error);
+        }
+        window.location.assign(link.href);
+      });
+    });
 
     // Translate everything now that the shell + page content are in the DOM
     KGI18N.apply(document);
 
-    // Guided tutorial (auto-opens once per role; reopen via the "?" button)
+    // Preserve the legacy tutorial entry point for existing callers.
     initTutorial();
   }
 
@@ -586,7 +851,6 @@
     $("#hamburger")?.addEventListener("click", () => shell.classList.toggle("nav-open"));
     $("#navScrim")?.addEventListener("click", () => shell.classList.remove("nav-open"));
     $("#themeBtn")?.addEventListener("click", toggleTheme);
-    $("#helpBtn")?.addEventListener("click", () => window.KGTutorial && window.KGTutorial.open());
 
     // Language dropdown
     const langDd = $("#langDropdown");
@@ -1190,6 +1454,7 @@
     animateCounters();
     animateBars();
     initReveal();
+    initPageTour();
     hidePreloader();
   });
 

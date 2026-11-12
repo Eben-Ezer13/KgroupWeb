@@ -570,6 +570,40 @@ table.table th.num, table.table td.num { text-align: right; }
 .pay-opt input:checked + label { border-color: var(--brand); background: var(--brand-50); color: var(--brand); box-shadow: 0 0 0 3px var(--brand-50); }
 .pay-opt input:checked + label svg { color: var(--brand); }
 
+/* First-visit section guide */
+.kg-tour-shade { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 9998; overflow: visible; }
+.kg-tour-dim { fill: #07110e; fill-opacity: .68; }
+.kg-tour-blocker { pointer-events: all; }
+.kg-tour-cursor {
+  position: fixed; z-index: 10001; font-size: 30px; line-height: 1;
+  pointer-events: none; filter: drop-shadow(0 2px 3px #0008);
+  animation: kg-tour-point 1s ease-in-out infinite alternate;
+}
+.kg-tour-highlight {
+  outline: 3px solid var(--brand) !important;
+  outline-offset: 4px; border-radius: 10px;
+}
+.kg-tour-card {
+  position: fixed; z-index: 10002; max-width: calc(100vw - 32px);
+  padding: 20px; border: 1px solid var(--line); border-radius: 18px;
+  background: var(--surface); color: var(--ink); box-shadow: 0 20px 70px #0005;
+}
+.kg-tour-card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.kg-tour-icon { font-size: 27px; }
+.kg-tour-step { color: var(--muted); font-size: 12px; font-weight: 700; }
+.kg-tour-card h2 { margin: 10px 0 7px; font: 700 19px/1.3 var(--font-display); }
+.kg-tour-card p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.55; }
+.kg-tour-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 20px; }
+@keyframes kg-tour-point { from { transform: translateY(0); } to { transform: translateY(7px); } }
+@media (max-width: 520px) {
+  .kg-tour-card { padding: 16px; }
+  .kg-tour-card h2 { font-size: 17px; }
+  .kg-tour-card p { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kg-tour-cursor { animation: none; }
+}
+
 /* Custom checkbox */
 .check { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-size: 13.5px; user-select: none; }
 .check input { position: absolute; opacity: 0; }
