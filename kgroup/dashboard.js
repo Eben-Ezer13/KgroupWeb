@@ -181,6 +181,116 @@
   window.KGI18N = KGI18N;
   const t = (k) => KGI18N.t(k);
 
+  function initPwa() {
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      navigator.serviceWorker.register("./service-worker.js")
+        .catch((error) => console.warn("[KG PWA] Service worker registration failed:", error));
+    }
+
+    let installEvent = null;
+    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+    const dismissed = () => {
+      try { return sessionStorage.getItem("kg-pwa-install-dismissed") === "1"; }
+      catch (error) {
+        console.warn("[KG PWA] Could not read install prompt preference:", error);
+        return false;
+      }
+    };
+    let panel = null;
+    let instructions = null;
+
+    function renderInstallPrompt() {
+      if ((!installEvent && !isIos) || isStandalone() || dismissed() || !document.body) {
+        if (panel) panel.remove();
+        panel = null;
+        return;
+      }
+      if (!panel) {
+        panel = document.createElement("aside");
+        panel.className = "pwa-install-banner";
+        panel.setAttribute("aria-label", "KGROUP app installation");
+        const copy = document.createElement("div");
+        copy.className = "pwa-install-copy";
+        const title = document.createElement("strong");
+        title.className = "pwa-install-title";
+        const description = document.createElement("span");
+        description.className = "pwa-install-description";
+        instructions = document.createElement("span");
+        instructions.className = "pwa-install-instructions hidden";
+        instructions.setAttribute("role", "status");
+        copy.append(title, description, instructions);
+        const actions = document.createElement("div");
+        actions.className = "pwa-install-actions";
+        const installButton = document.createElement("button");
+        installButton.type = "button";
+        installButton.className = "btn btn-primary btn-sm pwa-install-action";
+        const closeButton = document.createElement("button");
+        closeButton.type = "button";
+        closeButton.className = "icon-btn pwa-install-close";
+        closeButton.textContent = "×";
+        closeButton.setAttribute("aria-label", "Dismiss install prompt");
+        installButton.addEventListener("click", async () => {
+          if (!installEvent) {
+            instructions.textContent = KGI18N.lang === "fr"
+              ? "Dans Safari, touchez Partager, puis « Sur l’écran d’accueil »."
+              : "In Safari, tap Share, then “Add to Home Screen”.";
+            instructions.classList.remove("hidden");
+            return;
+          }
+          const prompt = installEvent;
+          installEvent = null;
+          try {
+            await prompt.prompt();
+            const choice = await prompt.userChoice;
+            if (choice.outcome === "accepted") panel.remove();
+            else renderInstallPrompt();
+          } catch (error) {
+            console.warn("[KG PWA] Install prompt failed:", error);
+            instructions.textContent = KGI18N.lang === "fr"
+              ? "L’installation n’a pas pu démarrer. Utilisez le menu de votre navigateur pour ajouter KGROUP à l’écran d’accueil."
+              : "Installation could not start. Use your browser menu to add KGROUP to your home screen.";
+            instructions.classList.remove("hidden");
+          }
+        });
+        closeButton.addEventListener("click", () => {
+          try { sessionStorage.setItem("kg-pwa-install-dismissed", "1"); }
+          catch (error) { console.warn("[KG PWA] Could not save install prompt preference:", error); }
+          panel.remove();
+          panel = null;
+        });
+        actions.append(installButton, closeButton);
+        panel.append(copy, actions);
+        document.body.append(panel);
+      }
+
+      const french = KGI18N.lang === "fr";
+      panel.querySelector(".pwa-install-title").textContent = french ? "Installer KGROUP" : "Install KGROUP";
+      panel.querySelector(".pwa-install-description").textContent = french
+        ? "Retrouvez votre espace sur l’écran d’accueil."
+        : "Keep your workspace on your home screen.";
+      panel.querySelector(".pwa-install-action").textContent = isIos
+        ? (french ? "Comment faire" : "How to")
+        : (french ? "Installer" : "Install");
+      panel.querySelector(".pwa-install-close").setAttribute("aria-label", french ? "Fermer" : "Dismiss install prompt");
+    }
+
+    window.addEventListener("beforeinstallprompt", (event) => {
+      if (document.body.hasAttribute("data-app")) return;
+      event.preventDefault();
+      installEvent = event;
+      renderInstallPrompt();
+    });
+    window.addEventListener("appinstalled", () => {
+      installEvent = null;
+      if (panel) panel.remove();
+      panel = null;
+    });
+    window.addEventListener("kg:lang", renderInstallPrompt);
+    if (isIos && !document.body.hasAttribute("data-app")) renderInstallPrompt();
+  }
+  initPwa();
+
   /* -----------------------------------------------------------------------
      1c. GUIDED TUTORIAL — role-aware, bilingual (follows the language switch)
      Auto-opens once for new users; reopen anytime via the "?" top-bar button.

@@ -84,6 +84,9 @@ kgroup-platform/
 - **Interactivity** — animated counters, sortable/filterable/paginated tables,
   live search, modals, toasts, notification dropdown, collapsible sidebar.
 - **Fully responsive** — desktop → tablet → mobile with an off-canvas sidebar.
+- **Installable PWA** — install KGROUP from a supported mobile browser and
+  launch it from the phone's home screen. The offline shell never caches API
+  responses or links containing invitation/reset tokens.
 - **CRM clients** — chaque vente rattache automatiquement un client par son
   numero de telephone (normalise, unique par equipe : aucun doublon). Fiche
   client avec historique d'achats, total depense et commercial responsable;
@@ -200,3 +203,11 @@ the pages on one origin. Same variables, plus `NODE_ENV=production`.
 
 Deployment details, including hosting the API separately from the pages, are in
 [`MIGRATION-NEON.md`](MIGRATION-NEON.md) §8.
+
+### Install on a phone
+
+The PWA requires HTTPS (localhost is supported for development). On Android,
+open KGROUP in Chrome and use the **Install** prompt or the browser menu. On
+iPhone/iPad, open the site in Safari, tap **Share**, then **Add to Home Screen**.
+The installed app shell can open offline, but sign-in and live data still need
+an internet connection.

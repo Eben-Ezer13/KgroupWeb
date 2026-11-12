@@ -31,6 +31,7 @@ try {
 console.log("\nRequired files");
 const REQUIRED = [
   "api.js", "data.js", "dashboard.js", "notifications.js", "style.css",
+  "manifest.webmanifest", "service-worker.js", "offline.html",
   "training-content.js", "training.css", "formation.html",
   "crm.css", "clients.html", "remuneration.html",
   "db/schema-crm.sql", "server/crm.js", "server/routes/clients.js",
@@ -46,6 +47,26 @@ const REQUIRED = [
 for (const f of REQUIRED) {
   if (fs.existsSync(path.join(ROOT, f))) console.log(`  OK     ${f}`);
   else fail(`missing ${f}`);
+}
+
+console.log("\nPWA");
+try {
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "manifest.webmanifest"), "utf8"));
+  if (manifest.display !== "standalone") fail("PWA manifest must use standalone display mode");
+  if (!manifest.start_url || !manifest.scope) fail("PWA manifest must define start_url and scope");
+  for (const size of ["192x192", "512x512"]) {
+    const icon = (manifest.icons || []).find((item) => item.sizes === size);
+    if (!icon || !fs.existsSync(path.join(ROOT, icon.src))) fail(`PWA manifest is missing its ${size} icon`);
+    else console.log(`  OK     ${size} install icon`);
+  }
+  const worker = fs.readFileSync(path.join(ROOT, "service-worker.js"), "utf8");
+  if (!worker.includes("url.pathname.startsWith(API_PREFIX)")) {
+    fail("PWA service worker must never cache API responses");
+  } else {
+    console.log("  OK     API requests bypass the service worker cache");
+  }
+} catch (err) {
+  fail(`PWA manifest or service worker is invalid: ${err.message}`);
 }
 
 /* Fichiers d'hygiene du depot : utiles au developpeur, sans role dans le build.
@@ -108,6 +129,12 @@ const APP_PAGES = new Set([
 
 for (const page of pages) {
   const html = fs.readFileSync(path.join(ROOT, page), "utf8");
+  if (!html.includes('<link rel="manifest" href="manifest.webmanifest"')) {
+    fail(`${page} does not link the PWA manifest`);
+  }
+  if (!html.includes('<link rel="apple-touch-icon" href="assets/icons/icon-192.png"')) {
+    fail(`${page} does not define its iOS home-screen icon`);
+  }
   if (APP_PAGES.has(page)) {
     const order = ["data.js", "api.js", "dashboard.js"].map((s) =>
       html.indexOf(`<script src="${s}"></script>`)
@@ -214,7 +241,7 @@ const ROOT_ASSETS = [
   ...fs.readdirSync(ROOT).filter((f) => f.endsWith(".html")),
   "style.css", "crm.css", "training.css", "guide.css",
   "api.js", "data.js", "dashboard.js", "notifications.js", "training-content.js",
-  "exports.js", "favicon.svg",
+  "exports.js", "favicon.svg", "manifest.webmanifest", "service-worker.js",
 ];
 
 let copied = 0;
