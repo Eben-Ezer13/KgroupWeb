@@ -9,7 +9,10 @@
   "display": "standalone",
   "background_color": "#f3f3ee",
   "theme_color": "#123b2b",
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "assets/icons/icon-192.png",
@@ -28,12 +31,6 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
-    },
-    {
-      "src": "favicon.svg?v=5",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
     }
   ],
   "shortcuts": [
@@ -41,13 +38,25 @@
       "name": "Messagerie",
       "short_name": "Messages",
       "url": "./messages.html",
-      "icons": [{ "src": "favicon.svg?v=5", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [
+        {
+          "src": "favicon.svg?v=5",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     },
     {
       "name": "Tableau de bord",
       "short_name": "Dashboard",
       "url": "./dashboard.html",
-      "icons": [{ "src": "favicon.svg?v=5", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [
+        {
+          "src": "favicon.svg?v=5",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     }
   ]
 }
