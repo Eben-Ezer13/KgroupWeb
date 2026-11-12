@@ -73,8 +73,8 @@
   }
   window.icon = icon;
 
-  // Emerald KGROUP logo mark (SVG) — clean perfume bottle + K monogram
-  const LOGO = `<img class="logo-mark" src="favicon.svg" alt="KGROUP Parfumery"/>`;
+  // Official KGROUP Parfumery seal
+  const LOGO = `<img class="logo-mark" src="assets/images/logo.jpeg" alt="KGROUP Parfumery"/>`;
   window.KG_LOGO = LOGO;
 
   /* -----------------------------------------------------------------------

@@ -1,7 +1,7 @@
 /* =========================================================================
    KGROUP SALES PERFORMANCE PLATFORM
    Master Stylesheet
-   Premium SaaS dashboard — White + Emerald (#0B7A4B)
+   Premium SaaS dashboard — White + Emerald (#174B35)
    Author: KGROUP PARFUMERY
    ========================================================================= */
 
@@ -10,17 +10,17 @@
    ------------------------------------------------------------------------- */
 :root {
   /* Brand */
-  --brand: #0B7A4B;
-  --brand-600: #0A6E43;
-  --brand-500: #0B7A4B;
-  --brand-400: #16965E;
-  --brand-300: #3FB27E;
-  --brand-100: #DDF2E8;
-  --brand-50:  #F0FAF5;
-  --brand-glow: rgba(11, 122, 75, 0.35);
+  --brand: #174B35;
+  --brand-600: #123B2B;
+  --brand-500: #174B35;
+  --brand-400: #2C7250;
+  --brand-300: #72A789;
+  --brand-100: #E4EEE7;
+  --brand-50:  #F0F5F1;
+  --brand-glow: rgba(23, 75, 53, 0.22);
 
   /* Accents */
-  --gold:   #E0B24A;
+  --gold:   #C9A65A;
   --silver: #B9C2CC;
   --bronze: #C98B4B;
   --danger: #E24C4B;
@@ -28,15 +28,15 @@
   --warn:   #F0A020;
 
   /* Neutrals (light theme) */
-  --bg:        #F4F7F6;
-  --bg-2:      #EAF1EE;
-  --surface:   #FFFFFF;
-  --surface-2: #FBFDFC;
-  --ink:       #10201A;
-  --ink-2:     #34433D;
-  --muted:     #6B7A73;
-  --line:      #E4EBE7;
-  --line-2:    #EFF4F1;
+  --bg:        #F3F3EE;
+  --bg-2:      #E9ECE6;
+  --surface:   #FFFEFA;
+  --surface-2: #FAF9F4;
+  --ink:       #17251E;
+  --ink-2:     #43534A;
+  --muted:     #78857D;
+  --line:      #E5E8E0;
+  --line-2:    #EDF0E9;
 
   /* Glass */
   --glass-bg:     rgba(255, 255, 255, 0.62);
@@ -1276,91 +1276,4 @@ table.table th.num, table.table td.num { text-align: right; }
   .main { margin-left: 0 !important; }
   body { background: #fff; }
   .card, .glass { box-shadow: none; border: 1px solid #ddd; }
-}
-
-
-/* =========================================================================
-   KGROUP PARFUMERY — FOREST & GOLD DESIGN SYSTEM
-   Shared premium treatment for every authenticated workspace page.
-   ========================================================================= */
-:root {
-  --brand: #174b35;
-  --brand-600: #123b2b;
-  --brand-500: #174b35;
-  --brand-400: #2c7250;
-  --brand-300: #72a789;
-  --brand-100: #e4eee7;
-  --brand-50: #f0f5f1;
-  --brand-glow: rgba(23, 75, 53, .2);
-  --gold: #c9a65a;
-  --bg: #f3f3ee;
-  --bg-2: #e9ece6;
-  --surface: #fffefa;
-  --surface-2: #faf9f4;
-  --ink: #17251e;
-  --ink-2: #43534a;
-  --muted: #78857d;
-  --line: #e5e8e0;
-  --line-2: #edf0e9;
-  --glass-bg: rgba(255, 254, 250, .88);
-  --glass-brd: rgba(255, 255, 255, .82);
-  --sh-xs: 0 1px 2px rgba(18, 40, 28, .04);
-  --sh-sm: 0 3px 12px rgba(18, 40, 28, .045);
-  --sh-md: 0 10px 30px rgba(18, 40, 28, .07);
-  --sh-lg: 0 20px 48px rgba(18, 40, 28, .11);
-  --sh-brand: 0 9px 24px rgba(18, 59, 43, .2);
-  --r-md: 14px;
-  --r-lg: 20px;
-  --r-xl: 28px;
-  --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  --font-display: 'Inter', 'Segoe UI', system-ui, sans-serif;
-}
-body[data-app] { background: var(--bg); }
-body[data-app] .sidebar {
-  background: linear-gradient(165deg, #153d2c 0%, #0c2d21 100%);
-  color: #f7f5eb;
-  border-right: 1px solid rgba(229, 212, 157, .15);
-  box-shadow: 10px 0 32px rgba(10, 37, 26, .08);
-}
-body[data-app] .sidebar-brand { border-color: rgba(255,255,255,.1); }
-body[data-app] .sidebar-brand .brand-txt strong { color: #fff; letter-spacing: .035em; }
-body[data-app] .sidebar-brand .brand-txt span,
-body[data-app] .nav-label { color: rgba(242, 241, 228, .58); }
-body[data-app] .nav-item { color: rgba(248, 248, 239, .82); border-radius: 11px; }
-body[data-app] .nav-item:hover { background: rgba(255,255,255,.09); color: #f0d58a; }
-body[data-app] .nav-item.active {
-  color: #17271e; background: linear-gradient(120deg, #e7d49c, #c5a65d);
-  box-shadow: 0 8px 20px rgba(5, 24, 17, .2);
-}
-body[data-app] .nav-item.active svg { stroke: #17271e; }
-body[data-app] .sidebar-foot { border-color: rgba(255,255,255,.1); }
-body[data-app] .sidebar-user { background: rgba(255,255,255,.08); }
-body[data-app] .sidebar-user strong { color: #fff; }
-body[data-app] .sidebar-user small { color: rgba(242,241,228,.62); }
-body[data-app] .sidebar .icon-btn { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.12); color: #f5f1df; }
-body[data-app] .main { background: var(--bg); }
-body[data-app] .topbar { background: rgba(250,250,245,.9); border-color: #e4e7df; }
-body[data-app] .topbar h1 { font-weight: 750; letter-spacing: -.035em; }
-body[data-app] .content { padding: clamp(20px, 3vw, 36px); }
-body[data-app] .page-head h2 { font-size: clamp(24px, 2.2vw, 32px); letter-spacing: -.045em; }
-body[data-app] .card { border-color: #e7e9e2; box-shadow: 0 4px 18px rgba(28,46,34,.045); }
-body[data-app] .card:hover { border-color: #d4dfd5; }
-body[data-app] .stat { background: linear-gradient(145deg, #fffefa, #faf9f4); }
-body[data-app] .stat-val { letter-spacing: -.055em; }
-body[data-app] .btn-primary {
-  color: #17271e; background: linear-gradient(120deg, #e8d79f, #c9a85d);
-  box-shadow: 0 7px 18px rgba(165, 131, 54, .2);
-}
-body[data-app] .btn-primary:hover { background: linear-gradient(120deg, #efdfad, #d2b56b); transform: translateY(-1px); }
-body[data-app] .btn-soft { background: var(--brand-50); color: var(--brand-600); }
-body[data-app] .input:focus, body[data-app] select:focus, body[data-app] textarea:focus { border-color: var(--brand-400); box-shadow: 0 0 0 3px rgba(44,114,80,.11); }
-body[data-app] table thead th { color: #637067; background: #f8f8f2; }
-body[data-app] .logo-mark { border-radius: 50%; box-shadow: 0 3px 12px rgba(0,0,0,.13); }
-.auth-premium { --gold: #d5b66d; }
-.auth-premium .auth-brand-logo { border-radius: 50%; }
-.auth-premium .auth-logo-frame { background: #e6ebe5; }
-.auth-premium .auth-card { border: 1px solid #ebece6; box-shadow: 0 22px 70px rgba(21,49,34,.08); }
-@media (max-width: 860px) {
-  body[data-app] .content { padding: 20px 16px 28px; }
-  body[data-app] .sidebar { box-shadow: 14px 0 35px rgba(8,29,20,.24); }
 }
