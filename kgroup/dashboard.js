@@ -323,8 +323,8 @@
   };
 
   const PAGE_TOUR_LABELS = {
-    en: { next: "Next", back: "Back", done: "Got it", skip: "Skip guide", step: "Step", title: "Quick guide", reopen: "Open this section's guide" },
-    fr: { next: "Suivant", back: "Retour", done: "Compris", skip: "Passer le guide", step: "Étape", title: "Guide rapide", reopen: "Ouvrir le guide de cette rubrique" },
+    en: { next: "Next", back: "Back", done: "Got it", skip: "Skip guide", step: "Step", title: "Quick guide", reopen: "Open this section's guide", language: "Guide language" },
+    fr: { next: "Suivant", back: "Retour", done: "Compris", skip: "Passer le guide", step: "Étape", title: "Guide rapide", reopen: "Ouvrir le guide de cette rubrique", language: "Langue du guide" },
   };
 
   function pageTourLanguage() {
@@ -345,7 +345,16 @@
       </svg>
       <span class="kg-tour-cursor" aria-hidden="true">👆</span>
       <section class="kg-tour-card" role="dialog" aria-modal="true" aria-labelledby="kgTourTitle">
-        <div class="kg-tour-card-head"><span class="kg-tour-icon" id="kgTourIcon"></span><span class="kg-tour-step" id="kgTourStep"></span></div>
+        <div class="kg-tour-card-head">
+          <span class="kg-tour-icon" id="kgTourIcon"></span>
+          <div class="kg-tour-head-meta">
+            <div class="kg-tour-language" role="group">
+              <button type="button" data-tour-lang="en" aria-label="English">EN</button>
+              <button type="button" data-tour-lang="fr" aria-label="Français">FR</button>
+            </div>
+            <span class="kg-tour-step" id="kgTourStep"></span>
+          </div>
+        </div>
         <h2 id="kgTourTitle"></h2>
         <p id="kgTourBody"></p>
         <div class="kg-tour-actions">
@@ -434,6 +443,12 @@
       overlay.querySelector("#kgTourBack").disabled = index === 0;
       overlay.querySelector("#kgTourNext").textContent = index === steps.length - 1 ? labels.done : labels.next;
       overlay.querySelector("#kgTourSkip").textContent = labels.skip;
+      overlay.querySelector(".kg-tour-language").setAttribute("aria-label", labels.language);
+      overlay.querySelectorAll("[data-tour-lang]").forEach((button) => {
+        const selected = button.dataset.tourLang === lang;
+        button.classList.toggle("active", selected);
+        button.setAttribute("aria-pressed", String(selected));
+      });
       requestAnimationFrame(positionTour);
     }
 
@@ -460,6 +475,9 @@
       if (index > 0) { index--; renderStep(); }
     });
     overlay.querySelector("#kgTourSkip").addEventListener("click", closeTour);
+    overlay.querySelectorAll("[data-tour-lang]").forEach((button) => {
+      button.addEventListener("click", () => KGI18N.set(button.dataset.tourLang));
+    });
     document.addEventListener("keydown", (event) => {
       if (overlay.classList.contains("hidden")) return;
       if (event.key === "Escape") closeTour();

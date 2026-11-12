@@ -590,6 +590,14 @@ table.table th.num, table.table td.num { text-align: right; }
   background: var(--surface); color: var(--ink); box-shadow: 0 20px 70px #0005;
 }
 .kg-tour-card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.kg-tour-head-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.kg-tour-language { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; }
+.kg-tour-language button {
+  min-width: 34px; padding: 3px 6px; border: 0; border-radius: 6px;
+  background: transparent; color: var(--muted); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.kg-tour-language button.active { background: var(--brand-50); color: var(--brand); }
+.kg-tour-language button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .kg-tour-icon { font-size: 27px; }
 .kg-tour-step { color: var(--muted); font-size: 12px; font-weight: 700; }
 .kg-tour-card h2 { margin: 10px 0 7px; font: 700 19px/1.3 var(--font-display); }
