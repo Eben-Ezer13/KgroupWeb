@@ -108,6 +108,7 @@
       <div class="modal-body" id="fcBody"></div>
       <div class="modal-foot">
         <button class="btn btn-ghost" data-modal-close>Fermer</button>
+        <button class="btn btn-primary" id="fcSave">Enregistrer les modifications</button>
         <a class="btn btn-primary" id="fcWhatsapp" target="_blank" rel="noopener">💬 Écrire sur WhatsApp</a>
       </div>
     </div>
@@ -124,6 +125,9 @@
           <div class="field"><label>Anniversaire</label><input class="input" id="ncBirthday" type="date"></div>
           <div class="field"><label>Ville</label><input class="input" id="ncCity" placeholder="Casablanca"></div>
           <div class="field"><label>Email</label><input class="input" id="ncEmail" type="email" placeholder="client@email.com"></div>
+          <div class="field"><label>Langue préférée</label><select class="select" id="ncLanguage"><option value="fr">Français</option><option value="en">English</option></select></div>
+          <div class="field"><label class="row gap-2"><input id="ncWhatsappOptIn" type="checkbox"> Le client accepte les messages WhatsApp</label></div>
+          <div class="field full"><label>Alerte / point d'attention</label><input class="input" id="ncAlert" maxlength="500" placeholder="Ex. : appeler avant livraison"></div>
           <div class="field full" id="ncRepField" style="display:none">
             <label>Commercial responsable</label>
             <select class="select" id="ncRep"><option value="">— Aucun —</option></select>
@@ -151,6 +155,7 @@
       const API = window.KGClients;
       const role = window.KG_ROLE || "admin";
       const seesAll = role === "admin" || role === "relation_client";
+      let currentClientId = null;
       const esc = (s) => String(s == null ? "" : s)
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
       const money = (n) => KG.fmt.money(Number(n) || 0);
@@ -176,9 +181,9 @@
             <span>${esc(c.birthday_label)}</span>
             <span>${esc(c.rep_name || "non attribué")}</span>
           </div>
-          ${c.whatsapp
+          ${c.whatsapp && c.whatsapp_opt_in
             ? `<a class="btn btn-primary btn-sm btn-block" href="${esc(c.whatsapp)}" target="_blank" rel="noopener">💬 Écrire sur WhatsApp</a>`
-            : `<button class="btn btn-ghost btn-sm btn-block" disabled>Numéro manquant</button>`}
+            : `<button class="btn btn-ghost btn-sm btn-block" disabled>${c.whatsapp_opt_in ? "Numéro manquant" : "Consentement WhatsApp requis"}</button>`}
         </div>`;
       }
 
@@ -250,7 +255,7 @@
               <div class="muted" style="font-size:12px">${c.sales_count || 0} vente(s)</div></td>
             <td class="num" style="white-space:nowrap">
               <button class="btn btn-ghost btn-sm" data-open="${esc(c.id)}">Fiche</button>
-              ${c.whatsapp ? `<a class="btn btn-ghost btn-sm" href="${esc(c.whatsapp)}" target="_blank" rel="noopener" title="WhatsApp">💬</a>` : ""}
+              ${c.whatsapp && c.whatsapp_opt_in ? `<a class="btn btn-ghost btn-sm" href="${esc(c.whatsapp)}" target="_blank" rel="noopener" title="WhatsApp">💬</a>` : ""}
             </td>
           </tr>`).join("")
           : `<tr><td colspan="7" class="muted" style="text-align:center;padding:28px">
@@ -278,9 +283,10 @@
         catch (err) { toast("error", "Fiche indisponible", err.message); return; }
         const c = data.client, sales = data.sales || [];
 
+        currentClientId = c.id;
         $("#fcName").textContent = c.name;
         $("#fcWhatsapp").href = c.whatsapp || "#";
-        $("#fcWhatsapp").classList.toggle("hidden", !c.whatsapp);
+        $("#fcWhatsapp").classList.toggle("hidden", !c.whatsapp || !c.whatsapp_opt_in);
 
         $("#fcBody").innerHTML = `
           <div class="kc-fiche">
@@ -288,6 +294,8 @@
             <div><span>Anniversaire</span><b>${esc(c.birthday_label)}${
               c.days_until_birthday === 0 ? " 🎉" : c.days_until_birthday === 1 ? " 🎂" : ""}</b></div>
             <div><span>Commercial responsable</span><b>${esc(c.rep_name || "non attribué")}</b></div>
+            <div><span>Langue préférée</span><b>${c.language === "en" ? "English" : "Français"}</b></div>
+            <div><span>WhatsApp</span><b>${c.whatsapp_opt_in ? "Consentement confirmé" : "Pas de consentement enregistré"}</b></div>
             <div><span>Ville</span><b>${esc(c.city || "—")}</b></div>
             <div><span>Nombre de ventes</span><b>${c.sales_count || 0}</b></div>
             <div><span>Montant total acheté</span><b style="color:var(--brand)">${money(c.total_spent)}</b></div>
@@ -296,6 +304,22 @@
             <div><span>Client depuis</span><b>${new Date(c.created_at).toLocaleDateString("fr-FR")}</b></div>
           </div>
           ${c.notes ? `<div class="kc-notes">${esc(c.notes)}</div>` : ""}
+          ${c.alert_note ? `<div class="kc-notes" style="border-left:3px solid var(--warning,#f0a020)"><b>À noter :</b> ${esc(c.alert_note)}</div>` : ""}
+          <h4 class="kc-h4">Coordonnées et préférences</h4>
+          <div class="form-grid" style="margin-bottom:20px">
+            <div class="field"><label>Nom</label><input class="input" id="fcEditName" maxlength="160" value="${esc(c.name)}"></div>
+            <div class="field"><label>Téléphone</label><input class="input" id="fcEditPhone" type="tel" value="${esc(c.phone || "")}"></div>
+            <div class="field"><label>Anniversaire</label><input class="input" id="fcEditBirthday" type="date" value="${esc(c.birthday || "")}"></div>
+            <div class="field"><label>Email</label><input class="input" id="fcEditEmail" type="email" value="${esc(c.email || "")}"></div>
+            <div class="field"><label>Ville</label><input class="input" id="fcEditCity" value="${esc(c.city || "")}"></div>
+            <div class="field"><label>Langue préférée</label><select class="select" id="fcEditLanguage">
+              <option value="fr" ${c.language !== "en" ? "selected" : ""}>Français</option>
+              <option value="en" ${c.language === "en" ? "selected" : ""}>English</option>
+            </select></div>
+            <div class="field"><label class="row gap-2"><input id="fcEditWhatsapp" type="checkbox" ${c.whatsapp_opt_in ? "checked" : ""}> Consentement WhatsApp confirmé</label></div>
+            <div class="field full"><label>Alerte / point d'attention</label><input class="input" id="fcEditAlert" maxlength="500" value="${esc(c.alert_note || "")}"></div>
+            <div class="field full"><label>Notes</label><textarea class="textarea" id="fcEditNotes">${esc(c.notes || "")}</textarea></div>
+          </div>
           <h4 class="kc-h4">Historique des achats</h4>
           ${sales.length ? `
             <div class="table-wrap"><table class="table">
@@ -312,6 +336,31 @@
         window.kgModal.open("#clientModal");
       }
 
+      $("#fcSave").addEventListener("click", async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          await API.update(currentClientId, {
+            name: $("#fcEditName").value.trim(),
+            phone: $("#fcEditPhone").value.trim() || null,
+            birthday: $("#fcEditBirthday").value || null,
+            email: $("#fcEditEmail").value.trim() || null,
+            city: $("#fcEditCity").value.trim() || null,
+            language: $("#fcEditLanguage").value,
+            whatsapp_opt_in: $("#fcEditWhatsapp").checked,
+            alert_note: $("#fcEditAlert").value.trim() || null,
+            notes: $("#fcEditNotes").value.trim() || null,
+          });
+          toast("success", "Fiche mise à jour", "Les coordonnées et préférences du client ont été enregistrées.");
+          await Promise.all([loadClients(), loadBirthdays()]);
+          await openClient(currentClientId);
+        } catch (err) {
+          toast("error", "Modification impossible", err.message);
+        } finally {
+          button.disabled = false;
+        }
+      });
+
       /* ---------- Création manuelle ---------- */
       $("#ncSave").addEventListener("click", async (e) => {
         const msg = $("#ncMsg");
@@ -324,6 +373,9 @@
           city: $("#ncCity").value.trim() || null,
           email: $("#ncEmail").value.trim() || null,
           notes: $("#ncNotes").value.trim() || null,
+          language: $("#ncLanguage").value,
+          whatsapp_opt_in: $("#ncWhatsappOptIn").checked,
+          alert_note: $("#ncAlert").value.trim() || null,
         };
         if (seesAll && $("#ncRep").value) body.rep_id = $("#ncRep").value;
 
@@ -341,7 +393,8 @@
           }
           window.kgModal.close($("#newClient"));
           toast("success", "Client créé", `${name} a été ajouté à votre portefeuille.`);
-          ["#ncName","#ncPhone","#ncBirthday","#ncCity","#ncEmail","#ncNotes"].forEach(s => $(s).value = "");
+          ["#ncName","#ncPhone","#ncBirthday","#ncCity","#ncEmail","#ncNotes","#ncAlert"].forEach(s => $(s).value = "");
+          $("#ncLanguage").value = "fr"; $("#ncWhatsappOptIn").checked = false;
           msg.classList.add("hidden");
           await Promise.all([loadClients(), loadBirthdays()]);
         } catch (err) {

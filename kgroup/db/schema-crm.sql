@@ -34,6 +34,9 @@ create table if not exists public.clients (
   email        text,
   city         text,
   notes        text,
+  language     text not null default 'fr' check (language in ('fr', 'en')),
+  whatsapp_opt_in boolean not null default false,
+  alert_note   text,
   -- Statistiques dénormalisées, tenues à jour par apply_sale_client() plus bas.
   -- Même approche que salespersons : les listes restent lisibles sans agrégation.
   sales_count  int    default 0,
@@ -41,6 +44,9 @@ create table if not exists public.clients (
   last_sale_at timestamptz,
   created_at   timestamptz default now()
 );
+alter table public.clients add column if not exists language text not null default 'fr';
+alter table public.clients add column if not exists whatsapp_opt_in boolean not null default false;
+alter table public.clients add column if not exists alert_note text;
 
 -- Un même numéro ne peut exister qu'une fois par équipe : c'est ce qui empêche
 -- les doublons quand deux commerciaux saisissent le même client.
@@ -110,6 +116,7 @@ create table if not exists public.payroll_periods (
   closed_at    timestamptz,
   closed_by    uuid references public.users (id) on delete set null,
   created_at   timestamptz default now(),
+  updated_at   timestamptz not null default now(),
   unique (rep_id, period)
 );
 create index if not exists idx_payroll_team_period on public.payroll_periods (team_id, period desc);
@@ -125,6 +132,52 @@ create table if not exists public.birthday_reminders (
   created_at timestamptz default now(),
   primary key (client_id, remind_on, kind)
 );
+
+-- Persistent per-user notification read state.
+alter table public.notifications add column if not exists recipient_id uuid references public.users (id) on delete cascade;
+create table if not exists public.notification_reads (
+  notification_id uuid not null references public.notifications (id) on delete cascade,
+  user_id uuid not null references public.users (id) on delete cascade,
+  read_at timestamptz not null default now(),
+  primary key (notification_id, user_id)
+);
+create index if not exists idx_notification_reads_user on public.notification_reads (user_id, read_at desc);
+
+-- Team room plus direct messages. General room messages have no recipient.
+create table if not exists public.team_messages (
+  id uuid primary key default gen_random_uuid(),
+  team_id uuid not null references public.teams (id) on delete cascade,
+  sender_id uuid not null references public.users (id) on delete cascade,
+  recipient_id uuid references public.users (id) on delete cascade,
+  content text not null check (length(content) between 1 and 2000),
+  mention_ids uuid[] not null default '{}'::uuid[],
+  created_at timestamptz not null default now(),
+  check (recipient_id is null or recipient_id <> sender_id)
+);
+create index if not exists idx_team_messages_general on public.team_messages (team_id, created_at desc) where recipient_id is null;
+create index if not exists idx_team_messages_direct on public.team_messages (team_id, recipient_id, created_at desc);
+create table if not exists public.team_message_reads (
+  message_id uuid not null references public.team_messages (id) on delete cascade,
+  user_id uuid not null references public.users (id) on delete cascade,
+  read_at timestamptz not null default now(),
+  primary key (message_id, user_id)
+);
+create index if not exists idx_team_message_reads_user on public.team_message_reads (user_id, read_at desc);
+create index if not exists idx_team_messages_sender on public.team_messages (team_id, sender_id, created_at desc);
+create index if not exists idx_notifications_recipient on public.notifications (team_id, recipient_id, created_at desc)
+  where recipient_id is not null;
+
+-- Immutable idempotency keys for payroll announcements.
+create table if not exists public.payroll_announcements (
+  id uuid primary key default gen_random_uuid(),
+  team_id uuid not null references public.teams (id) on delete cascade,
+  period date not null,
+  status text not null check (status in ('CLOTURE', 'VALIDEE', 'PAYEE')),
+  actor_id uuid references public.users (id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (team_id, period, status)
+);
+alter table public.payroll_periods add column if not exists updated_at timestamptz not null default now();
 
 -- =========================================================================
 -- ROLLUP CLIENT — chaque vente rattachée à un client met à jour ses totaux.

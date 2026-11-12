@@ -27,6 +27,19 @@ const { HttpError, teamScope, requireAdmin, canSeeAllPayroll } = require("../pol
 const crm = require("../crm");
 
 const router = express.Router();
+const PAYROLL_STATUS_RANK = { EN_COURS: 0, CLOTURE: 1, VALIDEE: 2, PAYEE: 3 };
+
+async function one(executor, text, params) {
+  if (executor === db) return db.one(text, params);
+  const { rows } = await executor.query(text, params);
+  return rows[0] || null;
+}
+
+async function many(executor, text, params) {
+  if (executor === db) return db.many(text, params);
+  const { rows } = await executor.query(text, params);
+  return rows;
+}
 
 /* ------------------------------------------------------------------ *
  * Helpers                                                             *
@@ -40,11 +53,11 @@ function periodFromQuery(month) {
   return `${m}-01`;
 }
 
-async function settingsFor(teamId) {
-  const row = await db.one(`select * from public.compensation_settings where team_id = $1`, [teamId]);
+async function settingsFor(teamId, executor = db) {
+  const row = await one(executor, `select * from public.compensation_settings where team_id = $1`, [teamId]);
   if (row) return { ...crm.DEFAULT_SETTINGS, ...row };
   // Une équipe créée avant cette fonctionnalité n'a pas encore de ligne.
-  await db.query(
+  await executor.query(
     `insert into public.compensation_settings (team_id) values ($1) on conflict do nothing`, [teamId]
   );
   return { ...crm.DEFAULT_SETTINGS };
@@ -55,8 +68,8 @@ async function settingsFor(teamId) {
  * Une vente compte dans le mois de son `created_at`, lu en heure marocaine :
  * une vente saisie le 31 à 23 h ne bascule pas sur le mois suivant.
  */
-async function monthlyTotals(teamId, period) {
-  return db.many(
+async function monthlyTotals(teamId, period, executor = db) {
+  return many(executor,
     `select s.rep_id,
             count(*)::int                     as sales_count,
             coalesce(sum(s.qty), 0)::int      as units,
@@ -109,17 +122,17 @@ function buildLine(rep, totals, settings, stored) {
   };
 }
 
-async function linesFor(teamId, period, repFilter) {
-  const settings = await settingsFor(teamId);
-  const reps = await db.many(
+async function linesFor(teamId, period, repFilter, executor = db) {
+  const settings = await settingsFor(teamId, executor);
+  const reps = await many(executor,
     repFilter
       ? `select id, name from public.salespersons where team_id = $1 and id = $2`
       : `select id, name from public.salespersons where team_id = $1 order by name`,
     repFilter ? [teamId, repFilter] : [teamId]
   );
-  const totals = await monthlyTotals(teamId, period);
+  const totals = await monthlyTotals(teamId, period, executor);
   const byRep = Object.fromEntries(totals.map((t) => [t.rep_id, t]));
-  const stored = await db.many(
+  const stored = await many(executor,
     `select * from public.payroll_periods where team_id = $1 and period = $2`, [teamId, period]
   );
   const storedByRep = Object.fromEntries(stored.map((s) => [s.rep_id, s]));
@@ -334,11 +347,39 @@ router.post("/payroll/close", requireUser, async (req, res, next) => {
       throw new HttpError(400, "Le mois en cours ne peut pas être clôturé avant sa fin.");
     }
 
-    const { settings, lines } = await linesFor(teamId, period);
+    const result = await db.tx(async (client) => {
+      await client.query(
+        `select pg_advisory_xact_lock(hashtext($1), hashtext($2))`,
+        [teamId, period]
+      );
+      const { rows: existing } = await client.query(
+        `select status from public.payroll_periods
+          where team_id = $1 and period = $2
+          for update`,
+        [teamId, period]
+      );
+      const { rows: priorAnnouncements } = await client.query(
+        `select status from public.payroll_announcements
+          where team_id = $1 and period = $2
+          for update`,
+        [teamId, period]
+      );
+      const priorStatuses = [...existing, ...priorAnnouncements];
+      if (priorStatuses.some((row) => !Object.prototype.hasOwnProperty.call(PAYROLL_STATUS_RANK, row.status))) {
+        throw new HttpError(409, "La période contient un statut de paie inconnu; vérifiez-la avant toute modification.");
+      }
+      const highestStatus = priorStatuses.reduce(
+        (highest, row) => Math.max(highest, PAYROLL_STATUS_RANK[row.status] || 0),
+        0
+      );
+      if (PAYROLL_STATUS_RANK[status] < highestStatus) {
+        throw new HttpError(409, "Une période de paie ne peut pas revenir à un statut antérieur.");
+      }
 
-    const saved = await db.tx(async (client) => {
+      const { settings, lines } = await linesFor(teamId, period, null, client);
       const out = [];
       for (const l of lines) {
+        const frozenSettings = l.settings || settings;
         const { rows } = await client.query(
           `insert into public.payroll_periods
              (team_id, rep_id, period, sales_count, revenue, commission, bonus,
@@ -349,17 +390,37 @@ router.post("/payroll/close", requireUser, async (req, res, next) => {
              commission  = excluded.commission,  bonus   = excluded.bonus,
              salary_base = excluded.salary_base, total   = excluded.total,
              status      = excluded.status,      settings = excluded.settings,
-             closed_at   = now(),                closed_by = excluded.closed_by
+             closed_at   = now(),                closed_by = excluded.closed_by,
+             updated_at  = now()
            returning *`,
           [teamId, l.rep_id, period, l.sales_count, l.revenue, l.commission, l.bonus,
-           l.salary_base, l.total, status, JSON.stringify(settings), req.user.id]
+           l.salary_base, l.total, status, JSON.stringify(frozenSettings), req.user.id]
         );
         out.push(rows[0]);
       }
-      return out;
+      const { rows: announcements } = await client.query(
+        `insert into public.payroll_announcements (team_id, period, status, actor_id)
+         values ($1,$2,$3,$4)
+         on conflict (team_id, period, status) do nothing
+         returning id`,
+        [teamId, period, status, req.user.id]
+      );
+      if (announcements.length) {
+        const title = status === "PAYEE" ? "Paie de l'équipe payée"
+          : status === "VALIDEE" ? "Paie de l'équipe validée"
+            : "Paie de l'équipe clôturée";
+        const body = `La rémunération de l'équipe pour ${period.slice(0, 7)} a été mise à jour.`;
+        await client.query(
+          `insert into public.notifications (team_id, actor_id, actor_name, recipient_id, type, title, body)
+           select $1, $2, $3, p.id, 'payroll_announcement', $4, $5
+             from public.profiles p where p.team_id = $1`,
+          [teamId, req.user.id, (req.profile && req.profile.full_name) || req.user.email, title, body]
+        );
+      }
+      return { rows: out, announced: announcements.length > 0 };
     });
 
-    return res.json({ ok: true, period, status, closed: saved.length });
+    return res.json({ ok: true, period, status, closed: result.rows.length, announced: result.announced });
   } catch (err) {
     return next(err);
   }

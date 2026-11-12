@@ -95,12 +95,19 @@
       "nav.ranking":"Rankings","nav.challenges":"Challenges","nav.rewards":"Rewards",
       "nav.reports":"Reports","nav.notifications":"Notifications","nav.settings":"Settings","nav.logout":"Logout",
       "nav.formation":"Training","nav.clients":"Clients","nav.remuneration":"Payroll","nav.history":"Sales follow-up","nav.guide":"Guide",
+      "nav.messages":"Team messages",
+      "messages.heading":"Team messages","messages.intro":"Chat with the whole team or send a private message. Conversations remain available after you sign out.",
+      "messages.conversation":"Conversation","messages.team":"Whole team","messages.message":"Message",
+      "messages.placeholder":"Write your message…","messages.mentions":"Mention members","messages.send":"Send",
+      "messages.recent":"Recent messages",
+      "messages.older":"Load earlier messages",
       "group.main":"Main","group.insights":"Insights","group.system":"System",
       "topbar.search":"Search anything…","lang.title":"Language","topbar.collapse":"Collapse sidebar",
       "greeting.morning":"Good morning","common.viewAll":"View all",
       "btn.newSale":"New Preorder","btn.export":"Export","btn.addSalesperson":"Add Salesperson",
       "btn.registerSale":"Register Preorder","btn.createChallenge":"Create Challenge",
       "head.dashboard.sub":"Here's what's happening across KGROUP Parfumery today.",
+      "head.messages.t":"Team messages",
       "head.sales.t":"New Preorder","head.sales.sub":"Record a reservation; create the sale only after delivery and full payment.",
       "head.salespersons.t":"Salespersons","head.salespersons.sub":"Manage your luxury fragrance sales team",
       "head.ranking.t":"Rankings 🏆","head.ranking.sub":"Celebrate your top performers across every timeframe.",
@@ -121,12 +128,19 @@
       "nav.ranking":"Classements","nav.challenges":"Défis","nav.rewards":"Récompenses",
       "nav.reports":"Rapports","nav.notifications":"Notifications","nav.settings":"Paramètres","nav.logout":"Déconnexion",
       "nav.formation":"Formation","nav.clients":"Clients","nav.remuneration":"Rémunération","nav.history":"Suivi des ventes","nav.guide":"Guide",
+      "nav.messages":"Messagerie",
+      "messages.heading":"Messagerie de l'équipe","messages.intro":"Échangez avec toute l'équipe ou envoyez un message privé. Les conversations restent accessibles après déconnexion.",
+      "messages.conversation":"Conversation","messages.team":"Toute l'équipe","messages.message":"Message",
+      "messages.placeholder":"Écrivez votre message…","messages.mentions":"Mentionner des membres","messages.send":"Envoyer",
+      "messages.recent":"Messages récents",
+      "messages.older":"Charger les messages précédents",
       "group.main":"Principal","group.insights":"Analyses","group.system":"Système",
       "topbar.search":"Rechercher…","lang.title":"Langue","topbar.collapse":"Replier le menu",
       "greeting.morning":"Bonjour","common.viewAll":"Voir tout",
       "btn.newSale":"Nouvelle précommande","btn.export":"Exporter","btn.addSalesperson":"Ajouter un vendeur",
       "btn.registerSale":"Enregistrer la précommande","btn.createChallenge":"Créer un défi",
       "head.dashboard.sub":"Voici l'activité de KGROUP Parfumery aujourd'hui.",
+      "head.messages.t":"Messagerie",
       "head.sales.t":"Nouvelle précommande","head.sales.sub":"Enregistrez une réservation; la vente sera créée après livraison et paiement complet.",
       "head.salespersons.t":"Vendeurs","head.salespersons.sub":"Gérez votre équipe de vente de parfums de luxe",
       "head.ranking.t":"Classements 🏆","head.ranking.sub":"Mettez à l'honneur vos meilleurs vendeurs sur chaque période.",
@@ -330,6 +344,7 @@
     { key: "challenges",   label: "Challenges",   icon: "flag",   group: "Main",     roles: ["admin","salesperson","relation_client"], href: "challenges.html" },
     { key: "clients",      label: "Clients",      icon: "heart",  group: "Main",     roles: ["admin","salesperson","relation_client"], href: "clients.html" },
     { key: "formation",    label: "Training",     icon: "book",   group: "Main",     roles: ["admin","salesperson","relation_client"], href: "formation.html" },
+    { key: "messages",     label: "Messages",     icon: "mail",   group: "Main",     roles: ["admin","salesperson","relation_client"], href: "messages.html" },
     { key: "remuneration", label: "Payroll",      icon: "dollar", group: "Insights", roles: ["admin"],               href: "remuneration.html" },
     { key: "rewards",      label: "Rewards",      icon: "gift",   group: "Insights", roles: ["admin","salesperson","relation_client"], href: "challenges.html#rewards" },
     { key: "reports",      label: "Reports",      icon: "file",   group: "Insights", roles: ["admin"],               href: "reports.html" },
@@ -345,7 +360,7 @@
     const body = document.body;
     if (!body.hasAttribute("data-app")) return;
     const page = body.dataset.page || "dashboard";
-    const title = body.dataset.title || "Dashboard";
+    const title = page === "messages" ? t("head.messages.t") : (body.dataset.title || "Dashboard");
     const me = KG.me || { name: "Admin", initials: "AD" };
     const appRole = window.KG_ROLE || "admin";                 // 'admin' | 'salesperson'
     const role = body.dataset.role || (appRole === "salesperson" ? "Salesperson" : "Administrator");
@@ -610,6 +625,19 @@
     function acknowledgeNotifs() {
       if (!NF) return;
       setNotifSeenAt(NF.markSeen(KG.notifications, getNotifSeenAt()));
+      const persistentIds = (KG.teamNotifications || [])
+        .filter(n => n && n.id != null && !n.read_at)
+        .map(n => String(n.id));
+      if (persistentIds.length && window.KGTraining) {
+        window.KGTraining.markNotificationsRead(persistentIds)
+          .then(() => {
+            const now = new Date().toISOString();
+            (KG.teamNotifications || []).forEach(n => {
+              if (persistentIds.includes(String(n.id))) n.read_at = now;
+            });
+          })
+          .catch(err => console.warn("[KG] Could not persist notification read state:", err));
+      }
       (KG.notifications || []).forEach(n => { n.unread = false; });
       renderBell();
     }

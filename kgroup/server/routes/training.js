@@ -270,18 +270,57 @@ router.get("/notifications", requireUser, async (req, res, next) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
     const rows = (isAdmin(req) || canSeeAllClients(req))
       ? await db.many(
-          `select id, actor_id, actor_name, type, title, body, created_at
-             from public.notifications where team_id = $1
-            order by created_at desc limit $2`,
-          [teamScope(req), limit]
+          `select n.id, n.actor_id, n.actor_name, n.type, n.title, n.body, n.created_at, r.read_at
+             from public.notifications n
+             left join public.notification_reads r on r.notification_id = n.id and r.user_id = $2
+            where n.team_id = $1 and (n.recipient_id is null or n.recipient_id = $2)
+            order by n.created_at desc limit $3`,
+          [teamScope(req), req.user.id, limit]
         )
       : await db.many(
-          `select id, actor_id, actor_name, type, title, body, created_at
-             from public.notifications where team_id = $1 and actor_id = $2
-            order by created_at desc limit $3`,
+          `select n.id, n.actor_id, n.actor_name, n.type, n.title, n.body, n.created_at, r.read_at
+             from public.notifications n
+             left join public.notification_reads r on r.notification_id = n.id and r.user_id = $2
+            where n.team_id = $1 and (n.recipient_id is null or n.recipient_id = $2)
+              and (n.actor_id = $2 or n.recipient_id = $2)
+            order by n.created_at desc limit $3`,
           [teamScope(req), req.user.id, limit]
         );
     return res.json(rows);
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post("/notifications/read", requireUser, async (req, res, next) => {
+  try {
+    const rawIds = req.body && req.body.ids;
+    if (rawIds !== undefined && !Array.isArray(rawIds)) {
+      throw new HttpError(400, "La liste des notifications est invalide.");
+    }
+    const ids = Array.isArray(rawIds) ? [...new Set(rawIds.map(String))] : [];
+    if (ids.length > 100 || ids.some((id) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))) {
+      throw new HttpError(400, "Liste d'identifiants de notifications invalide.");
+    }
+    const teamId = teamScope(req);
+    let marked = 0;
+    if (ids.length) {
+      const result = await db.query(
+        `insert into public.notification_reads (notification_id, user_id)
+         select n.id, $2 from public.notifications n
+          where n.team_id = $1 and n.id = any($3::uuid[])
+            and (n.recipient_id is null or n.recipient_id = $2)
+            and (
+              n.actor_id = $2
+              or n.recipient_id = $2
+              or exists (select 1 from public.profiles p where p.id = $2 and p.role in ('admin', 'relation_client'))
+            )
+         on conflict (notification_id, user_id) do nothing`,
+        [teamId, req.user.id, ids]
+      );
+      marked = result.rowCount;
+    }
+    return res.json({ ok: true, marked });
   } catch (err) {
     return next(err);
   }

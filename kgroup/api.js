@@ -420,6 +420,11 @@
       try { return await request("/notifications?limit=" + (limit || 20)); }
       catch (e) { console.warn(e); return null; }
     },
+
+    async markNotificationsRead(ids) {
+      if (!(await ready())) throw new Error("Les notifications ne sont pas disponibles.");
+      return request("/notifications/read", { method: "POST", body: { ids: ids || [] } });
+    },
   };
 
   /* ------------------------------------------------------------------ *
@@ -479,6 +484,32 @@
       if (!(await ready())) return { demo: true };
       return request("/team/members/" + encodeURIComponent(userId) + "/role",
         { method: "PATCH", body: { role } });
+    },
+  };
+
+  const KGMessages = {
+    async list(limit, cursor) {
+      if (!(await ready())) throw new Error("La messagerie est indisponible.");
+      return request("/messages" + qs({
+        limit: limit || 100,
+        before: cursor && cursor.created_at,
+        before_id: cursor && cursor.id,
+      }));
+    },
+    async members() {
+      if (!(await ready())) throw new Error("La liste des membres est indisponible.");
+      return request("/messages/members");
+    },
+    async send(content, recipientId, mentionIds) {
+      if (!(await ready())) throw new Error("La messagerie est indisponible.");
+      return request("/messages", {
+        method: "POST",
+        body: { content, recipient_id: recipientId || null, mention_ids: mentionIds || [] },
+      });
+    },
+    async markRead(ids) {
+      if (!(await ready())) throw new Error("La messagerie est indisponible.");
+      return request("/messages/read", { method: "POST", body: { ids: ids || [] } });
     },
   };
 
@@ -778,6 +809,7 @@
   window.KGData = KGData;
   window.KGTraining = KGTraining;
   window.KGClients = KGClients;
+  window.KGMessages = KGMessages;
   window.KGPayroll = KGPayroll;
   window.KGPreorders = KGPreorders;
   window.KG_API_READY = true;

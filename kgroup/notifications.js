@@ -94,7 +94,9 @@
     (s.team || []).forEach((n) => {
       if (!n || n.id == null) return;
       const kindName = KINDS[n.type] ? n.type : "team";
-      feed.push(item("t:" + n.id, kindName, n.title || "", n.body || "", toMs(n.created_at)));
+      const notification = item("t:" + n.id, kindName, n.title || "", n.body || "", toMs(n.created_at));
+      notification.readAt = n.read_at ? toMs(n.read_at) : 0;
+      feed.push(notification);
     });
 
     (s.sales || []).forEach((sale) => {
@@ -119,7 +121,9 @@
     // (challenges de démo) restent en fin de fil, dans leur ordre d'origine.
     unique.sort((a, b) => b.ts - a.ts);
 
-    return unique.slice(0, limit).map((n) => Object.assign(n, { unread: n.ts > 0 && n.ts > seenAt }));
+    return unique.slice(0, limit).map((n) => Object.assign(n, {
+      unread: n.ts > 0 && n.ts > seenAt && !n.readAt,
+    }));
   }
 
   /** Nombre d'éléments non lus. */

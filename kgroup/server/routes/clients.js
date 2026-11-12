@@ -54,6 +54,9 @@ function scopeFor(req, startIndex = 2) {
 /** Enrichit une ligne client de ce que le navigateur affiche directement. */
 function decorate(row, today) {
   const days = crm.daysUntilBirthday(row.birthday, today);
+  const birthdayText = row.language === "en"
+    ? `Happy birthday, ${row.name}! 🎉 Wishing you a wonderful day and an amazing year ahead. — KGROUP Parfumery`
+    : crm.birthdayMessage(row.name);
   return {
     ...row,
     total_spent: Number(row.total_spent) || 0,
@@ -62,7 +65,9 @@ function decorate(row, today) {
     days_until_birthday: days,
     // Le lien est construit côté serveur : une seule implémentation du
     // formatage du numéro et du modèle de message, testée une seule fois.
-    whatsapp: crm.birthdayWhatsappLink(row.phone_e164 || row.phone, row.name),
+    whatsapp: row.whatsapp_opt_in
+      ? crm.whatsappLink(row.phone_e164 || row.phone, birthdayText)
+      : null,
   };
 }
 
@@ -179,7 +184,7 @@ router.get("/clients/:id", requireUser, async (req, res, next) => {
 /* ------------------------------------------------------------------ *
  * CRÉATION / MISE À JOUR                                              *
  * ------------------------------------------------------------------ */
-const CLIENT_FIELDS = ["name", "phone", "birthday", "email", "city", "notes"];
+const CLIENT_FIELDS = ["name", "phone", "birthday", "email", "city", "notes", "language", "whatsapp_opt_in", "alert_note"];
 
 /** Nettoie et valide une charge utile client. Partagé création/mise à jour. */
 function sanitize(body, { requireName }) {
@@ -212,7 +217,14 @@ function sanitize(body, { requireName }) {
     } else out.birthday = b;
   }
 
-  for (const k of ["email", "city", "notes"]) {
+  if (out.language !== undefined) {
+    out.language = String(out.language || "fr").toLowerCase();
+    if (!["fr", "en"].includes(out.language)) throw new HttpError(400, "La langue doit être français ou anglais.");
+  }
+  if (out.whatsapp_opt_in !== undefined && typeof out.whatsapp_opt_in !== "boolean") {
+    throw new HttpError(400, "Le consentement WhatsApp doit être vrai ou faux.");
+  }
+  for (const k of ["email", "city", "notes", "alert_note"]) {
     if (out[k] !== undefined) out[k] = String(out[k] || "").trim() || null;
   }
   return out;

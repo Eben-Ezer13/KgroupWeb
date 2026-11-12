@@ -86,7 +86,8 @@ kgroup-platform/
 - **Fully responsive** — desktop → tablet → mobile with an off-canvas sidebar.
 - **CRM clients** — chaque vente rattache automatiquement un client par son
   numero de telephone (normalise, unique par equipe : aucun doublon). Fiche
-  client avec historique d'achats, total depense et commercial responsable.
+  client avec historique d'achats, total depense et commercial responsable;
+  langue, consentement WhatsApp et alertes modifiables depuis la fiche.
 - **Anniversaires** — detection J-1 et jour J en heure **Africa/Casablanca**
   (29 fevrier gere), rappels automatiques horaires et **idempotents**, et un
   bouton **WhatsApp** qui pre-remplit un message personnalise sans jamais
@@ -117,6 +118,11 @@ kgroup-platform/
   cannot be forged. Passing awards a badge (👃 Expert Olfactif, 💼 Vendeur
   Confirmé, 🏅 Diplômé Kgroup) and notifies the team's administrators, who get a
   per-member progress table on the same page.
+- **Messagerie d'équipe** — salon général et messages privés, mentions,
+  notifications ciblées et accusés de lecture persistants, isolés par équipe.
+- **Clôture de paie** — transitions monotones `CLOTURE → VALIDEE → PAYEE`;
+  les paramètres et montants restent figés, et chaque étape publie au plus une
+  annonce persistante par équipe et par mois.
 
 ## 🔐 Two modes
 
@@ -126,12 +132,14 @@ run locally without a database: any credentials log in and data comes from
 sample accounts when the API is unavailable.
 
 **Real accounts (Neon)** — genuine authentication and a cloud database with
-**two roles**:
+three roles:
 
 - **Admins** self-register on `login.html` and own a team.
 - **Salespersons** join through a single-use **invite link** an admin generates in
   the Salespersons page (`register.html?invite=CODE`); their login is bound to that
   team. They see only their own dashboard, and admin-only pages are hidden + blocked.
+- **Client-relations staff** (`relation_client`) see the team's client portfolio
+  without access to payroll or administration.
 
 Role-based routing, navigation, and page guards are enforced in the browser, and
 the same rules are enforced again server-side in
@@ -168,7 +176,7 @@ password, so it can only live on a server. See
 ```bash
 npm run lint      # syntax, secret scan, no stale Supabase wiring
 npm run build     # page wiring, asset resolution, server modules load
-npm test          # 118 tests: routes, auth, permissions, quiz, CRM, remuneration, orders, exports
+npm test          # tests: routes, auth, permissions, quiz, CRM, remuneration, orders, exports
 npm run e2e:crm   # parcours CRM complet contre Neon (serveur demarre)
 npm run db:check  # schema + row counts on Neon
 npm run db:smoke  # CRUD, constraints, transactions, triggers on Neon

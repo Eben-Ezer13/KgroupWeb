@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Messagerie — KGROUP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/jpeg" href="assets/images/logo.jpeg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-app data-page="messages" data-title="Team messages">
+  <div class="page-head">
+    <h2 data-i18n="messages.heading">Team messages</h2>
+    <p data-i18n="messages.intro">Chat with the whole team or send a private message. Conversations remain available after you sign out.</p>
+  </div>
+  <div class="card card-pad" style="margin-bottom:20px">
+    <form id="messageForm">
+      <label class="field-label" for="recipient" data-i18n="messages.conversation">Conversation</label>
+      <select id="recipient" class="input" style="margin:8px 0 16px">
+        <option value="" data-i18n="messages.team">Whole team</option>
+      </select>
+      <label class="field-label" for="messageContent" data-i18n="messages.message">Message</label>
+      <textarea id="messageContent" class="input" rows="3" maxlength="2000" required placeholder="Write your message…" data-i18n-ph="messages.placeholder"></textarea>
+      <label class="field-label" for="mentionMembers" style="margin-top:14px" data-i18n="messages.mentions">Mention members</label>
+      <select id="mentionMembers" class="input" multiple size="3" style="margin:8px 0 16px"></select>
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <span class="muted" id="messageStatus" role="status"></span>
+        <button class="btn btn-primary" type="submit" data-i18n="messages.send">Send</button>
+      </div>
+    </form>
+  </div>
+  <div class="section-title"><div><h3 data-i18n="messages.recent">Recent messages</h3><div class="sub" id="unreadCount"></div></div></div>
+  <div class="card card-pad">
+    <div id="messageList" aria-live="polite"></div>
+    <button class="btn btn-ghost hidden" id="loadOlder" type="button" style="margin-top:16px">Charger les messages précédents</button>
+  </div>
+  <script src="data.js"></script>
+  <script src="api.js"></script>
+  <script src="messages.js"></script>
+  <script src="notifications.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

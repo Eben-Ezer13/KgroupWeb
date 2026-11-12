@@ -30,7 +30,9 @@ const uuid = () => crypto.randomUUID();
  * ------------------------------------------------------------------ */
 const store = {
   users: [], profiles: [], salespersons: [], sales: [], preorders: [], preorderEvents: [], clients: [],
-  payroll: [], settings: [], ddl: 0,
+  payroll: [], settings: [], payrollAnnouncements: [], teamNotifications: [],
+  teamMessages: [], messageReads: [], directNotifications: [], ddl: 0,
+  notifications: [], notificationReads: [],
 };
 
 const TEAM_A = uuid();
@@ -255,6 +257,131 @@ function execute(sql, params = []) {
   }
 
   /* ---- paie ---- */
+  if (q.startsWith("select id from public.profiles where id = $1 and team_id = $2")) {
+    return ok(store.profiles.filter((p) => p.id === params[0] && p.team_id === params[1]).map((p) => ({ id: p.id })));
+  }
+  if (q.startsWith("select id from public.profiles where team_id = $1 and id = any($2::uuid[])")) {
+    return ok(store.profiles.filter((p) => p.team_id === params[0] && params[1].includes(p.id)).map((p) => ({ id: p.id })));
+  }
+  if (q.startsWith("select id, full_name, role from public.profiles where team_id = $1")) {
+    return ok(store.profiles.filter((p) => p.team_id === params[0] && p.id !== params[1])
+      .sort((a, b) => a.full_name.localeCompare(b.full_name))
+      .map(({ id, full_name, role }) => ({ id, full_name, role })));
+  }
+  if (q.startsWith("insert into public.team_messages")) {
+    const row = { id: uuid(), created_at: new Date().toISOString() };
+    insertColumns(sql, "team_messages").forEach((column, i) => { row[column] = params[i]; });
+    store.teamMessages.push(row);
+    return ok([{ ...row }]);
+  }
+  if (q.startsWith("insert into public.notifications") && q.includes("values ($1,$2,$3,$4,'mention'")) {
+    store.directNotifications.push({ team_id: params[0], actor_id: params[1], actor_name: params[2],
+      recipient_id: params[3], title: params[4], body: params[5] });
+    return ok([]);
+  }
+  if (q.startsWith("select n.id, n.actor_id")) {
+    const [teamId, userId, limit] = params;
+    const profile = store.profiles.find((p) => p.id === userId);
+    const adminView = !q.includes("and (n.actor_id = $2 or n.recipient_id = $2)");
+    const rows = store.notifications.filter((n) => n.team_id === teamId &&
+      (n.recipient_id == null || n.recipient_id === userId) &&
+      (adminView || n.actor_id === userId || n.recipient_id === userId))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, limit)
+      .map((n) => {
+        const read = store.notificationReads.find((r) => r.notification_id === n.id && r.user_id === userId);
+        return { ...n, read_at: read ? read.read_at : null };
+      });
+    return ok(rows);
+  }
+  if (q.startsWith("insert into public.notification_reads")) {
+    const [teamId, userId, ids] = params;
+    const profile = store.profiles.find((p) => p.id === userId);
+    const inserted = [];
+    for (const notification of store.notifications.filter((n) => n.team_id === teamId && ids.includes(n.id) &&
+      (n.recipient_id == null || n.recipient_id === userId) &&
+      (n.actor_id === userId || n.recipient_id === userId || ["admin", "relation_client"].includes(profile.role)))) {
+      if (!store.notificationReads.some((r) => r.notification_id === notification.id && r.user_id === userId)) {
+        store.notificationReads.push({ notification_id: notification.id, user_id: userId, read_at: new Date().toISOString() });
+        inserted.push({ notification_id: notification.id });
+      }
+    }
+    return ok(inserted);
+  }
+  if (q.startsWith("select m.id, m.sender_id, m.recipient_id")) {
+    const [teamId, userId, before, beforeId, limit] = params;
+    const messages = store.teamMessages.filter((message) => message.team_id === teamId &&
+      (message.recipient_id == null || message.recipient_id === userId || message.sender_id === userId) &&
+      (!before || message.created_at < before || (message.created_at === before && (!beforeId || message.id < beforeId))))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id)).slice(0, limit)
+      .map((message) => {
+        const sender = store.profiles.find((p) => p.id === message.sender_id);
+        const receiver = store.profiles.find((p) => p.id === message.recipient_id);
+        const isRead = store.messageReads.some((read) => read.message_id === message.id && read.user_id === userId);
+        return { ...message, sender_name: sender && sender.full_name, recipient_name: receiver && receiver.full_name,
+          read: isRead, unread: message.sender_id !== userId && !isRead };
+      });
+    return ok(messages);
+  }
+  if (q.startsWith("insert into public.team_message_reads")) {
+    const [teamId, userId, ids] = params;
+    const inserted = [];
+    for (const message of store.teamMessages.filter((m) => m.team_id === teamId && ids.includes(m.id) &&
+      (m.recipient_id == null || m.recipient_id === userId))) {
+      if (!store.messageReads.some((r) => r.message_id === message.id && r.user_id === userId)) {
+        store.messageReads.push({ message_id: message.id, user_id: userId });
+        inserted.push({ message_id: message.id });
+      }
+    }
+    return ok(inserted);
+  }
+  if (q.startsWith("select pg_advisory_xact_lock")) return ok([]);
+  if (q.startsWith("select status from public.payroll_periods")) {
+    return ok(store.payroll.filter((p) => p.team_id === params[0] && p.period === params[1]).map((p) => ({ status: p.status })));
+  }
+  if (q.startsWith("select status from public.payroll_announcements")) {
+    return ok(store.payrollAnnouncements.filter((a) => a.team_id === params[0] && a.period === params[1])
+      .map((a) => ({ status: a.status })));
+  }
+  if (q.startsWith("select id, name from public.salespersons where team_id = $1 order by name")) {
+    return ok(store.salespersons.filter((s) => s.team_id === params[0]).map((s) => ({ id: s.id, name: s.name })));
+  }
+  if (q.startsWith("select s.rep_id,") && q.includes("date_trunc('month'")) {
+    const [teamId, period] = params;
+    const byRep = new Map();
+    for (const sale of store.sales) {
+      if (sale.team_id !== teamId || !sale.rep_id || localDay(sale.created_at).slice(0, 7) !== period.slice(0, 7)) continue;
+      const line = byRep.get(sale.rep_id) || { rep_id: sale.rep_id, sales_count: 0, units: 0, revenue: 0, commission: 0 };
+      line.sales_count++;
+      line.units += sale.qty || 0;
+      line.revenue += Number(sale.amount) || 0;
+      line.commission += Number(sale.commission) || 0;
+      byRep.set(sale.rep_id, line);
+    }
+    return ok([...byRep.values()]);
+  }
+  if (q.startsWith("select * from public.payroll_periods where team_id = $1 and period = $2")) {
+    return ok(store.payroll.filter((p) => p.team_id === params[0] && p.period === params[1]).map((p) => ({ ...p })));
+  }
+  if (q.startsWith("insert into public.payroll_periods")) {
+    const row = { id: uuid() };
+    insertColumns(sql, "payroll_periods").forEach((column, i) => { row[column] = params[i]; });
+    row.settings = JSON.parse(row.settings);
+    const existing = store.payroll.find((p) => p.rep_id === row.rep_id && p.period === row.period);
+    if (existing) Object.assign(existing, row, { updated_at: new Date().toISOString() });
+    else store.payroll.push(row);
+    return ok([{ ...(existing || row) }]);
+  }
+  if (q.startsWith("insert into public.payroll_announcements")) {
+    if (store.payrollAnnouncements.some((a) => a.team_id === params[0] && a.period === params[1] && a.status === params[2])) return ok([]);
+    store.payrollAnnouncements.push({ id: uuid(), team_id: params[0], period: params[1], status: params[2], actor_id: params[3] });
+    return ok([{ id: store.payrollAnnouncements[store.payrollAnnouncements.length - 1].id }]);
+  }
+  if (q.startsWith("insert into public.notifications") && q.includes("select $1, $2, $3, p.id")) {
+    store.teamNotifications.push(...store.profiles.filter((p) => p.team_id === params[0]).map((p) => ({
+      team_id: params[0], actor_id: params[1], recipient_id: p.id, title: params[3], body: params[4],
+    })));
+    return ok([]);
+  }
   if (q.startsWith("select 1 as locked from public.payroll_periods")) {
     const hit = store.payroll.find((p) => p.team_id === params[0] && p.period === params[1] &&
       params[2].includes(p.rep_id) && ["CLOTURE", "VALIDEE", "PAYEE"].includes(p.status));
@@ -772,4 +899,152 @@ test("le bonus d'équipe additionne les paliers individuels", async () => {
   const m = res.body.months[0];
   assert.strictEqual(res.body.scope, "team");
   assert.deepStrictEqual([m.sales_count, m.commission, m.bonus, m.total], [20, 200, 0, 200]);
+});
+
+test("les clôtures de paie sont monotones et leurs annonces persistantes sont idempotentes", async () => {
+  const savedPayroll = store.payroll.slice();
+  const savedSettings = store.settings.slice();
+  const savedAnnouncements = store.payrollAnnouncements.slice();
+  const savedNotifications = store.teamNotifications.slice();
+  const savedReps = store.salespersons.slice();
+  store.payroll.length = 0;
+  store.payrollAnnouncements.length = 0;
+  store.teamNotifications.length = 0;
+  store.settings.length = 0;
+  seedSale({ created_at: "2020-01-15T12:00:00.000Z", rep_id: S1.id, owner: u1.id, amount: 150, commission: 15 });
+
+  const close = (status) => admin("POST", "/api/payroll/close", { month: "2020-01", status });
+  const first = await close("CLOTURE");
+  assert.strictEqual(first.status, 200, JSON.stringify(first.body));
+  assert.strictEqual(first.body.announced, true);
+  assert.strictEqual(store.payroll.length, 3);
+  assert.strictEqual(store.payrollAnnouncements.length, 1);
+  const notificationsAfterFirst = store.teamNotifications.length;
+  const originalSettings = store.payroll[0].settings;
+  store.settings.push({
+    team_id: TEAM_A, salary_base: 999, commission_mode: "percent", commission_rate: 99,
+    bonus_tiers: [], currency: "USD",
+  });
+
+  const repeated = await close("CLOTURE");
+  assert.strictEqual(repeated.status, 200);
+  assert.strictEqual(repeated.body.announced, false);
+  assert.strictEqual(store.payrollAnnouncements.length, 1);
+  assert.strictEqual(store.teamNotifications.length, notificationsAfterFirst);
+
+  assert.strictEqual((await close("VALIDEE")).status, 200);
+  assert.deepStrictEqual(store.payroll[0].settings, originalSettings, "une transition ne modifie pas les paramètres figés");
+  assert.strictEqual((await close("PAYEE")).status, 200);
+  const backwards = await close("CLOTURE");
+  assert.strictEqual(backwards.status, 409);
+  assert.ok(store.payroll.every((line) => line.status === "PAYEE"));
+  assert.deepStrictEqual(store.payrollAnnouncements.map((item) => item.status), ["CLOTURE", "VALIDEE", "PAYEE"]);
+
+  store.payroll.length = 0;
+  store.payrollAnnouncements.length = 0;
+  store.salespersons = store.salespersons.filter((rep) => rep.team_id !== TEAM_A);
+  const noRepsFirst = await close("PAYEE");
+  assert.strictEqual(noRepsFirst.status, 200);
+  assert.strictEqual(noRepsFirst.body.closed, 0);
+  assert.strictEqual((await close("CLOTURE")).status, 409, "le jalon équipe est monotone même sans ligne commerciale");
+
+  store.payroll = savedPayroll;
+  store.settings = savedSettings;
+  store.payrollAnnouncements = savedAnnouncements;
+  store.teamNotifications = savedNotifications;
+  store.salespersons = savedReps;
+});
+
+test("la messagerie isole les conversations privées et les mentions d'équipe", async () => {
+  const savedMessages = store.teamMessages.slice();
+  const savedReads = store.messageReads.slice();
+  const savedNotifications = store.directNotifications.slice();
+  store.teamMessages.length = 0;
+  store.messageReads.length = 0;
+  store.directNotifications.length = 0;
+
+  assert.strictEqual((await sofia("POST", "/api/messages", { content: "Bonjour", mention_ids: [u2.id] })).status, 201);
+  assert.strictEqual(store.directNotifications.length, 1);
+  assert.strictEqual(store.directNotifications[0].recipient_id, u2.id);
+
+  const beforePrivate = store.teamMessages.length;
+  const rejected = await sofia("POST", "/api/messages", {
+    content: "Confidentiel",
+    recipient_id: u2.id,
+    mention_ids: [adminA.id],
+  });
+  assert.strictEqual(rejected.status, 400, "un message privé ne peut notifier un tiers");
+  assert.strictEqual(store.teamMessages.length, beforePrivate);
+
+  const sent = await sofia("POST", "/api/messages", { content: "En privé", recipient_id: u2.id });
+  assert.strictEqual(sent.status, 201, JSON.stringify(sent.body));
+  assert.strictEqual(store.directNotifications.length, 2);
+  assert.strictEqual(store.directNotifications[1].recipient_id, u2.id);
+
+  const adminInbox = await admin("GET", "/api/messages");
+  assert.strictEqual(adminInbox.status, 200);
+  assert.ok(!adminInbox.body.some((message) => message.id === sent.body.id), "un admin tiers ne lit pas le privé");
+  const recipientInbox = await amine("GET", "/api/messages");
+  assert.ok(recipientInbox.body.some((message) => message.id === sent.body.id));
+  assert.ok(recipientInbox.body.some((message) => message.content === "Bonjour"), "la salle générale reste visible");
+  assert.strictEqual((await otherAdmin("GET", "/api/messages")).body.length, 0, "une autre équipe ne voit rien");
+
+  const markPrivate = await admin("POST", "/api/messages/read", { ids: [sent.body.id] });
+  assert.strictEqual(markPrivate.status, 200);
+  assert.strictEqual(markPrivate.body.marked, 0, "un tiers ne peut pas marquer comme lu le message privé");
+  const markGeneral = await amine("POST", "/api/messages/read", { ids: [store.teamMessages[0].id] });
+  assert.strictEqual(markGeneral.body.marked, 1);
+
+  store.teamMessages.length = 0;
+  const timestamp = "2026-01-01T00:00:00.000Z";
+  const tieMessages = [uuid(), uuid(), uuid()].sort().map((id) => ({
+    id, team_id: TEAM_A, sender_id: u1.id, recipient_id: null, content: id,
+    mention_ids: [], created_at: timestamp,
+  }));
+  store.teamMessages.push(...tieMessages);
+  const firstPage = await admin("GET", "/api/messages?limit=2");
+  assert.strictEqual(firstPage.body.length, 2);
+  const secondPage = await admin("GET", `/api/messages?limit=2&before=${encodeURIComponent(timestamp)}&before_id=${firstPage.body[0].id}`);
+  assert.strictEqual(secondPage.body.length, 1, "les messages horodatés à égalité ne sont pas sautés");
+  assert.strictEqual(secondPage.body[0].id, tieMessages[0].id);
+  assert.strictEqual((await admin("GET", "/api/messages?before=invalid")).status, 400);
+
+  store.teamMessages = savedMessages;
+  store.messageReads = savedReads;
+  store.directNotifications = savedNotifications;
+});
+
+test("les notifications ciblées et leurs accusés de lecture sont privés et persistants", async () => {
+  const savedNotifications = store.notifications.slice();
+  const savedReads = store.notificationReads.slice();
+  store.notifications = [
+    { id: uuid(), team_id: TEAM_A, actor_id: u1.id, recipient_id: null, type: "quiz_passed", title: "Quiz", created_at: new Date().toISOString() },
+    { id: uuid(), team_id: TEAM_A, actor_id: u1.id, recipient_id: u2.id, type: "mention", title: "Privé", created_at: new Date().toISOString() },
+    { id: uuid(), team_id: TEAM_B, actor_id: adminB.id, recipient_id: null, type: "quiz_passed", title: "Autre équipe", created_at: new Date().toISOString() },
+  ];
+  store.notificationReads.length = 0;
+  const [general, privateNotice] = store.notifications;
+
+  const senderFeed = await sofia("GET", "/api/notifications");
+  assert.ok(senderFeed.body.some((item) => item.id === general.id));
+  assert.ok(!senderFeed.body.some((item) => item.id === privateNotice.id), "le sender ne voit pas un message privé qui ne lui est pas destiné");
+  const recipientFeed = await amine("GET", "/api/notifications");
+  assert.ok(recipientFeed.body.some((item) => item.id === privateNotice.id));
+  assert.ok(!recipientFeed.body.some((item) => item.id === general.id), "un commercial ne voit pas le fil général de l'équipe");
+  const adminFeed = await admin("GET", "/api/notifications");
+  assert.ok(adminFeed.body.some((item) => item.id === general.id));
+  assert.ok(!adminFeed.body.some((item) => item.id === privateNotice.id), "même un admin ne lit pas une notification privée tierce");
+
+  const forbidden = await sofia("POST", "/api/notifications/read", { ids: [privateNotice.id] });
+  assert.strictEqual(forbidden.status, 200);
+  assert.strictEqual(forbidden.body.marked, 0);
+  const marked = await amine("POST", "/api/notifications/read", { ids: [privateNotice.id] });
+  assert.strictEqual(marked.body.marked, 1);
+  const seen = await amine("GET", "/api/notifications");
+  assert.ok(seen.body.find((item) => item.id === privateNotice.id).read_at);
+  assert.strictEqual((await amine("POST", "/api/notifications/read", { ids: [] })).body.marked, 0);
+  assert.strictEqual((await amine("POST", "/api/notifications/read", { ids: ["invalid"] })).status, 400);
+
+  store.notifications = savedNotifications;
+  store.notificationReads = savedReads;
 });
