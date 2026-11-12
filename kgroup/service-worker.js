@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "kgroup-pwa-v3";
+const CACHE_NAME = "kgroup-pwa-v4";
 const APP_SHELL = [
   "./login.html",
   "./offline.html",

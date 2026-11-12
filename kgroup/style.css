@@ -1305,3 +1305,32 @@ table.table th.num, table.table td.num { text-align: right; }
 [data-theme="light"] body[data-app] .sidebar .icon-btn {
   color: #f5f1df; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.12);
 }
+
+
+/* ROUNDED KGROUP BRAND MARK */
+.logo-mark {
+  display: block;
+  object-fit: contain;
+  border: 1px solid rgba(215, 197, 142, .48);
+  border-radius: 12px;
+  background: #f5f3eb;
+  box-shadow: 0 4px 12px rgba(4, 25, 17, .16);
+}
+.sidebar-brand .brand-txt strong {
+  font-weight: 800;
+  letter-spacing: .025em;
+}
+[data-theme="light"] .sidebar-brand .brand-txt span,
+[data-theme="dark"] .sidebar-brand .brand-txt span {
+  color: #d9c58e;
+  font-weight: 650;
+  letter-spacing: .19em;
+}
+.auth-brand-logo,
+.auth-mobile-brand img {
+  border-radius: 12px;
+}
+[data-theme="dark"] .logo-mark {
+  border-color: rgba(215, 197, 142, .36);
+  background: #f5f3eb;
+}
