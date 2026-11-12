@@ -883,6 +883,8 @@ table.table th.num, table.table td.num { text-align: right; }
 .chat-conversation-details small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .76; font-size: 11px; }
 .chat-conversation.active .chat-conversation-details small { opacity: .86; }
 .chat-list-label { padding: 17px 11px 6px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.chat-list-notice { margin: 8px 10px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.chat-list-notice p { margin: 0 0 8px; }
 .chat-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface); }
 .chat-header { flex: 0 0 auto; }
 .chat-header .muted { margin-top: 4px; font-size: 12px; }
@@ -991,7 +993,9 @@ table.table th.num, table.table td.num { text-align: right; }
   .chat-conversation-list { display: flex; align-items: stretch; gap: 4px; overflow-x: auto; overflow-y: hidden; padding: 6px 8px 9px; }
   .chat-conversation { flex: 0 0 150px; min-width: 0; padding: 7px; }
   .chat-conversation-avatar { flex-basis: 34px; width: 34px; height: 34px; }
-  .chat-conversation-details small, .chat-list-label { display: none; }
+  .chat-conversation-details small { display: none; }
+  .chat-list-label { align-self: center; flex: 0 0 auto; padding: 0 8px; }
+  .chat-list-notice { align-self: center; flex: 0 0 auto; margin: 0 8px; }
   .chat-main { flex: 1 1 auto; min-height: 0; }
   .chat-header { min-height: 60px; padding: 10px 14px; }
   .chat-timeline { flex: 1 1 auto; max-height: none; min-height: 170px; padding: 12px; }

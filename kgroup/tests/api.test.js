@@ -694,6 +694,10 @@ test("team chat and private conversations are isolated and support replies", asy
   store.profiles.find((profile) => profile.id === charlieId).team_id = teamId;
   store.profiles.find((profile) => profile.id === charlieId).full_name = "Charlie";
 
+  const teammates = await alice.call("/api/messages/members");
+  assert.strictEqual(teammates.status, 200);
+  assert.deepStrictEqual(teammates.body.map((member) => member.full_name), ["Bob", "Charlie"]);
+
   const group = await alice.call("/api/messages", {
     method: "POST",
     body: { content: "Bonjour équipe", mention_ids: [bobId] },

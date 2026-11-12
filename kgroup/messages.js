@@ -21,6 +21,9 @@
         team: "Team discussion", teamHint: "Everyone on your team can read these messages.",
         privateHint: "Private conversation · only visible to its participants.",
         direct: "Private messages", empty: "No messages yet. Start the conversation.", reply: "Reply",
+        membersLoading: "Loading teammates…", membersUnavailable: "Teammates could not be loaded.",
+        noPrivateMembers: "No other teammates are available for a private conversation.",
+        retryMembers: "Try again",
         unread: (count) => `${count} unread`, allRead: "All caught up",
         sent: "Message sent.", sendError: "Could not send this message.",
         loadError: "Could not load messages.", olderError: "Could not load earlier messages.",
@@ -33,6 +36,9 @@
         team: "Discussion de l'équipe", teamHint: "Tous les membres de l'équipe peuvent lire ces messages.",
         privateHint: "Conversation privée · visible uniquement par ses participants.",
         direct: "Messages privés", empty: "Aucun message pour le moment. Lancez la discussion.", reply: "Répondre",
+        membersLoading: "Chargement des collègues…", membersUnavailable: "Impossible de charger les collègues.",
+        noPrivateMembers: "Aucun autre collègue n'est disponible pour une conversation privée.",
+        retryMembers: "Réessayer",
         unread: (count) => `${count} message(s) non lu(s)`, allRead: "Tout est à jour",
         sent: "Message envoyé.", sendError: "Impossible d'envoyer ce message.",
         loadError: "Impossible de charger les messages.", olderError: "Impossible de charger les anciens messages.",
@@ -60,6 +66,7 @@
     let hasOlder = false;
     let loading = false;
     let memberError = "";
+    let membersLoading = true;
 
     function memberName(id) {
       const member = members.find((item) => item.id === id);
@@ -94,7 +101,31 @@
       divider.className = "chat-list-label";
       divider.textContent = text("direct");
       conversationList.append(divider);
-      members.forEach((member) => addConversationButton(member.full_name, member.id, "direct"));
+      if (membersLoading) {
+        const loadingNotice = document.createElement("p");
+        loadingNotice.className = "chat-list-notice";
+        loadingNotice.textContent = text("membersLoading");
+        conversationList.append(loadingNotice);
+      } else if (memberError) {
+        const notice = document.createElement("div");
+        notice.className = "chat-list-notice";
+        const message = document.createElement("p");
+        message.textContent = text("membersUnavailable");
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "btn btn-ghost btn-sm";
+        retry.textContent = text("retryMembers");
+        retry.addEventListener("click", loadMembers);
+        notice.append(message, retry);
+        conversationList.append(notice);
+      } else if (!members.length) {
+        const empty = document.createElement("p");
+        empty.className = "chat-list-notice";
+        empty.textContent = text("noPrivateMembers");
+        conversationList.append(empty);
+      } else {
+        members.forEach((member) => addConversationButton(member.full_name, member.id, "direct"));
+      }
       markActiveConversation();
     }
 
@@ -215,7 +246,7 @@
     async function loadMessages(options) {
       if (loading) return;
       loading = true;
-      status.textContent = memberError;
+      status.textContent = "";
       const wasNearBottom = timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight < 120;
       try {
         const current = activeConversation;
@@ -348,15 +379,26 @@
       loadOlder.disabled = false;
     });
 
-    try {
-      const loadedMembers = await window.KGMessages.members();
-      loadedMembers.forEach((member) => members.push(member));
-    } catch (error) {
-      memberError = error.message || text("loadError");
+    async function loadMembers() {
+      membersLoading = true;
+      memberError = "";
+      renderConversationList();
+      try {
+        const loadedMembers = await window.KGMessages.members();
+        if (!Array.isArray(loadedMembers)) throw new Error(text("membersUnavailable"));
+        members.splice(0, members.length, ...loadedMembers);
+      } catch (error) {
+        memberError = error.message || text("membersUnavailable");
+      } finally {
+        membersLoading = false;
+        renderConversationList();
+      }
     }
+
     renderConversationList();
     updateHeader();
 
+    await loadMembers();
     await loadMessages();
     window.addEventListener("kg:lang", () => {
       renderConversationList();
