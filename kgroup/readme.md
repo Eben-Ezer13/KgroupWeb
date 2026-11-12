@@ -118,8 +118,10 @@ kgroup-platform/
   cannot be forged. Passing awards a badge (👃 Expert Olfactif, 💼 Vendeur
   Confirmé, 🏅 Diplômé Kgroup) and notifies the team's administrators, who get a
   per-member progress table on the same page.
-- **Messagerie d'équipe** — salon général et messages privés, mentions,
-  notifications ciblées et accusés de lecture persistants, isolés par équipe.
+- **Messagerie d'équipe** — salon de groupe et conversations privées séparées,
+  mentions, réponses contextuelles et notifications ciblées; les échanges restent
+  isolés par équipe. Les messages sont textuels (sans pièces jointes ni partage
+  de liens, annonces ou échéances).
 - **Clôture de paie** — transitions monotones `CLOTURE → VALIDEE → PAYEE`;
   les paramètres et montants restent figés, et chaque étape publie au plus une
   annonce persistante par équipe et par mois.

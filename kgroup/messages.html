@@ -12,30 +12,60 @@
 </head>
 <body data-app data-page="messages" data-title="Team messages">
   <div class="page-head">
-    <h2 data-i18n="messages.heading">Team messages</h2>
-    <p data-i18n="messages.intro">Chat with the whole team or send a private message. Conversations remain available after you sign out.</p>
+    <h2 data-i18n="messages.heading">Messagerie</h2>
+    <p data-i18n="messages.intro">Discutez avec l'équipe ou en privé avec un membre.</p>
   </div>
-  <div class="card card-pad" style="margin-bottom:20px">
-    <form id="messageForm">
-      <label class="field-label" for="recipient" data-i18n="messages.conversation">Conversation</label>
-      <select id="recipient" class="input" style="margin:8px 0 16px">
-        <option value="" data-i18n="messages.team">Whole team</option>
-      </select>
-      <label class="field-label" for="messageContent" data-i18n="messages.message">Message</label>
-      <textarea id="messageContent" class="input" rows="3" maxlength="2000" required placeholder="Write your message…" data-i18n-ph="messages.placeholder"></textarea>
-      <label class="field-label" for="mentionMembers" style="margin-top:14px" data-i18n="messages.mentions">Mention members</label>
-      <select id="mentionMembers" class="input" multiple size="3" style="margin:8px 0 16px"></select>
-      <div class="row" style="justify-content:space-between;align-items:center">
-        <span class="muted" id="messageStatus" role="status"></span>
-        <button class="btn btn-primary" type="submit" data-i18n="messages.send">Send</button>
+  <section class="chat-layout card" aria-label="Messagerie">
+    <aside class="chat-sidebar" aria-label="Conversations">
+      <div class="chat-sidebar-heading">
+        <h3 data-i18n="messages.conversations">Conversations</h3>
       </div>
-    </form>
-  </div>
-  <div class="section-title"><div><h3 data-i18n="messages.recent">Recent messages</h3><div class="sub" id="unreadCount"></div></div></div>
-  <div class="card card-pad">
-    <div id="messageList" aria-live="polite"></div>
-    <button class="btn btn-ghost hidden" id="loadOlder" type="button" style="margin-top:16px">Charger les messages précédents</button>
-  </div>
+      <div class="chat-conversation-list" id="conversationList" role="list"></div>
+    </aside>
+    <section class="chat-main" aria-label="Discussion">
+      <header class="chat-header">
+        <div class="chat-avatar" id="conversationAvatar" aria-hidden="true">É</div>
+        <div class="grow">
+          <h3 id="conversationTitle" data-i18n="messages.team">Discussion de l'équipe</h3>
+          <p id="conversationSubtitle" class="muted" data-i18n="messages.teamHint">Tous les membres de l'équipe peuvent lire ces messages.</p>
+        </div>
+      </header>
+      <div class="chat-timeline" id="messageTimeline">
+        <button class="btn btn-ghost btn-sm hidden" id="loadOlder" type="button" data-i18n="messages.older">Charger les messages précédents</button>
+        <div id="messageList" aria-live="polite" aria-relevant="additions text"></div>
+      </div>
+      <div class="chat-compose-area">
+        <div class="chat-status-row">
+          <div id="messageStatus" class="chat-status" role="status" aria-live="polite"></div>
+          <div id="unreadCount" class="chat-unread-summary" aria-live="polite"></div>
+        </div>
+        <div id="replyPreview" class="chat-reply-preview hidden">
+          <div class="grow">
+            <strong data-i18n="messages.replying">Réponse à</strong>
+            <div class="chat-reply-text" id="replyPreviewText"></div>
+          </div>
+          <button type="button" class="icon-btn" id="cancelReply" aria-label="Annuler la réponse">×</button>
+        </div>
+        <form id="messageForm" class="chat-compose">
+          <div class="chat-compose-tools">
+            <button type="button" class="btn btn-ghost btn-sm" id="mentionToggle" aria-expanded="false">
+              <span aria-hidden="true">@</span>
+              <span data-i18n="messages.mention">Mentionner</span>
+            </button>
+            <span class="muted chat-compose-hint" data-i18n="messages.composeHint">Entrée pour envoyer · Maj + Entrée pour aller à la ligne</span>
+          </div>
+          <div class="chat-compose-row">
+            <textarea id="messageContent" class="input" rows="2" maxlength="2000" required
+              placeholder="Écrivez un message…" data-i18n-ph="messages.placeholder"
+              aria-label="Message"></textarea>
+            <button class="btn btn-primary chat-send" type="submit" id="sendMessage" data-i18n="messages.send">Envoyer</button>
+          </div>
+          <div class="chat-mention-picker hidden" id="mentionPicker" role="group" aria-label="Choisir un membre à mentionner"></div>
+        </form>
+        <p class="chat-private-note" data-i18n="messages.privacyHint">Les messages privés ne sont visibles que par leurs participants.</p>
+      </div>
+    </section>
+  </section>
   <script src="data.js"></script>
   <script src="api.js"></script>
   <script src="messages.js"></script>

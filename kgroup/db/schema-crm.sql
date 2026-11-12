@@ -151,11 +151,15 @@ create table if not exists public.team_messages (
   recipient_id uuid references public.users (id) on delete cascade,
   content text not null check (length(content) between 1 and 2000),
   mention_ids uuid[] not null default '{}'::uuid[],
+  reply_to_message_id uuid references public.team_messages (id) on delete set null,
   created_at timestamptz not null default now(),
   check (recipient_id is null or recipient_id <> sender_id)
 );
+alter table public.team_messages
+  add column if not exists reply_to_message_id uuid references public.team_messages (id) on delete set null;
 create index if not exists idx_team_messages_general on public.team_messages (team_id, created_at desc) where recipient_id is null;
 create index if not exists idx_team_messages_direct on public.team_messages (team_id, recipient_id, created_at desc);
+create index if not exists idx_team_messages_reply on public.team_messages (reply_to_message_id) where reply_to_message_id is not null;
 create table if not exists public.team_message_reads (
   message_id uuid not null references public.team_messages (id) on delete cascade,
   user_id uuid not null references public.users (id) on delete cascade,

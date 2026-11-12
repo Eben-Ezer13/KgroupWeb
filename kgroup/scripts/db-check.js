@@ -13,7 +13,10 @@ const EXPECTED_TABLES = [
   "users", "teams", "profiles", "salespersons", "sales", "challenges", "password_reset_tokens",
   "training_progress", "quiz_attempts", "notifications",
   "clients", "compensation_settings", "payroll_periods", "birthday_reminders",
-  "preorders",
+  "preorders", "team_messages", "team_message_reads",
+];
+const EXPECTED_COLUMNS = [
+  ["team_messages", "reply_to_message_id"],
 ];
 const EXPECTED_FUNCTIONS = [
   "team_id_of", "role_of", "invite_info", "handle_new_user", "apply_sale",
@@ -27,6 +30,8 @@ const EXPECTED_INDEXES = [
   "idx_clients_phone_uniq", "idx_clients_team", "idx_clients_rep",
   "idx_clients_birthday", "idx_sales_client", "idx_payroll_team_period",
   "idx_preorders_team", "idx_preorders_status", "idx_preorders_rep",
+  "idx_team_messages_general", "idx_team_messages_direct", "idx_team_messages_reply",
+  "idx_team_message_reads_user",
 ];
 
 let failures = 0;
@@ -46,6 +51,14 @@ async function main() {
       where table_schema = 'public' and table_type = 'BASE TABLE'`
   )).map((r) => r.table_name);
   EXPECTED_TABLES.forEach((t) => mark(tables.includes(t), t));
+
+  console.log("\nColumns");
+  const columns = await many(
+    `select table_name, column_name from information_schema.columns
+      where table_schema = 'public'`
+  );
+  const columnNames = new Set(columns.map((column) => `${column.table_name}.${column.column_name}`));
+  EXPECTED_COLUMNS.forEach(([table, column]) => mark(columnNames.has(`${table}.${column}`), `${table}.${column}`));
 
   console.log("\nFunctions");
   const fns = (await many(

@@ -23,7 +23,10 @@ process.env.NODE_ENV = "test";
  * keeps the rows in plain arrays. It also reproduces the two database triggers,
  * because the routes depend on their effects.
  * ------------------------------------------------------------------ */
-const store = { users: [], teams: [], profiles: [], salespersons: [], sales: [], challenges: [], resetTokens: [] };
+const store = {
+  users: [], teams: [], profiles: [], salespersons: [], sales: [], challenges: [],
+  resetTokens: [], messages: [], messageReads: [],
+};
 
 const norm = (sql) => sql.replace(/\s+/g, " ").trim().toLowerCase();
 
@@ -107,6 +110,21 @@ function execute(sql, params = []) {
   }
 
   /* ---- profiles ---- */
+  if (q.startsWith("select id, full_name, role from public.profiles where team_id = $1 and id <> $2")) {
+    const rows = store.profiles
+      .filter((p) => p.team_id === params[0] && p.id !== params[1])
+      .sort((a, b) => a.full_name.localeCompare(b.full_name))
+      .map(({ id, full_name, role }) => ({ id, full_name, role }));
+    return { rows, rowCount: rows.length };
+  }
+  if (q.startsWith("select id from public.profiles where id = $1 and team_id = $2")) {
+    const row = store.profiles.find((p) => p.id === params[0] && p.team_id === params[1]);
+    return { rows: row ? [{ id: row.id }] : [], rowCount: row ? 1 : 0 };
+  }
+  if (q.startsWith("select id from public.profiles where team_id = $1 and id = any($2::uuid[])")) {
+    const rows = store.profiles.filter((p) => p.team_id === params[0] && params[1].includes(p.id)).map((p) => ({ id: p.id }));
+    return { rows, rowCount: rows.length };
+  }
   if (q.startsWith("select") && q.includes("from public.profiles where id =")) {
     const row = store.profiles.find((p) => p.id === params[0]);
     return { rows: row ? [row] : [], rowCount: row ? 1 : 0 };
@@ -196,6 +214,68 @@ function execute(sql, params = []) {
     cols.forEach((c, i) => { row[c] = params[i]; });
     store.challenges.push(row);
     return { rows: [row], rowCount: 1 };
+  }
+
+  /* ---- team messages ---- */
+  if (q.startsWith("select m.id, m.sender_id, m.recipient_id, m.content, m.mention_ids")) {
+    const [teamId, userId, peerId, before, beforeId, limit] = params;
+    const rows = store.messages
+      .filter((message) => message.team_id === teamId)
+      .filter((message) => peerId
+        ? (message.sender_id === userId && message.recipient_id === peerId)
+          || (message.sender_id === peerId && message.recipient_id === userId)
+        : message.recipient_id === null)
+      .filter((message) => !before || new Date(message.created_at) < new Date(before)
+        || (new Date(message.created_at).getTime() === new Date(before).getTime()
+          && (!beforeId || message.id < beforeId)))
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at) || b.id.localeCompare(a.id))
+      .slice(0, limit)
+      .map((message) => {
+        const sender = store.profiles.find((profile) => profile.id === message.sender_id);
+        const recipient = store.profiles.find((profile) => profile.id === message.recipient_id);
+        const parent = store.messages.find((item) => item.id === message.reply_to_message_id);
+        const parentSender = parent && store.profiles.find((profile) => profile.id === parent.sender_id);
+        const read = store.messageReads.some((entry) => entry.message_id === message.id && entry.user_id === userId);
+        return {
+          ...message,
+          sender_name: sender && sender.full_name,
+          recipient_name: recipient && recipient.full_name,
+          reply_to_id: parent && parent.id,
+          reply_content: parent && parent.content,
+          reply_sender_name: parentSender && parentSender.full_name,
+          read,
+          unread: message.sender_id !== userId && !read,
+        };
+      })
+      .reverse();
+    return { rows, rowCount: rows.length };
+  }
+  if (q.startsWith("select id, sender_id, recipient_id from public.team_messages where id = $1 and team_id = $2")) {
+    const row = store.messages.find((message) => message.id === params[0] && message.team_id === params[1]);
+    return { rows: row ? [{ id: row.id, sender_id: row.sender_id, recipient_id: row.recipient_id }] : [], rowCount: row ? 1 : 0 };
+  }
+  if (q.startsWith("insert into public.team_messages")) {
+    const [team_id, sender_id, recipient_id, content, mention_ids, reply_to_message_id] = params;
+    const row = {
+      id: crypto.randomUUID(), team_id, sender_id, recipient_id, content,
+      mention_ids, reply_to_message_id, created_at: new Date().toISOString(),
+    };
+    store.messages.push(row);
+    return { rows: [row], rowCount: 1 };
+  }
+  if (q.startsWith("insert into public.notifications")) return { rows: [], rowCount: 1 };
+  if (q.startsWith("insert into public.team_message_reads")) {
+    const [teamId, userId, ids] = params;
+    const messages = store.messages.filter((message) => message.team_id === teamId
+      && ids.includes(message.id) && (message.recipient_id === null || message.recipient_id === userId));
+    let marked = 0;
+    messages.forEach((message) => {
+      if (!store.messageReads.some((entry) => entry.message_id === message.id && entry.user_id === userId)) {
+        store.messageReads.push({ message_id: message.id, user_id: userId });
+        marked++;
+      }
+    });
+    return { rows: [], rowCount: marked };
   }
 
   /* ---- password reset tokens ---- */
@@ -596,6 +676,65 @@ test("password reset never reveals whether an address exists", async () => {
   assert.strictEqual(known.status, 200);
   assert.strictEqual(unknown.status, 200);
   assert.deepStrictEqual(known.body, unknown.body);
+});
+
+test("team chat and private conversations are isolated and support replies", async () => {
+  const aliceEmail = "chat-admin@kgroup.test";
+  const bobEmail = "chat-bob@kgroup.test";
+  const charlieEmail = "chat-charlie@kgroup.test";
+  const alice = await signUpAdmin(aliceEmail);
+  const bob = await signUpAdmin(bobEmail);
+  const charlie = await signUpAdmin(charlieEmail);
+  const aliceId = store.users.find((user) => user.email === aliceEmail).id;
+  const bobId = store.users.find((user) => user.email === bobEmail).id;
+  const charlieId = store.users.find((user) => user.email === charlieEmail).id;
+  const teamId = store.profiles.find((profile) => profile.id === aliceId).team_id;
+  store.profiles.find((profile) => profile.id === bobId).team_id = teamId;
+  store.profiles.find((profile) => profile.id === bobId).full_name = "Bob";
+  store.profiles.find((profile) => profile.id === charlieId).team_id = teamId;
+  store.profiles.find((profile) => profile.id === charlieId).full_name = "Charlie";
+
+  const group = await alice.call("/api/messages", {
+    method: "POST",
+    body: { content: "Bonjour équipe", mention_ids: [bobId] },
+  });
+  assert.strictEqual(group.status, 201, JSON.stringify(group.body));
+  const groupList = await bob.call("/api/messages?conversation=team");
+  assert.strictEqual(groupList.status, 200);
+  assert.strictEqual(groupList.body.length, 1);
+  assert.strictEqual(groupList.body[0].content, "Bonjour équipe");
+
+  const groupReply = await bob.call("/api/messages", {
+    method: "POST",
+    body: { content: "Bien reçu", reply_to_message_id: group.body.id },
+  });
+  assert.strictEqual(groupReply.status, 201, JSON.stringify(groupReply.body));
+  const refreshedGroup = await alice.call("/api/messages?conversation=team");
+  assert.strictEqual(refreshedGroup.body.length, 2);
+  assert.strictEqual(
+    refreshedGroup.body.find((message) => message.content === "Bien reçu").reply_content,
+    "Bonjour équipe"
+  );
+
+  const privateMessage = await alice.call("/api/messages", {
+    method: "POST",
+    body: { content: "Message privé", recipient_id: bobId },
+  });
+  assert.strictEqual(privateMessage.status, 201, JSON.stringify(privateMessage.body));
+  const bobPrivate = await bob.call(`/api/messages?conversation=${aliceId}`);
+  assert.strictEqual(bobPrivate.status, 200);
+  assert.deepStrictEqual(bobPrivate.body.map((message) => message.content), ["Message privé"]);
+  const bobTeam = await bob.call("/api/messages?conversation=team");
+  assert.strictEqual(bobTeam.body.some((message) => message.content === "Message privé"), false);
+  const charliePrivate = await charlie.call(`/api/messages?conversation=${aliceId}`);
+  assert.strictEqual(charliePrivate.status, 200);
+  assert.deepStrictEqual(charliePrivate.body, []);
+
+  const crossConversationReply = await bob.call("/api/messages", {
+    method: "POST",
+    body: { content: "Réponse interdite", recipient_id: aliceId, reply_to_message_id: group.body.id },
+  });
+  assert.strictEqual(crossConversationReply.status, 400);
 });
 
 test("Google sign-in reports that it is not configured", async () => {

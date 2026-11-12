@@ -488,23 +488,29 @@
   };
 
   const KGMessages = {
-    async list(limit, cursor) {
+    async list(limit, cursor, conversation) {
       if (!(await ready())) throw new Error("La messagerie est indisponible.");
       return request("/messages" + qs({
         limit: limit || 100,
         before: cursor && cursor.created_at,
         before_id: cursor && cursor.id,
+        conversation: conversation || "team",
       }));
     },
     async members() {
       if (!(await ready())) throw new Error("La liste des membres est indisponible.");
       return request("/messages/members");
     },
-    async send(content, recipientId, mentionIds) {
+    async send(content, recipientId, mentionIds, replyTo) {
       if (!(await ready())) throw new Error("La messagerie est indisponible.");
       return request("/messages", {
         method: "POST",
-        body: { content, recipient_id: recipientId || null, mention_ids: mentionIds || [] },
+        body: {
+          content,
+          recipient_id: recipientId || null,
+          mention_ids: mentionIds || [],
+          reply_to_message_id: replyTo || null,
+        },
       });
     },
     async markRead(ids) {

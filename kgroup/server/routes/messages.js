@@ -11,6 +11,18 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 router.get("/messages", requireUser, async (req, res, next) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 300);
+    const rawConversation = String(req.query.conversation || "team");
+    const peerId = rawConversation === "team" ? null : rawConversation;
+    if (peerId && (!UUID.test(peerId) || peerId === req.user.id)) {
+      throw new HttpError(400, "Conversation invalide.");
+    }
+    if (peerId) {
+      const peer = await db.one(
+        `select id from public.profiles where id = $1 and team_id = $2`,
+        [peerId, teamScope(req)]
+      );
+      if (!peer) throw new HttpError(404, "Ce membre ne fait pas partie de votre équipe.");
+    }
     const before = req.query.before ? new Date(String(req.query.before)) : null;
     if (before && Number.isNaN(before.getTime())) throw new HttpError(400, "Curseur de pagination invalide.");
     const beforeId = req.query.before_id ? String(req.query.before_id) : null;
@@ -18,19 +30,29 @@ router.get("/messages", requireUser, async (req, res, next) => {
     const rows = await db.many(
       `select m.id, m.sender_id, m.recipient_id, m.content, m.mention_ids, m.created_at,
               s.full_name as sender_name, r.full_name as recipient_name,
+              reply.id as reply_to_id, reply.content as reply_content,
+              reply_sender.full_name as reply_sender_name,
               (mr.read_at is not null) as read,
               (m.sender_id <> $2 and mr.read_at is null) as unread
          from public.team_messages m
          join public.profiles s on s.id = m.sender_id
          left join public.profiles r on r.id = m.recipient_id
+         left join public.team_messages reply on reply.id = m.reply_to_message_id
+         left join public.profiles reply_sender on reply_sender.id = reply.sender_id
          left join public.team_message_reads mr on mr.message_id = m.id and mr.user_id = $2
         where m.team_id = $1
-          and (m.recipient_id is null or m.recipient_id = $2 or m.sender_id = $2)
-          and ($3::timestamptz is null or m.created_at < $3
-               or (m.created_at = $3 and ($4::uuid is null or m.id < $4::uuid)))
+          and (
+            ($3::uuid is null and m.recipient_id is null)
+            or ($3::uuid is not null and (
+              (m.sender_id = $2 and m.recipient_id = $3)
+              or (m.sender_id = $3 and m.recipient_id = $2)
+            ))
+          )
+          and ($4::timestamptz is null or m.created_at < $4
+               or (m.created_at = $4 and ($5::uuid is null or m.id < $5::uuid)))
         order by m.created_at desc, m.id desc
-        limit $5`,
-      [teamScope(req), req.user.id, before ? before.toISOString() : null, beforeId, limit]
+        limit $6`,
+      [teamScope(req), req.user.id, peerId, before ? before.toISOString() : null, beforeId, limit]
     );
     return res.json(rows.reverse());
   } catch (err) {
@@ -76,12 +98,29 @@ router.post("/messages", requireUser, async (req, res, next) => {
       );
       if (members.length !== mentionIds.length) throw new HttpError(400, "Une mention ne correspond pas à un membre de l'équipe.");
     }
+    let replyToId = null;
+    if (body.reply_to_message_id !== undefined && body.reply_to_message_id !== null && body.reply_to_message_id !== "") {
+      replyToId = String(body.reply_to_message_id);
+      if (!UUID.test(replyToId)) throw new HttpError(400, "Message de réponse invalide.");
+      const parent = await db.one(
+        `select id, sender_id, recipient_id from public.team_messages where id = $1 and team_id = $2`,
+        [replyToId, teamId]
+      );
+      const sameConversation = parent && (
+        recipientId
+          ? (parent.sender_id === req.user.id && parent.recipient_id === recipientId)
+            || (parent.sender_id === recipientId && parent.recipient_id === req.user.id)
+          : parent.recipient_id === null
+      );
+      if (!sameConversation) throw new HttpError(400, "Impossible de répondre à un message de cette conversation.");
+    }
     const mentions = [...new Set([...mentionIds, ...(recipientId ? [recipientId] : [])])];
     const result = await db.tx(async (client) => {
       const { rows } = await client.query(
-        `insert into public.team_messages (team_id, sender_id, recipient_id, content, mention_ids)
-         values ($1,$2,$3,$4,$5::uuid[]) returning *`,
-        [teamId, req.user.id, recipientId, content, mentionIds]
+        `insert into public.team_messages
+           (team_id, sender_id, recipient_id, content, mention_ids, reply_to_message_id)
+         values ($1,$2,$3,$4,$5::uuid[],$6) returning *`,
+        [teamId, req.user.id, recipientId, content, mentionIds, replyToId]
       );
       const senderName = (req.profile && req.profile.full_name) || req.user.email;
       for (const userId of mentions) {

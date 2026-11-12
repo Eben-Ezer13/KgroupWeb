@@ -187,7 +187,8 @@ Le script refuse d'agir si l'équipe du nouveau compte contient déjà des donn�
 ## 6. Mettre à jour le schéma de la base
 
 Quand une version ajoute une colonne (par exemple `sales.perfume_name`, le nom du
-parfum vendu), appliquez le schéma **avant** de déployer le code qui s'en sert :
+parfum vendu, ou `team_messages.reply_to_message_id` pour les réponses dans la
+messagerie), appliquez le schéma **avant** de déployer le code qui s'en sert :
 
 ```bash
 npm run db:migrate   # idempotent : sans effet sur ce qui existe déjà

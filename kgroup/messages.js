@@ -6,168 +6,365 @@
     if (!form) return;
     if (!(await window.KGAuth.requireSession())) return;
 
-    const recipient = document.getElementById("recipient");
-    const mentionMembers = document.getElementById("mentionMembers");
-    const content = document.getElementById("messageContent");
     const list = document.getElementById("messageList");
+    const timeline = document.getElementById("messageTimeline");
     const loadOlder = document.getElementById("loadOlder");
     const status = document.getElementById("messageStatus");
     const unreadCount = document.getElementById("unreadCount");
-    const t = (key) => window.KGI18N ? window.KGI18N.t(key) : key;
+    const content = document.getElementById("messageContent");
+    const picker = document.getElementById("mentionPicker");
+    const mentionToggle = document.getElementById("mentionToggle");
+    const replyPreview = document.getElementById("replyPreview");
+    const replyPreviewText = document.getElementById("replyPreviewText");
+    const copy = {
+      en: {
+        team: "Team discussion", teamHint: "Everyone on your team can read these messages.",
+        privateHint: "Private conversation · only visible to its participants.",
+        direct: "Private messages", empty: "No messages yet. Start the conversation.", reply: "Reply",
+        unread: (count) => `${count} unread`, allRead: "All caught up",
+        sent: "Message sent.", sendError: "Could not send this message.",
+        loadError: "Could not load messages.", olderError: "Could not load earlier messages.",
+        chooseMention: "Choose someone to mention", noMembers: "No teammates to mention.",
+        mentionLimit: "You can tag up to 20 people in one message.",
+        privateBlocked: "A private conversation can only mention the person in this conversation.",
+        older: "Load earlier messages", name: "Team member",
+      },
+      fr: {
+        team: "Discussion de l'équipe", teamHint: "Tous les membres de l'équipe peuvent lire ces messages.",
+        privateHint: "Conversation privée · visible uniquement par ses participants.",
+        direct: "Messages privés", empty: "Aucun message pour le moment. Lancez la discussion.", reply: "Répondre",
+        unread: (count) => `${count} message(s) non lu(s)`, allRead: "Tout est à jour",
+        sent: "Message envoyé.", sendError: "Impossible d'envoyer ce message.",
+        loadError: "Impossible de charger les messages.", olderError: "Impossible de charger les anciens messages.",
+        chooseMention: "Choisir une personne à mentionner", noMembers: "Aucun collègue à mentionner.",
+        mentionLimit: "Vous pouvez mentionner jusqu'à 20 personnes par message.",
+        privateBlocked: "Dans une conversation privée, seule la personne en face peut être mentionnée.",
+        older: "Charger les messages précédents", name: "Membre de l'équipe",
+      },
+    };
+    const lang = () => window.KGI18N && window.KGI18N.lang === "fr" ? "fr" : "en";
+    const text = (key, ...args) => {
+      const value = copy[lang()][key];
+      return typeof value === "function" ? value(...args) : value;
+    };
     const me = await window.KGAuth.user();
-    let members;
+    const conversationList = document.getElementById("conversationList");
+    const conversationTitle = document.getElementById("conversationTitle");
+    const conversationSubtitle = document.getElementById("conversationSubtitle");
+    const conversationAvatar = document.getElementById("conversationAvatar");
+    const members = [];
+    const taggedIds = new Set();
+    let activeConversation = "team";
     let loadedMessages = [];
+    let replyTo = null;
     let hasOlder = false;
+    let loading = false;
+    let memberError = "";
 
-    function option(label, value) {
-      const el = document.createElement("option");
-      el.value = value;
-      el.textContent = label;
-      return el;
+    function memberName(id) {
+      const member = members.find((item) => item.id === id);
+      return member ? member.full_name : text("name");
     }
 
-    function renderMessages(messages) {
-      const unread = messages.filter((message) => message.unread);
-      unreadCount.textContent = unread.length
-        ? (window.KGI18N && window.KGI18N.lang === "fr" ? `${unread.length} non lu(s)` : `${unread.length} unread`)
-        : (window.KGI18N && window.KGI18N.lang === "fr" ? "Tout est lu" : "All caught up");
-      if (!messages.length) {
-        list.textContent = window.KGI18N && window.KGI18N.lang === "fr" ? "Aucun message pour le moment." : "No messages yet.";
-        loadOlder.classList.add("hidden");
-        return;
+    function addConversationButton(label, peerId, kind) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "chat-conversation";
+      button.dataset.conversation = peerId || "team";
+      button.setAttribute("role", "listitem");
+      const avatar = document.createElement("span");
+      avatar.className = "chat-conversation-avatar";
+      avatar.textContent = kind === "team" ? "É" : label.trim().charAt(0).toUpperCase();
+      const details = document.createElement("span");
+      details.className = "chat-conversation-details";
+      const name = document.createElement("strong");
+      name.textContent = label;
+      const subtitle = document.createElement("small");
+      subtitle.textContent = kind === "team" ? text("teamHint") : text("privateHint");
+      details.append(name, subtitle);
+      button.append(avatar, details);
+      button.addEventListener("click", () => selectConversation(peerId || "team"));
+      conversationList.append(button);
+    }
+
+    function renderConversationList() {
+      conversationList.replaceChildren();
+      addConversationButton(text("team"), null, "team");
+      const divider = document.createElement("div");
+      divider.className = "chat-list-label";
+      divider.textContent = text("direct");
+      conversationList.append(divider);
+      members.forEach((member) => addConversationButton(member.full_name, member.id, "direct"));
+      markActiveConversation();
+    }
+
+    function markActiveConversation() {
+      conversationList.querySelectorAll(".chat-conversation").forEach((button) => {
+        const selected = button.dataset.conversation === activeConversation;
+        button.classList.toggle("active", selected);
+        button.setAttribute("aria-current", selected ? "true" : "false");
+      });
+    }
+
+    function updateHeader() {
+      const isTeam = activeConversation === "team";
+      const title = isTeam ? text("team") : memberName(activeConversation);
+      conversationTitle.textContent = title;
+      conversationSubtitle.textContent = isTeam ? text("teamHint") : text("privateHint");
+      conversationAvatar.textContent = isTeam ? "É" : title.trim().charAt(0).toUpperCase();
+      conversationAvatar.classList.toggle("team", isTeam);
+    }
+
+    function setReply(message) {
+      replyTo = message;
+      replyPreview.classList.toggle("hidden", !message);
+      if (message) {
+        replyPreviewText.textContent = `${message.sender_name || text("name")} : ${message.content}`;
+        content.focus();
       }
-      loadOlder.classList.toggle("hidden", !hasOlder);
+    }
+
+    function formatDate(value) {
+      return new Date(value).toLocaleString(lang() === "fr" ? "fr-FR" : "en-US", {
+        dateStyle: "short", timeStyle: "short",
+      });
+    }
+
+    function renderMessages(keepPosition) {
+      const oldHeight = timeline.scrollHeight;
+      const oldTop = timeline.scrollTop;
+      const unread = loadedMessages.filter((message) => message.unread).length;
       list.replaceChildren();
-      const names = new Map(members.map((member) => [member.id, member.full_name]));
-      messages.slice().reverse().forEach((message) => {
+      if (!loadedMessages.length) {
+        const empty = document.createElement("p");
+        empty.className = "chat-empty";
+        empty.textContent = text("empty");
+        list.append(empty);
+      }
+      loadedMessages.forEach((message) => {
+        const own = message.sender_id === me.id;
         const card = document.createElement("article");
-        card.style.cssText = "padding:16px 0;border-bottom:1px solid var(--line)";
-        const heading = document.createElement("div");
-        heading.style.cssText = "display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap";
-        const sender = document.createElement("strong");
-        sender.textContent = message.sender_name || "Membre";
-        const date = document.createElement("time");
-        date.className = "muted";
-        date.dateTime = message.created_at;
-        date.textContent = new Date(message.created_at).toLocaleString(window.KGI18N && window.KGI18N.lang === "fr" ? "fr-FR" : "en-US");
-        heading.append(sender, date);
-        card.append(heading);
-        if (message.recipient_id) {
-          const privateLabel = document.createElement("small");
-          privateLabel.className = "muted";
-          privateLabel.textContent = window.KGI18N && window.KGI18N.lang === "fr"
-            ? `Message privé · ${message.sender_id === me.id ? "à " + (message.recipient_name || "un membre") : "pour vous"}`
-            : `Private message · ${message.sender_id === me.id ? "to " + (message.recipient_name || "a member") : "to you"}`;
-          card.append(privateLabel);
+        card.className = `chat-message${own ? " own" : ""}`;
+        card.dataset.messageId = message.id;
+
+        if (message.reply_to_id && message.reply_content) {
+          const quoted = document.createElement("div");
+          quoted.className = "chat-message-quote";
+          const quoteName = document.createElement("strong");
+          quoteName.textContent = message.reply_sender_name || text("name");
+          const quoteContent = document.createElement("span");
+          quoteContent.textContent = message.reply_content;
+          quoted.append(quoteName, quoteContent);
+          card.append(quoted);
         }
-        const text = document.createElement("p");
-        text.style.cssText = "white-space:pre-wrap;margin:8px 0";
-        text.textContent = message.content;
-        card.append(text);
-        const tagged = (message.mention_ids || []).map((id) => names.get(id)).filter(Boolean);
+
+        const bubble = document.createElement("div");
+        bubble.className = "chat-message-bubble";
+        const heading = document.createElement("div");
+        heading.className = "chat-message-heading";
+        const sender = document.createElement("strong");
+        sender.textContent = own ? (window.KG && window.KG.me && window.KG.me.name) || text("name") : message.sender_name || text("name");
+        const date = document.createElement("time");
+        date.dateTime = message.created_at;
+        date.textContent = formatDate(message.created_at);
+        heading.append(sender, date);
+        const body = document.createElement("p");
+        body.className = "chat-message-content";
+        body.textContent = message.content;
+        bubble.append(heading, body);
+
+        const tagged = (message.mention_ids || []).map((id) => memberName(id));
         if (tagged.length) {
           const mentions = document.createElement("small");
-          mentions.className = "muted";
-          mentions.textContent = (window.KGI18N && window.KGI18N.lang === "fr" ? "Mentions : " : "Mentions: ") +
-            tagged.map((name) => "@" + name).join(", ");
-          card.append(mentions);
+          mentions.className = "chat-message-mentions";
+          mentions.textContent = `@ ${tagged.join(", @ ")}`;
+          bubble.append(mentions);
         }
-        if (message.unread) {
-          const badge = document.createElement("span");
-          badge.className = "badge";
-          badge.textContent = window.KGI18N && window.KGI18N.lang === "fr" ? "Nouveau" : "New";
-          card.append(badge);
-          const markRead = document.createElement("button");
-          markRead.type = "button";
-          markRead.className = "btn btn-ghost btn-sm";
-          markRead.style.marginLeft = "8px";
-          markRead.textContent = window.KGI18N && window.KGI18N.lang === "fr" ? "Marquer comme lu" : "Mark as read";
-          markRead.addEventListener("click", async () => {
-            markRead.disabled = true;
-            try {
-              await window.KGMessages.markRead([message.id]);
-              message.unread = false;
-              status.textContent = "";
-              renderMessages(loadedMessages);
-            } catch (error) {
-              status.textContent = error.message || "Impossible d'enregistrer la lecture.";
-              markRead.disabled = false;
-            }
-          });
-          card.append(markRead);
-        }
+        card.append(bubble);
+        const actions = document.createElement("div");
+        actions.className = "chat-message-actions";
+        const replyButton = document.createElement("button");
+        replyButton.type = "button";
+        replyButton.className = "chat-reply-button";
+        replyButton.textContent = text("reply");
+        replyButton.addEventListener("click", () => setReply(message));
+        actions.append(replyButton);
+        card.append(actions);
         list.append(card);
       });
+      loadOlder.classList.toggle("hidden", !hasOlder);
+      loadOlder.textContent = text("older");
+      unreadCount.textContent = unread ? text("unread", unread) : text("allRead");
+      if (keepPosition) timeline.scrollTop = timeline.scrollHeight - oldHeight + oldTop;
+      else timeline.scrollTop = timeline.scrollHeight;
     }
 
-    async function loadMessages() {
-      status.textContent = "";
+    async function markVisibleRead(messages) {
+      const ids = messages.filter((message) => message.unread).map((message) => message.id);
+      if (!ids.length) return;
       try {
-        loadedMessages = await window.KGMessages.list(100);
-        hasOlder = loadedMessages.length === 100;
-        renderMessages(loadedMessages);
+        await window.KGMessages.markRead(ids);
+        loadedMessages.forEach((message) => {
+          if (ids.includes(message.id)) message.unread = false;
+        });
       } catch (error) {
-        status.textContent = error.message || "Impossible de charger les messages.";
+        status.textContent = error.message || text("loadError");
       }
     }
 
-    try {
-      members = await window.KGMessages.members();
-      recipient.options[0].textContent = t("messages.team");
-      members.forEach((member) => {
-        recipient.append(option(member.full_name, member.id));
-        mentionMembers.append(option(member.full_name, member.id));
-      });
-    } catch (error) {
-      members = [];
-      status.textContent = error.message || "Impossible de charger les membres.";
+    async function loadMessages(options) {
+      if (loading) return;
+      loading = true;
+      status.textContent = memberError;
+      const wasNearBottom = timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight < 120;
+      try {
+        const current = activeConversation;
+        const messages = await window.KGMessages.list(100, options && options.cursor, current);
+        if (current !== activeConversation) return;
+        if (options && options.older) {
+          const existing = new Set(loadedMessages.map((message) => message.id));
+          loadedMessages = messages.filter((message) => !existing.has(message.id)).concat(loadedMessages);
+        } else {
+          loadedMessages = messages;
+        }
+        hasOlder = messages.length === 100;
+        await markVisibleRead(messages);
+        renderMessages(Boolean(options && options.older) || !wasNearBottom);
+      } catch (error) {
+        status.textContent = error.message || (options && options.older ? text("olderError") : text("loadError"));
+      } finally {
+        loading = false;
+      }
     }
 
-    recipient.addEventListener("change", () => {
-      Array.from(mentionMembers.options).forEach((item) => {
-        item.disabled = Boolean(recipient.value && item.value !== recipient.value);
-        if (item.disabled) item.selected = false;
+    async function selectConversation(conversation) {
+      if (conversation === activeConversation && loadedMessages.length) return;
+      activeConversation = conversation;
+      loadedMessages = [];
+      hasOlder = false;
+      setReply(null);
+      taggedIds.clear();
+      picker.classList.add("hidden");
+      mentionToggle.setAttribute("aria-expanded", "false");
+      status.textContent = "";
+      updateHeader();
+      markActiveConversation();
+      await loadMessages();
+    }
+
+    function insertMention(member) {
+      if (!taggedIds.has(member.id) && taggedIds.size >= 20) {
+        status.textContent = text("mentionLimit");
+        return;
+      }
+      const start = content.selectionStart;
+      const end = content.selectionEnd;
+      const value = content.value;
+      const at = value.lastIndexOf("@", start - 1);
+      const token = at >= 0 && !/\s/.test(value.slice(at + 1, start)) ? at : start;
+      const replacement = `@${member.full_name} `;
+      content.value = value.slice(0, token) + replacement + value.slice(end);
+      const caret = token + replacement.length;
+      content.setSelectionRange(caret, caret);
+      content.focus();
+      taggedIds.add(member.id);
+      picker.classList.add("hidden");
+      mentionToggle.setAttribute("aria-expanded", "false");
+    }
+
+    function renderMentionPicker() {
+      picker.replaceChildren();
+      const allowed = activeConversation === "team"
+        ? members
+        : members.filter((member) => member.id === activeConversation);
+      if (!allowed.length) {
+        const empty = document.createElement("span");
+        empty.className = "chat-mention-empty";
+        empty.textContent = activeConversation === "team" ? text("noMembers") : text("privateBlocked");
+        picker.append(empty);
+        return;
+      }
+      const label = document.createElement("span");
+      label.className = "chat-mention-label";
+      label.textContent = text("chooseMention");
+      picker.append(label);
+      allowed.forEach((member) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "chat-mention-option";
+        button.textContent = `@ ${member.full_name}`;
+        button.addEventListener("click", () => insertMention(member));
+        picker.append(button);
       });
+    }
+
+    document.getElementById("cancelReply").addEventListener("click", () => setReply(null));
+    mentionToggle.addEventListener("click", () => {
+      const opening = picker.classList.contains("hidden");
+      if (opening) renderMentionPicker();
+      picker.classList.toggle("hidden", !opening);
+      mentionToggle.setAttribute("aria-expanded", String(opening));
     });
 
-    form.addEventListener("submit", async function (event) {
+    content.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+      if (event.key === "Escape" && !picker.classList.contains("hidden")) {
+        picker.classList.add("hidden");
+        mentionToggle.setAttribute("aria-expanded", "false");
+      }
+    });
+
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const mentionIds = Array.from(mentionMembers.selectedOptions).map((item) => item.value);
-      const button = form.querySelector('button[type="submit"]');
+      const message = content.value.trim();
+      if (!message) return;
+      const recipientId = activeConversation === "team" ? null : activeConversation;
+      const mentionIds = Array.from(taggedIds).filter((id) => message.includes(`@${memberName(id)}`));
+      const button = document.getElementById("sendMessage");
       button.disabled = true;
       status.textContent = "";
       try {
-        await window.KGMessages.send(content.value, recipient.value, mentionIds);
+        await window.KGMessages.send(message, recipientId, mentionIds, replyTo && replyTo.id);
         content.value = "";
-        mentionMembers.selectedIndex = -1;
+        taggedIds.clear();
+        setReply(null);
         await loadMessages();
-        status.textContent = window.KGI18N && window.KGI18N.lang === "fr" ? "Message envoyé." : "Message sent.";
+        status.textContent = text("sent");
       } catch (error) {
-        status.textContent = error.message || "Le message n'a pas pu être envoyé.";
+        status.textContent = error.message || text("sendError");
       } finally {
         button.disabled = false;
       }
     });
 
-    await loadMessages();
-    loadOlder.textContent = t("messages.older");
     loadOlder.addEventListener("click", async () => {
       const firstMessage = loadedMessages[0];
-      if (!firstMessage) return;
+      if (!firstMessage || loading) return;
       loadOlder.disabled = true;
-      status.textContent = "";
-      try {
-        const older = await window.KGMessages.list(100, firstMessage);
-        hasOlder = older.length === 100;
-        const seen = new Set(loadedMessages.map((message) => message.id));
-        loadedMessages = older.filter((message) => !seen.has(message.id)).concat(loadedMessages);
-        renderMessages(loadedMessages);
-      } catch (error) {
-        status.textContent = error.message || "Impossible de charger les anciens messages.";
-      } finally {
-        loadOlder.disabled = false;
-      }
+      await loadMessages({ older: true, cursor: firstMessage });
+      loadOlder.disabled = false;
     });
-    window.addEventListener("kg:lang", loadMessages);
+
+    try {
+      const loadedMembers = await window.KGMessages.members();
+      loadedMembers.forEach((member) => members.push(member));
+    } catch (error) {
+      memberError = error.message || text("loadError");
+    }
+    renderConversationList();
+    updateHeader();
+
+    await loadMessages();
+    window.addEventListener("kg:lang", () => {
+      renderConversationList();
+      updateHeader();
+      renderMessages(true);
+    });
+    window.setInterval(() => {
+      if (!document.hidden) loadMessages();
+    }, 12000);
   });
 })();

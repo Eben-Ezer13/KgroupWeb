@@ -308,16 +308,23 @@ function execute(sql, params = []) {
     return ok(inserted);
   }
   if (q.startsWith("select m.id, m.sender_id, m.recipient_id")) {
-    const [teamId, userId, before, beforeId, limit] = params;
+    const [teamId, userId, peerId, before, beforeId, limit] = params;
     const messages = store.teamMessages.filter((message) => message.team_id === teamId &&
-      (message.recipient_id == null || message.recipient_id === userId || message.sender_id === userId) &&
+      (peerId
+        ? (message.sender_id === userId && message.recipient_id === peerId) ||
+          (message.sender_id === peerId && message.recipient_id === userId)
+        : message.recipient_id == null) &&
       (!before || message.created_at < before || (message.created_at === before && (!beforeId || message.id < beforeId))))
       .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id)).slice(0, limit)
       .map((message) => {
         const sender = store.profiles.find((p) => p.id === message.sender_id);
         const receiver = store.profiles.find((p) => p.id === message.recipient_id);
+        const reply = store.teamMessages.find((item) => item.id === message.reply_to_message_id);
+        const replySender = reply && store.profiles.find((p) => p.id === reply.sender_id);
         const isRead = store.messageReads.some((read) => read.message_id === message.id && read.user_id === userId);
         return { ...message, sender_name: sender && sender.full_name, recipient_name: receiver && receiver.full_name,
+          reply_to_id: reply && reply.id, reply_content: reply && reply.content,
+          reply_sender_name: replySender && replySender.full_name,
           read: isRead, unread: message.sender_id !== userId && !isRead };
       });
     return ok(messages);
@@ -984,9 +991,11 @@ test("la messagerie isole les conversations privées et les mentions d'équipe",
   const adminInbox = await admin("GET", "/api/messages");
   assert.strictEqual(adminInbox.status, 200);
   assert.ok(!adminInbox.body.some((message) => message.id === sent.body.id), "un admin tiers ne lit pas le privé");
-  const recipientInbox = await amine("GET", "/api/messages");
+  const recipientInbox = await amine("GET", `/api/messages?conversation=${u1.id}`);
   assert.ok(recipientInbox.body.some((message) => message.id === sent.body.id));
-  assert.ok(recipientInbox.body.some((message) => message.content === "Bonjour"), "la salle générale reste visible");
+  assert.ok(!recipientInbox.body.some((message) => message.content === "Bonjour"), "une conversation privée ne mélange pas le groupe");
+  const groupInbox = await amine("GET", "/api/messages?conversation=team");
+  assert.ok(groupInbox.body.some((message) => message.content === "Bonjour"), "la salle générale reste visible");
   assert.strictEqual((await otherAdmin("GET", "/api/messages")).body.length, 0, "une autre équipe ne voit rien");
 
   const markPrivate = await admin("POST", "/api/messages/read", { ids: [sent.body.id] });
