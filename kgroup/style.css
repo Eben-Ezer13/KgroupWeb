@@ -1277,3 +1277,31 @@ table.table th.num, table.table td.num { text-align: right; }
   body { background: #fff; }
   .card, .glass { box-shadow: none; border: 1px solid #ddd; }
 }
+
+
+/* Forest navigation for the light workspace; content layout stays unchanged. */
+[data-theme="light"] body[data-app] .sidebar {
+  color: #f7f5eb;
+  background: linear-gradient(165deg, #153d2c 0%, #0c2d21 100%);
+  border-right-color: rgba(229, 212, 157, .15);
+  box-shadow: 10px 0 32px rgba(10, 37, 26, .08);
+}
+[data-theme="light"] body[data-app] .sidebar-brand,
+[data-theme="light"] body[data-app] .sidebar-foot { border-color: rgba(255, 255, 255, .1); }
+[data-theme="light"] body[data-app] .sidebar-brand .brand-txt strong,
+[data-theme="light"] body[data-app] .sidebar-user strong { color: #fff; }
+[data-theme="light"] body[data-app] .sidebar-brand .brand-txt span,
+[data-theme="light"] body[data-app] .nav-label,
+[data-theme="light"] body[data-app] .sidebar-user small { color: rgba(242, 241, 228, .62); }
+[data-theme="light"] body[data-app] .nav-item { color: rgba(248, 248, 239, .84); }
+[data-theme="light"] body[data-app] .nav-item:hover { background: rgba(255,255,255,.09); color: #f0d58a; }
+[data-theme="light"] body[data-app] .nav-item.active {
+  color: #17271e;
+  background: linear-gradient(120deg, #e7d49c, #c5a65d);
+  box-shadow: 0 8px 20px rgba(5, 24, 17, .2);
+}
+[data-theme="light"] body[data-app] .nav-item.active svg { stroke: #17271e; }
+[data-theme="light"] body[data-app] .sidebar-user { background: rgba(255,255,255,.08); }
+[data-theme="light"] body[data-app] .sidebar .icon-btn {
+  color: #f5f1df; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.12);
+}
