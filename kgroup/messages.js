@@ -1,10 +1,13 @@
 (function () {
   "use strict";
 
+  let resolveBindings;
+  window.KGMessagesBindingsReady = new Promise((resolve) => { resolveBindings = resolve; });
+
   document.addEventListener("DOMContentLoaded", async function () {
     const composer = document.getElementById("messageForm");
-    if (!composer) return;
-    if (!(await window.KGAuth.requireSession())) return;
+    if (!composer) { resolveBindings(false); return; }
+    if (!(await window.KGAuth.requireSession())) { resolveBindings(false); return; }
 
     const list = document.getElementById("messageList");
     const timeline = document.getElementById("messageTimeline");
@@ -26,7 +29,7 @@
         unread: (count) => `${count} unread`, allRead: "All caught up",
         sent: "Message sent.", sendError: "Could not send this message.",
         loadError: "Could not load messages.", olderError: "Could not load earlier messages.",
-        chooseMention: "People online", noMembers: "No members are online right now.", online: "Online", offline: "Offline",
+        chooseMention: "Platform members", noMembers: "No platform members available.", online: "Online", offline: "Offline",
         mentionLimit: "You can tag up to 20 people in one message.",
         privateBlocked: "A private conversation can only mention the person in this conversation.",
         older: "Load earlier messages", name: "Platform member",
@@ -41,7 +44,7 @@
         unread: (count) => `${count} message(s) non lu(s)`, allRead: "Tout est à jour",
         sent: "Message envoyé.", sendError: "Impossible d'envoyer ce message.",
         loadError: "Impossible de charger les messages.", olderError: "Impossible de charger les anciens messages.",
-        chooseMention: "Personnes en ligne", noMembers: "Aucun membre n'est en ligne pour le moment.", online: "En ligne", offline: "Hors ligne",
+        chooseMention: "Membres de la plateforme", noMembers: "Aucun membre de la plateforme disponible.", online: "En ligne", offline: "Hors ligne",
         mentionLimit: "Vous pouvez mentionner jusqu'à 20 personnes par message.",
         privateBlocked: "Dans une conversation privée, seule la personne en face peut être mentionnée.",
         older: "Charger les messages précédents", name: "Membre de la plateforme",
@@ -330,7 +333,7 @@
 
     function allowedMentionMembers(query) {
       const available = activeConversation === "team"
-        ? members.filter((member) => member.online)
+        ? members
         : members.filter((member) => member.id === activeConversation);
       const normalized = String(query || "").trim().toLocaleLowerCase();
       return available.filter((member) => !normalized || String(member.full_name || "").toLocaleLowerCase().startsWith(normalized));
@@ -391,7 +394,7 @@
     function refreshMentionPicker() {
       const caret = content.selectionStart;
       const before = content.value.slice(0, caret);
-      const match = /(^|\s)@([^\n]*)$/.exec(before);
+      const match = /(^|[^A-Za-z0-9._%+-])@([^\n]*)$/.exec(before);
       if (!match) {
         activeMention = null;
         mentionMatches = [];
@@ -494,6 +497,11 @@
         sendMessage();
       }
     });
+
+    // The shared shell waits for these handlers before revealing the page.
+    // This prevents an early click from landing in the gap between auth and
+    // async message initialization.
+    resolveBindings(true);
 
     loadOlder.addEventListener("click", async () => {
       const firstMessage = loadedMessages[0];

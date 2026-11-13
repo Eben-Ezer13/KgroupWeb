@@ -1588,6 +1588,9 @@
     buildNotifications();
     if (document.body.dataset.page === "challenges") setSeen("chal", (window.KG.challenges || []).length);
 
+    if (document.body.dataset.page === "messages" && window.KGMessagesBindingsReady) {
+      await window.KGMessagesBindingsReady;
+    }
     buildLayout();
     wireModals();
     // Draw rings
