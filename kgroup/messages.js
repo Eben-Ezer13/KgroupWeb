@@ -67,6 +67,7 @@
     let loading = false;
     let memberError = "";
     let membersLoading = true;
+    let membersRequest = null;
 
     function memberName(id) {
       const member = members.find((item) => item.id === id);
@@ -305,6 +306,28 @@
 
     function renderMentionPicker() {
       picker.replaceChildren();
+      if (membersLoading) {
+        const loadingNotice = document.createElement("span");
+        loadingNotice.className = "chat-mention-empty";
+        loadingNotice.textContent = text("membersLoading");
+        picker.append(loadingNotice);
+        return;
+      }
+      if (memberError) {
+        const notice = document.createElement("span");
+        notice.className = "chat-mention-empty";
+        notice.textContent = text("membersUnavailable");
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "btn btn-ghost btn-sm";
+        retry.textContent = text("retryMembers");
+        retry.addEventListener("click", async () => {
+          await loadMembers();
+          if (!picker.classList.contains("hidden")) renderMentionPicker();
+        });
+        picker.append(notice, retry);
+        return;
+      }
       const allowed = activeConversation === "team"
         ? members
         : members.filter((member) => member.id === activeConversation);
@@ -323,18 +346,26 @@
         const button = document.createElement("button");
         button.type = "button";
         button.className = "chat-mention-option";
-        button.textContent = `@ ${member.full_name}`;
+        button.textContent = "@ " + member.full_name;
         button.addEventListener("click", () => insertMention(member));
         picker.append(button);
       });
     }
 
     document.getElementById("cancelReply").addEventListener("click", () => setReply(null));
-    mentionToggle.addEventListener("click", () => {
+    mentionToggle.addEventListener("click", async () => {
       const opening = picker.classList.contains("hidden");
-      if (opening) renderMentionPicker();
-      picker.classList.toggle("hidden", !opening);
-      mentionToggle.setAttribute("aria-expanded", String(opening));
+      if (!opening) {
+        picker.classList.add("hidden");
+        mentionToggle.setAttribute("aria-expanded", "false");
+        return;
+      }
+      picker.classList.remove("hidden");
+      mentionToggle.setAttribute("aria-expanded", "true");
+      const refresh = loadMembers();
+      renderMentionPicker();
+      await refresh;
+      if (!picker.classList.contains("hidden")) renderMentionPicker();
     });
 
     content.addEventListener("keydown", (event) => {
@@ -380,18 +411,26 @@
     });
 
     async function loadMembers() {
+      if (membersRequest) return membersRequest;
       membersLoading = true;
       memberError = "";
       renderConversationList();
+      membersRequest = (async () => {
+        try {
+          const loadedMembers = await window.KGMessages.members();
+          if (!Array.isArray(loadedMembers)) throw new Error(text("membersUnavailable"));
+          members.splice(0, members.length, ...loadedMembers);
+        } catch (error) {
+          memberError = error.message || text("membersUnavailable");
+        } finally {
+          membersLoading = false;
+          renderConversationList();
+        }
+      })();
       try {
-        const loadedMembers = await window.KGMessages.members();
-        if (!Array.isArray(loadedMembers)) throw new Error(text("membersUnavailable"));
-        members.splice(0, members.length, ...loadedMembers);
-      } catch (error) {
-        memberError = error.message || text("membersUnavailable");
+        await membersRequest;
       } finally {
-        membersLoading = false;
-        renderConversationList();
+        membersRequest = null;
       }
     }
 
