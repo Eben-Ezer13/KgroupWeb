@@ -15,6 +15,7 @@ const MIGRATIONS = [
   "schema.sql",       // v3   base + formation
   "schema-crm.sql",   // v3.2 clients, anniversaires, remuneration
   "schema-preorders.sql", // v3.3 precommandes
+  "schema-platform-global.sql", // one shared company workspace
 ];
 
 async function main() {

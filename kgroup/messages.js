@@ -13,12 +13,11 @@
     const unreadCount = document.getElementById("unreadCount");
     const content = document.getElementById("messageContent");
     const picker = document.getElementById("mentionPicker");
-    const mentionToggle = document.getElementById("mentionToggle");
     const replyPreview = document.getElementById("replyPreview");
     const replyPreviewText = document.getElementById("replyPreviewText");
     const copy = {
       en: {
-        team: "Platform group", teamHint: "Everyone on the platform can read these messages.",
+        team: "Company group", teamHint: "Everyone in the company can read these messages.",
         privateHint: "Private conversation · only visible to its participants.",
         direct: "Private messages", empty: "No messages yet. Start the conversation.", reply: "Reply",
         membersLoading: "Loading platform members…", membersUnavailable: "Platform members could not be loaded.",
@@ -27,13 +26,13 @@
         unread: (count) => `${count} unread`, allRead: "All caught up",
         sent: "Message sent.", sendError: "Could not send this message.",
         loadError: "Could not load messages.", olderError: "Could not load earlier messages.",
-        chooseMention: "Choose someone to mention", noMembers: "No platform members to mention.",
+        chooseMention: "People online", noMembers: "No members are online right now.", online: "Online", offline: "Offline",
         mentionLimit: "You can tag up to 20 people in one message.",
         privateBlocked: "A private conversation can only mention the person in this conversation.",
         older: "Load earlier messages", name: "Platform member",
       },
       fr: {
-        team: "Groupe de la plateforme", teamHint: "Toutes les personnes de la plateforme peuvent lire ces messages.",
+        team: "Groupe de l'entreprise", teamHint: "Toutes les personnes de l'entreprise peuvent lire ces messages.",
         privateHint: "Conversation privée · visible uniquement par ses participants.",
         direct: "Messages privés", empty: "Aucun message pour le moment. Lancez la discussion.", reply: "Répondre",
         membersLoading: "Chargement des membres de la plateforme…", membersUnavailable: "Impossible de charger les membres de la plateforme.",
@@ -42,7 +41,7 @@
         unread: (count) => `${count} message(s) non lu(s)`, allRead: "Tout est à jour",
         sent: "Message envoyé.", sendError: "Impossible d'envoyer ce message.",
         loadError: "Impossible de charger les messages.", olderError: "Impossible de charger les anciens messages.",
-        chooseMention: "Choisir une personne à mentionner", noMembers: "Aucun membre à mentionner.",
+        chooseMention: "Personnes en ligne", noMembers: "Aucun membre n'est en ligne pour le moment.", online: "En ligne", offline: "Hors ligne",
         mentionLimit: "Vous pouvez mentionner jusqu'à 20 personnes par message.",
         privateBlocked: "Dans une conversation privée, seule la personne en face peut être mentionnée.",
         older: "Charger les messages précédents", name: "Membre de la plateforme",
@@ -70,13 +69,16 @@
     let memberError = "";
     let membersLoading = true;
     let membersRequest = null;
+    let mentionMatches = [];
+    let mentionIndex = -1;
+    let activeMention = null;
 
     function memberName(id) {
       const member = members.find((item) => item.id === id);
-      return member ? member.full_name : text("name");
+      return member && member.full_name ? member.full_name : text("name");
     }
 
-    function addConversationButton(label, peerId, kind) {
+    function addConversationButton(label, peerId, kind, isOnline) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "chat-conversation";
@@ -90,7 +92,12 @@
       const name = document.createElement("strong");
       name.textContent = label;
       const subtitle = document.createElement("small");
-      subtitle.textContent = kind === "team" ? text("teamHint") : text("privateHint");
+      if (kind !== "team") {
+        subtitle.className = "chat-presence";
+        subtitle.dataset.online = isOnline ? "true" : "false";
+      }
+      subtitle.textContent = kind === "team" ? text("teamHint")
+        : `${isOnline ? text("online") : text("offline")} · ${text("privateHint")}`;
       details.append(name, subtitle);
       button.append(avatar, details);
       button.addEventListener("click", () => selectConversation(peerId || "team"));
@@ -127,7 +134,7 @@
         empty.textContent = text("noPrivateMembers");
         conversationList.append(empty);
       } else {
-        members.forEach((member) => addConversationButton(member.full_name, member.id, "direct"));
+        members.forEach((member) => addConversationButton(member.full_name || text("name"), member.id, "direct", member.online));
       }
       markActiveConversation();
     }
@@ -290,7 +297,9 @@
       setReply(null);
       taggedIds.clear();
       picker.classList.add("hidden");
-      mentionToggle.setAttribute("aria-expanded", "false");
+      activeMention = null;
+      mentionMatches = [];
+      mentionIndex = -1;
       status.textContent = "";
       updateHeader();
       markActiveConversation();
@@ -302,19 +311,29 @@
         status.textContent = text("mentionLimit");
         return;
       }
-      const start = content.selectionStart;
+      const token = activeMention;
+      if (!token) return;
+      const start = token.start;
       const end = content.selectionEnd;
       const value = content.value;
-      const at = value.lastIndexOf("@", start - 1);
-      const token = at >= 0 && !/\s/.test(value.slice(at + 1, start)) ? at : start;
       const replacement = `@${member.full_name} `;
-      content.value = value.slice(0, token) + replacement + value.slice(end);
-      const caret = token + replacement.length;
+      content.value = value.slice(0, start) + replacement + value.slice(end);
+      const caret = start + replacement.length;
       content.setSelectionRange(caret, caret);
       content.focus();
       taggedIds.add(member.id);
       picker.classList.add("hidden");
-      mentionToggle.setAttribute("aria-expanded", "false");
+      activeMention = null;
+      mentionMatches = [];
+      mentionIndex = -1;
+    }
+
+    function allowedMentionMembers(query) {
+      const available = activeConversation === "team"
+        ? members.filter((member) => member.online)
+        : members.filter((member) => member.id === activeConversation);
+      const normalized = String(query || "").trim().toLocaleLowerCase();
+      return available.filter((member) => !normalized || String(member.full_name || "").toLocaleLowerCase().startsWith(normalized));
     }
 
     function renderMentionPicker() {
@@ -341,13 +360,11 @@
         picker.append(notice, retry);
         return;
       }
-      const allowed = activeConversation === "team"
-        ? members
-        : members.filter((member) => member.id === activeConversation);
-      if (!allowed.length) {
+      mentionMatches = allowedMentionMembers(activeMention && activeMention.query);
+      if (!mentionMatches.length) {
         const empty = document.createElement("span");
         empty.className = "chat-mention-empty";
-        empty.textContent = activeConversation === "team" ? text("noMembers") : text("privateBlocked");
+        empty.textContent = text("noMembers");
         picker.append(empty);
         return;
       }
@@ -355,40 +372,86 @@
       label.className = "chat-mention-label";
       label.textContent = text("chooseMention");
       picker.append(label);
-      allowed.forEach((member) => {
+      mentionMatches.forEach((member, index) => {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "chat-mention-option";
         button.textContent = "@ " + member.full_name;
+        button.setAttribute("role", "option");
+        button.setAttribute("aria-selected", index === mentionIndex ? "true" : "false");
+        if (index === mentionIndex) button.classList.add("selected");
+        button.addEventListener("mousedown", (event) => event.preventDefault());
         button.addEventListener("click", () => insertMention(member));
         picker.append(button);
       });
     }
 
     document.getElementById("cancelReply").addEventListener("click", () => setReply(null));
-    mentionToggle.addEventListener("click", async () => {
-      const opening = picker.classList.contains("hidden");
-      if (!opening) {
+
+    function refreshMentionPicker() {
+      const caret = content.selectionStart;
+      const before = content.value.slice(0, caret);
+      const match = /(^|\s)@([^\n]*)$/.exec(before);
+      if (!match) {
+        activeMention = null;
+        mentionMatches = [];
+        mentionIndex = -1;
         picker.classList.add("hidden");
-        mentionToggle.setAttribute("aria-expanded", "false");
         return;
       }
+      const query = match[2];
+      const normalized = query.trim().toLocaleLowerCase();
+      const complete = normalized && members.some((member) => String(member.full_name || "").toLocaleLowerCase() === normalized);
+      if (complete && /\s$/.test(query)) {
+        activeMention = null;
+        mentionMatches = [];
+        mentionIndex = -1;
+        picker.classList.add("hidden");
+        return;
+      }
+      activeMention = { start: match.index + match[1].length, query };
+      mentionIndex = -1;
       picker.classList.remove("hidden");
-      mentionToggle.setAttribute("aria-expanded", "true");
-      const refresh = loadMembers();
       renderMentionPicker();
-      await refresh;
-      if (!picker.classList.contains("hidden")) renderMentionPicker();
+    }
+
+    content.addEventListener("input", refreshMentionPicker);
+    content.addEventListener("click", refreshMentionPicker);
+    content.addEventListener("keyup", (event) => {
+      if (["ArrowUp", "ArrowDown", "Escape", "Enter"].includes(event.key)) return;
+      refreshMentionPicker();
     });
 
     content.addEventListener("keydown", (event) => {
+      if (!picker.classList.contains("hidden")) {
+        if (event.key === "ArrowDown" && mentionMatches.length) {
+          event.preventDefault();
+          mentionIndex = (mentionIndex + 1) % mentionMatches.length;
+          renderMentionPicker();
+          return;
+        }
+        if (event.key === "ArrowUp" && mentionMatches.length) {
+          event.preventDefault();
+          mentionIndex = (mentionIndex - 1 + mentionMatches.length) % mentionMatches.length;
+          renderMentionPicker();
+          return;
+        }
+        if (event.key === "Enter" && !event.shiftKey && mentionMatches.length) {
+          event.preventDefault();
+          insertMention(mentionMatches[Math.max(mentionIndex, 0)]);
+          return;
+        }
+        if (event.key === "Escape") {
+          picker.classList.add("hidden");
+          activeMention = null;
+          mentionMatches = [];
+          mentionIndex = -1;
+          return;
+        }
+      }
       if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
         event.preventDefault();
         form.requestSubmit();
-      }
-      if (event.key === "Escape" && !picker.classList.contains("hidden")) {
-        picker.classList.add("hidden");
-        mentionToggle.setAttribute("aria-expanded", "false");
       }
     });
 
@@ -398,14 +461,29 @@
       if (!message) return;
       const recipientId = activeConversation === "team" ? null : activeConversation;
       const mentionIds = Array.from(taggedIds).filter((id) => message.includes(`@${memberName(id)}`));
+      const sentConversation = activeConversation;
+      const quotedMessage = replyTo;
       const button = document.getElementById("sendMessage");
       button.disabled = true;
       status.textContent = "";
       try {
-        await window.KGMessages.send(message, recipientId, mentionIds, replyTo && replyTo.id);
+        const sent = await window.KGMessages.send(message, recipientId, mentionIds, quotedMessage && quotedMessage.id);
         content.value = "";
         taggedIds.clear();
         setReply(null);
+        if (activeConversation === sentConversation && sent && sent.id) {
+          loadedMessages.push({
+            ...sent,
+            sender_name: window.KG && window.KG.me && window.KG.me.name || me.email,
+            reply_to_id: quotedMessage && quotedMessage.id || null,
+            reply_content: quotedMessage && quotedMessage.content || null,
+            reply_sender_name: quotedMessage && quotedMessage.sender_name || null,
+            unread: false,
+          });
+          loadedMessages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+          hasOlder = hasOlder || loadedMessages.length > 100;
+          renderMessages(false);
+        }
         await loadMessages();
         status.textContent = text("sent");
       } catch (error) {
@@ -438,6 +516,7 @@
         } finally {
           membersLoading = false;
           renderConversationList();
+          if (activeMention) refreshMentionPicker();
         }
       })();
       try {
@@ -456,9 +535,13 @@
       renderConversationList();
       updateHeader();
       renderMessages(true);
+      if (activeMention) refreshMentionPicker();
     });
     window.setInterval(() => {
       if (!document.hidden) loadMessages();
     }, 12000);
+    window.setInterval(() => {
+      if (!document.hidden) loadMembers();
+    }, 45000);
   });
 })();

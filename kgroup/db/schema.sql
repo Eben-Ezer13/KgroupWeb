@@ -56,12 +56,15 @@ create table if not exists public.profiles (
   role           text default 'admin',        -- 'admin' | 'salesperson'
   team_id        uuid references public.teams (id) on delete set null,
   salesperson_id uuid,                          -- link to the roster row (reps)
+  last_seen_at   timestamptz,
   city           text,
   hue            int  default 150,
   created_at     timestamptz default now()
 );
 alter table public.profiles add column if not exists team_id        uuid;
 alter table public.profiles add column if not exists salesperson_id uuid;
+alter table public.profiles add column if not exists last_seen_at   timestamptz;
+create index if not exists idx_profiles_last_seen on public.profiles (last_seen_at desc);
 
 -- ---------- SALESPERSONS (team roster) -----------------------------------
 create table if not exists public.salespersons (
@@ -201,18 +204,24 @@ begin
       return new;
     end if;
 
-    -- invalid/used code -> create an unlinked salesperson profile
-    insert into public.profiles (id, full_name, email, role)
-      values (new.id, v_name, new.email, 'salesperson')
+    -- invalid/used code -> create an unlinked salesperson profile in the
+    -- shared company workspace so the account can still use the platform.
+    select id into v_team from public.teams order by created_at nulls last, id limit 1;
+    if v_team is null then
+      insert into public.teams (name, owner) values ('KGROUP Parfumery', new.id) returning id into v_team;
+    end if;
+    insert into public.profiles (id, full_name, email, role, team_id)
+      values (new.id, v_name, new.email, 'salesperson', v_team)
       on conflict (id) do nothing;
     return new;
   end if;
 
-  -- ADMIN path -> spin up a team and link the profile to it. Sign-up is public:
-  -- joining an existing team here would hand every newcomer the company's
-  -- data. A co-administrator is attached deliberately, with
-  -- scripts/join-team.js.
-  insert into public.teams (name, owner) values (v_name || '''s Team', new.id) returning id into v_team;
+  -- ADMIN path -> all company administrators share one workspace. The global
+  -- migration consolidates existing teams; new admins use its oldest team.
+  select id into v_team from public.teams order by created_at nulls last, id limit 1;
+  if v_team is null then
+    insert into public.teams (name, owner) values ('KGROUP Parfumery', new.id) returning id into v_team;
+  end if;
   insert into public.profiles (id, full_name, email, role, team_id)
     values (new.id, v_name, new.email, 'admin', v_team)
     on conflict (id) do update set role = 'admin', team_id = excluded.team_id;

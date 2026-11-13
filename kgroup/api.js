@@ -501,6 +501,10 @@
       if (!(await ready())) throw new Error("La liste des membres est indisponible.");
       return request("/messages/members");
     },
+    async presence() {
+      if (!(await ready())) return { demo: true };
+      return request("/messages/presence", { method: "POST", body: {} });
+    },
     async send(content, recipientId, mentionIds, replyTo) {
       if (!(await ready())) throw new Error("La messagerie est indisponible.");
       return request("/messages", {

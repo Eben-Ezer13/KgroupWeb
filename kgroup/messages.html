@@ -31,8 +31,8 @@
       <header class="chat-header">
         <div class="chat-avatar" id="conversationAvatar" aria-hidden="true">É</div>
         <div class="grow">
-          <h3 id="conversationTitle" data-i18n="messages.team">Groupe de la plateforme</h3>
-          <p id="conversationSubtitle" class="muted" data-i18n="messages.teamHint">Toutes les personnes de la plateforme peuvent lire ces messages.</p>
+          <h3 id="conversationTitle" data-i18n="messages.team">Groupe de l'entreprise</h3>
+          <p id="conversationSubtitle" class="muted" data-i18n="messages.teamHint">Toutes les personnes de l'entreprise peuvent lire ces messages.</p>
         </div>
       </header>
       <div class="chat-timeline" id="messageTimeline">
@@ -53,11 +53,7 @@
         </div>
         <form id="messageForm" class="chat-compose">
           <div class="chat-compose-tools">
-            <button type="button" class="btn btn-ghost btn-sm" id="mentionToggle" aria-expanded="false">
-              <span aria-hidden="true">@</span>
-              <span data-i18n="messages.mention">Mentionner</span>
-            </button>
-            <span class="muted chat-compose-hint" data-i18n="messages.composeHint">Entrée pour envoyer · Maj + Entrée pour aller à la ligne</span>
+            <span class="muted chat-compose-hint" data-i18n="messages.composeHint">Tapez @ pour mentionner quelqu'un · Entrée pour envoyer · Maj + Entrée pour aller à la ligne</span>
           </div>
           <div class="chat-compose-row">
             <textarea id="messageContent" class="input" rows="2" maxlength="2000" required
@@ -65,7 +61,7 @@
               aria-label="Message"></textarea>
             <button class="btn btn-primary chat-send" type="submit" id="sendMessage" data-i18n="messages.send">Envoyer</button>
           </div>
-          <div class="chat-mention-picker hidden" id="mentionPicker" role="group" aria-label="Choisir un membre à mentionner"></div>
+          <div class="chat-mention-picker hidden" id="mentionPicker" role="listbox" aria-label="Choisir un membre à mentionner"></div>
         </form>
         <p class="chat-private-note" data-i18n="messages.privacyHint">Les messages privés ne sont visibles que par leurs participants.</p>
       </div>

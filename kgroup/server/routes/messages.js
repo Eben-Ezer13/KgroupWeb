@@ -146,8 +146,20 @@ router.post("/messages/read", requireUser, async (req, res, next) => {
 
 router.get("/messages/members", requireUser, async (req, res, next) => {
   try {
-    const rows = await db.many(`select id, full_name, role from public.profiles where id <> $1 order by full_name`, [req.user.id]);
+    const rows = await db.many(
+      `select id, full_name, role,
+              coalesce(last_seen_at > now() - interval '90 seconds', false) as online
+         from public.profiles where id <> $1 order by full_name`,
+      [req.user.id]
+    );
     return res.json(rows);
+  } catch (err) { return next(err); }
+});
+
+router.post("/messages/presence", requireUser, async (req, res, next) => {
+  try {
+    await db.query(`update public.profiles set last_seen_at = now() where id = $1`, [req.user.id]);
+    return res.json({ ok: true });
   } catch (err) { return next(err); }
 });
 
