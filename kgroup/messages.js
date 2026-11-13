@@ -18,34 +18,34 @@
     const replyPreviewText = document.getElementById("replyPreviewText");
     const copy = {
       en: {
-        team: "Team discussion", teamHint: "Everyone on your team can read these messages.",
+        team: "Platform group", teamHint: "Everyone on the platform can read these messages.",
         privateHint: "Private conversation · only visible to its participants.",
         direct: "Private messages", empty: "No messages yet. Start the conversation.", reply: "Reply",
-        membersLoading: "Loading teammates…", membersUnavailable: "Teammates could not be loaded.",
-        noPrivateMembers: "No other teammates are available for a private conversation.",
+        membersLoading: "Loading platform members…", membersUnavailable: "Platform members could not be loaded.",
+        noPrivateMembers: "No other platform members are available for a private conversation.",
         retryMembers: "Try again",
         unread: (count) => `${count} unread`, allRead: "All caught up",
         sent: "Message sent.", sendError: "Could not send this message.",
         loadError: "Could not load messages.", olderError: "Could not load earlier messages.",
-        chooseMention: "Choose someone to mention", noMembers: "No teammates to mention.",
+        chooseMention: "Choose someone to mention", noMembers: "No platform members to mention.",
         mentionLimit: "You can tag up to 20 people in one message.",
         privateBlocked: "A private conversation can only mention the person in this conversation.",
-        older: "Load earlier messages", name: "Team member",
+        older: "Load earlier messages", name: "Platform member",
       },
       fr: {
-        team: "Discussion de l'équipe", teamHint: "Tous les membres de l'équipe peuvent lire ces messages.",
+        team: "Groupe de la plateforme", teamHint: "Toutes les personnes de la plateforme peuvent lire ces messages.",
         privateHint: "Conversation privée · visible uniquement par ses participants.",
         direct: "Messages privés", empty: "Aucun message pour le moment. Lancez la discussion.", reply: "Répondre",
-        membersLoading: "Chargement des collègues…", membersUnavailable: "Impossible de charger les collègues.",
-        noPrivateMembers: "Aucun autre collègue n'est disponible pour une conversation privée.",
+        membersLoading: "Chargement des membres de la plateforme…", membersUnavailable: "Impossible de charger les membres de la plateforme.",
+        noPrivateMembers: "Aucun autre membre de la plateforme n'est disponible pour une conversation privée.",
         retryMembers: "Réessayer",
         unread: (count) => `${count} message(s) non lu(s)`, allRead: "Tout est à jour",
         sent: "Message envoyé.", sendError: "Impossible d'envoyer ce message.",
         loadError: "Impossible de charger les messages.", olderError: "Impossible de charger les anciens messages.",
-        chooseMention: "Choisir une personne à mentionner", noMembers: "Aucun collègue à mentionner.",
+        chooseMention: "Choisir une personne à mentionner", noMembers: "Aucun membre à mentionner.",
         mentionLimit: "Vous pouvez mentionner jusqu'à 20 personnes par message.",
         privateBlocked: "Dans une conversation privée, seule la personne en face peut être mentionnée.",
-        older: "Charger les messages précédents", name: "Membre de l'équipe",
+        older: "Charger les messages précédents", name: "Membre de la plateforme",
       },
     };
     const lang = () => window.KGI18N && window.KGI18N.lang === "fr" ? "fr" : "en";
@@ -65,6 +65,8 @@
     let replyTo = null;
     let hasOlder = false;
     let loading = false;
+    let reloadPending = false;
+    let pendingLoad = null;
     let memberError = "";
     let membersLoading = true;
     let membersRequest = null;
@@ -245,28 +247,39 @@
     }
 
     async function loadMessages(options) {
-      if (loading) return;
+      if (loading) {
+        reloadPending = true;
+        return pendingLoad;
+      }
       loading = true;
       status.textContent = "";
-      const wasNearBottom = timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight < 120;
-      try {
-        const current = activeConversation;
-        const messages = await window.KGMessages.list(100, options && options.cursor, current);
-        if (current !== activeConversation) return;
-        if (options && options.older) {
-          const existing = new Set(loadedMessages.map((message) => message.id));
-          loadedMessages = messages.filter((message) => !existing.has(message.id)).concat(loadedMessages);
-        } else {
-          loadedMessages = messages;
-        }
-        hasOlder = messages.length === 100;
-        await markVisibleRead(messages);
-        renderMessages(Boolean(options && options.older) || !wasNearBottom);
-      } catch (error) {
-        status.textContent = error.message || (options && options.older ? text("olderError") : text("loadError"));
-      } finally {
-        loading = false;
-      }
+      pendingLoad = (async () => {
+        let nextOptions = options;
+        do {
+          reloadPending = false;
+          const current = activeConversation;
+          const wasNearBottom = timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight < 120;
+          try {
+            const messages = await window.KGMessages.list(100, nextOptions && nextOptions.cursor, current);
+            if (current !== activeConversation) {
+              reloadPending = true;
+            } else {
+              if (nextOptions && nextOptions.older) {
+                const existing = new Set(loadedMessages.map((message) => message.id));
+                loadedMessages = messages.filter((message) => !existing.has(message.id)).concat(loadedMessages);
+              } else loadedMessages = messages;
+              hasOlder = messages.length === 100;
+              await markVisibleRead(messages);
+              renderMessages(Boolean(nextOptions && nextOptions.older) || !wasNearBottom);
+            }
+          } catch (error) {
+            status.textContent = error.message || (nextOptions && nextOptions.older ? text("olderError") : text("loadError"));
+          }
+          nextOptions = null;
+        } while (reloadPending);
+      })();
+      try { await pendingLoad; }
+      finally { loading = false; pendingLoad = null; }
     }
 
     async function selectConversation(conversation) {
