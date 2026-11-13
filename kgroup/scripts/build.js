@@ -30,7 +30,7 @@ try {
 /* ---- 2. Required files -------------------------------------------------- */
 console.log("\nRequired files");
 const REQUIRED = [
-  "api.js", "data.js", "dashboard.js", "notifications.js", "style.css",
+  "api.js", "data.js", "dashboard.js", "messages.js", "notifications.js", "style.css",
   "manifest.webmanifest", "service-worker.js", "offline.html",
   "training-content.js", "training.css", "formation.html",
   "crm.css", "clients.html", "remuneration.html",
@@ -124,7 +124,7 @@ const APP_PAGES = new Set([
   "login.html", "register.html", "reset-password.html", "dashboard.html",
   "salesperson.html", "salespersons.html", "sales.html", "ranking.html",
   "challenges.html", "reports.html", "settings.html", "formation.html",
-  "clients.html", "remuneration.html", "orders.html", "guide-commandes.html",
+  "clients.html", "remuneration.html", "orders.html", "guide-commandes.html", "messages.html",
 ]);
 
 for (const page of pages) {
@@ -146,6 +146,15 @@ for (const page of pages) {
     if (!(order[0] < order[1] && order[1] < order[2])) {
       fail(`${page} loads its scripts out of order (data.js, api.js, dashboard.js)`);
       continue;
+    }
+    if (page === "messages.html") {
+      const messageScript = html.indexOf('<script src="messages.js"></script>');
+      const notificationsScript = html.indexOf('<script src="notifications.js"></script>');
+      if (messageScript === -1 || notificationsScript === -1 ||
+          !(order[1] < messageScript && messageScript < notificationsScript && notificationsScript < order[2])) {
+        fail("messages.html must load api.js, messages.js, notifications.js, then dashboard.js");
+        continue;
+      }
     }
     // Pages with the app shell draw the notification bell: dashboard.js needs
     // notifications.js loaded before it.
@@ -240,7 +249,7 @@ fs.mkdirSync(DIST, { recursive: true });
 const ROOT_ASSETS = [
   ...fs.readdirSync(ROOT).filter((f) => f.endsWith(".html")),
   "style.css", "crm.css", "training.css", "guide.css",
-  "api.js", "data.js", "dashboard.js", "notifications.js", "training-content.js",
+  "api.js", "data.js", "dashboard.js", "messages.js", "notifications.js", "training-content.js",
   "exports.js", "favicon.svg", "manifest.webmanifest", "service-worker.js",
 ];
 
