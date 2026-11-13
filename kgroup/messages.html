@@ -51,7 +51,7 @@
           </div>
           <button type="button" class="icon-btn" id="cancelReply" aria-label="Annuler la réponse">×</button>
         </div>
-        <form id="messageForm" class="chat-compose">
+        <div id="messageForm" class="chat-compose">
           <div class="chat-compose-tools">
             <span class="muted chat-compose-hint" data-i18n="messages.composeHint">Tapez @ pour mentionner quelqu'un · Entrée pour envoyer · Maj + Entrée pour aller à la ligne</span>
           </div>
@@ -59,10 +59,10 @@
             <textarea id="messageContent" class="input" rows="2" maxlength="2000" required
               placeholder="Écrivez un message…" data-i18n-ph="messages.placeholder"
               aria-label="Message"></textarea>
-            <button class="btn btn-primary chat-send" type="submit" id="sendMessage" data-i18n="messages.send">Envoyer</button>
+            <button class="btn btn-primary chat-send" type="button" id="sendMessage" data-i18n="messages.send">Envoyer</button>
           </div>
           <div class="chat-mention-picker hidden" id="mentionPicker" role="listbox" aria-label="Choisir un membre à mentionner"></div>
-        </form>
+        </div>
         <p class="chat-private-note" data-i18n="messages.privacyHint">Les messages privés ne sont visibles que par leurs participants.</p>
       </div>
     </section>

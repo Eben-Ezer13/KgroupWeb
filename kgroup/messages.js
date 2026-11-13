@@ -2,8 +2,8 @@
   "use strict";
 
   document.addEventListener("DOMContentLoaded", async function () {
-    const form = document.getElementById("messageForm");
-    if (!form) return;
+    const composer = document.getElementById("messageForm");
+    if (!composer) return;
     if (!(await window.KGAuth.requireSession())) return;
 
     const list = document.getElementById("messageList");
@@ -422,6 +422,46 @@
       refreshMentionPicker();
     });
 
+    async function sendMessage() {
+      const message = content.value.trim();
+      if (!message) return;
+      const recipientId = activeConversation === "team" ? null : activeConversation;
+      const mentionIds = Array.from(taggedIds).filter((id) => message.includes(`@${memberName(id)}`));
+      const sentConversation = activeConversation;
+      const quotedMessage = replyTo;
+      const button = document.getElementById("sendMessage");
+      if (button.disabled) return;
+      button.disabled = true;
+      status.textContent = "";
+      try {
+        const sent = await window.KGMessages.send(message, recipientId, mentionIds, quotedMessage && quotedMessage.id);
+        content.value = "";
+        taggedIds.clear();
+        setReply(null);
+        if (activeConversation === sentConversation && sent && sent.id) {
+          loadedMessages.push({
+            ...sent,
+            sender_name: window.KG && window.KG.me && window.KG.me.name || me.email,
+            reply_to_id: quotedMessage && quotedMessage.id || null,
+            reply_content: quotedMessage && quotedMessage.content || null,
+            reply_sender_name: quotedMessage && quotedMessage.sender_name || null,
+            unread: false,
+          });
+          loadedMessages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+          hasOlder = hasOlder || loadedMessages.length > 100;
+          renderMessages(false);
+        }
+        await loadMessages();
+        status.textContent = text("sent");
+      } catch (error) {
+        status.textContent = error.message || text("sendError");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    document.getElementById("sendMessage").addEventListener("click", sendMessage);
+
     content.addEventListener("keydown", (event) => {
       if (!picker.classList.contains("hidden")) {
         if (event.key === "ArrowDown" && mentionMatches.length) {
@@ -451,45 +491,7 @@
       }
       if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
         event.preventDefault();
-        form.requestSubmit();
-      }
-    });
-
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const message = content.value.trim();
-      if (!message) return;
-      const recipientId = activeConversation === "team" ? null : activeConversation;
-      const mentionIds = Array.from(taggedIds).filter((id) => message.includes(`@${memberName(id)}`));
-      const sentConversation = activeConversation;
-      const quotedMessage = replyTo;
-      const button = document.getElementById("sendMessage");
-      button.disabled = true;
-      status.textContent = "";
-      try {
-        const sent = await window.KGMessages.send(message, recipientId, mentionIds, quotedMessage && quotedMessage.id);
-        content.value = "";
-        taggedIds.clear();
-        setReply(null);
-        if (activeConversation === sentConversation && sent && sent.id) {
-          loadedMessages.push({
-            ...sent,
-            sender_name: window.KG && window.KG.me && window.KG.me.name || me.email,
-            reply_to_id: quotedMessage && quotedMessage.id || null,
-            reply_content: quotedMessage && quotedMessage.content || null,
-            reply_sender_name: quotedMessage && quotedMessage.sender_name || null,
-            unread: false,
-          });
-          loadedMessages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-          hasOlder = hasOlder || loadedMessages.length > 100;
-          renderMessages(false);
-        }
-        await loadMessages();
-        status.textContent = text("sent");
-      } catch (error) {
-        status.textContent = error.message || text("sendError");
-      } finally {
-        button.disabled = false;
+        sendMessage();
       }
     });
 
