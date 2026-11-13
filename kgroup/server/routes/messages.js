@@ -205,6 +205,23 @@ router.post("/messages/read", requireUser, async (req, res, next) => {
   } catch (err) { return next(err); }
 });
 
+router.delete("/messages/:messageId", requireUser, async (req, res, next) => {
+  try {
+    const messageId = String(req.params.messageId || "");
+    if (!UUID.test(messageId)) throw new HttpError(400, "Message invalide.");
+    const deleted = await db.one(
+      `delete from public.team_messages
+        where id = $1 and sender_id = $2 and (
+          (recipient_id is null and (team_id is null or team_id = $3::uuid))
+          or (recipient_id is not null and (sender_id = $2 or recipient_id = $2))
+        ) returning id`,
+      [messageId, req.user.id, req.profile && req.profile.team_id || null]
+    );
+    if (!deleted) throw new HttpError(404, "Message introuvable ou suppression non autorisée.");
+    return res.json({ ok: true, id: deleted.id });
+  } catch (err) { return next(err); }
+});
+
 router.get("/messages/members", requireUser, async (req, res, next) => {
   try {
     const rows = await db.many(

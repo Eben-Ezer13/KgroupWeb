@@ -527,6 +527,10 @@
         method: "POST", body: { emoji },
       });
     },
+    async delete(messageId) {
+      if (!(await ready())) throw new Error("La messagerie est indisponible.");
+      return request("/messages/" + encodeURIComponent(messageId), { method: "DELETE" });
+    },
   };
 
   const KGPayroll = {

@@ -1145,10 +1145,22 @@ table.table th.num, table.table td.num { text-align: right; }
 .chat-reaction-option:hover { background: var(--brand-50); }
 .chat-reply-button { color: var(--brand); font-size: 11px; font-weight: 700; }
 .chat-reply-button:hover { text-decoration: underline; }
+.chat-delete-button { color: var(--muted); font-size: 11px; font-weight: 600; }
+.chat-delete-button:hover { color: var(--danger); text-decoration: underline; }
 .chat-compose-area { flex: 0 0 auto; padding: 12px 18px 10px; border-top: 1px solid var(--line); }
-.chat-status-row { display: flex; justify-content: space-between; gap: 12px; }
+.chat-status-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 24px; margin-bottom: 4px; }
 .chat-status { min-height: 0; color: var(--danger); font-size: 11px; }
-.chat-unread-summary { color: var(--muted); }
+.chat-unread-summary {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 28px; padding: 4px 11px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2);
+  color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .01em;
+}
+.chat-unread-summary.is-current { border-color: rgba(23, 78, 57, .14); background: rgba(23, 78, 57, .06); color: var(--brand); }
+.chat-unread-summary.is-current::before {
+  display: grid; width: 17px; height: 17px; place-items: center; border-radius: 50%;
+  background: var(--brand); color: white; content: "✓"; font-size: 10px; font-weight: 800;
+}
+.chat-unread-summary:not(.is-current)::before { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); content: ""; }
 .chat-reply-preview {
   display: flex; align-items: center; gap: 12px; margin-bottom: 9px; padding: 9px 12px;
   border-left: 3px solid var(--brand); border-radius: 8px; background: var(--bg-2);

@@ -27,7 +27,8 @@
         noPrivateMembers: "No other platform members are available for a private conversation.",
         retryMembers: "Try again",
         unread: (count) => `${count} unread`, allRead: "All caught up",
-        sent: "Message sent.", sendError: "Could not send this message.",
+        sendError: "Your message could not be sent. Please try again.", delete: "Delete", deleteConfirm: "Delete this message? This cannot be undone.",
+        deleteError: "This message could not be deleted. Please try again.",
         loadError: "Could not load messages.", olderError: "Could not load earlier messages.",
         chooseMention: "Platform members", noMembers: "No platform members available.", online: "Online", offline: "Offline",
         react: "React to this message", reactionError: "Could not save your reaction.",
@@ -43,7 +44,8 @@
         noPrivateMembers: "Aucun autre membre de la plateforme n'est disponible pour une conversation privée.",
         retryMembers: "Réessayer",
         unread: (count) => `${count} message(s) non lu(s)`, allRead: "Tout est à jour",
-        sent: "Message envoyé.", sendError: "Impossible d'envoyer ce message.",
+        sendError: "Votre message n'a pas pu être envoyé. Réessayez.", delete: "Supprimer", deleteConfirm: "Supprimer ce message ? Cette action est irréversible.",
+        deleteError: "Ce message n'a pas pu être supprimé. Réessayez.",
         loadError: "Impossible de charger les messages.", olderError: "Impossible de charger les anciens messages.",
         chooseMention: "Membres de la plateforme", noMembers: "Aucun membre de la plateforme disponible.", online: "En ligne", offline: "Hors ligne",
         react: "Réagir à ce message", reactionError: "Impossible d'enregistrer votre réaction.",
@@ -281,6 +283,14 @@
         replyButton.textContent = text("reply");
         replyButton.addEventListener("click", () => setReply(message));
         actionRow.append(reactionTools, replyButton);
+        if (own) {
+          const deleteButton = document.createElement("button");
+          deleteButton.type = "button";
+          deleteButton.className = "chat-delete-button";
+          deleteButton.textContent = text("delete");
+          deleteButton.addEventListener("click", () => deleteMessage(message));
+          actionRow.append(deleteButton);
+        }
         actions.append(actionRow);
         card.append(actions);
         list.append(card);
@@ -288,6 +298,8 @@
       loadOlder.classList.toggle("hidden", !hasOlder);
       loadOlder.textContent = text("older");
       unreadCount.textContent = unread ? text("unread", unread) : text("allRead");
+      unreadCount.dataset.unread = String(unread);
+      unreadCount.classList.toggle("is-current", unread === 0);
       if (keepPosition) timeline.scrollTop = timeline.scrollHeight - oldHeight + oldTop;
       else timeline.scrollTop = timeline.scrollHeight;
     }
@@ -305,6 +317,21 @@
         status.textContent = error.message || text("reactionError");
       } finally {
         pendingReactions.delete(message.id);
+      }
+    }
+
+    async function deleteMessage(message) {
+      if (!window.confirm(text("deleteConfirm"))) return;
+      const card = list.querySelector(`[data-message-id="${message.id}"]`);
+      card && card.querySelectorAll("button").forEach((button) => { button.disabled = true; });
+      status.textContent = "";
+      try {
+        await window.KGMessages.delete(message.id);
+        loadedMessages = loadedMessages.filter((item) => item.id !== message.id);
+        renderMessages(true);
+      } catch (error) {
+        status.textContent = error.message || text("deleteError");
+        card && card.querySelectorAll("button").forEach((button) => { button.disabled = false; });
       }
     }
 
@@ -520,9 +547,8 @@
           renderMessages(false);
         }
         await loadMessages();
-        status.textContent = text("sent");
-      } catch (error) {
-        status.textContent = error.message || text("sendError");
+      } catch {
+        status.textContent = text("sendError");
       } finally {
         button.disabled = false;
       }
