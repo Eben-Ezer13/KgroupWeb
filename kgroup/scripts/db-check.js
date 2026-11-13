@@ -13,7 +13,7 @@ const EXPECTED_TABLES = [
   "users", "teams", "profiles", "salespersons", "sales", "challenges", "password_reset_tokens",
   "training_progress", "quiz_attempts", "notifications",
   "clients", "compensation_settings", "payroll_periods", "birthday_reminders",
-  "preorders", "team_messages", "team_message_reads",
+  "preorders", "team_messages", "team_message_reads", "team_message_reactions",
 ];
 const EXPECTED_COLUMNS = [
   ["team_messages", "reply_to_message_id"],
@@ -31,7 +31,7 @@ const EXPECTED_INDEXES = [
   "idx_clients_birthday", "idx_sales_client", "idx_payroll_team_period",
   "idx_preorders_team", "idx_preorders_status", "idx_preorders_rep",
   "idx_team_messages_general", "idx_team_messages_direct", "idx_team_messages_reply",
-  "idx_team_message_reads_user",
+  "idx_team_message_reads_user", "idx_team_message_reactions_message",
 ];
 
 let failures = 0;

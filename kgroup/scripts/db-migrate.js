@@ -16,6 +16,7 @@ const MIGRATIONS = [
   "schema-crm.sql",   // v3.2 clients, anniversaires, remuneration
   "schema-preorders.sql", // v3.3 precommandes
   "schema-platform-global.sql", // one shared company workspace
+  "schema-messages-reactions.sql", // persistent emoji reactions
 ];
 
 async function main() {

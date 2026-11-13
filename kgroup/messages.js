@@ -30,6 +30,7 @@
         sent: "Message sent.", sendError: "Could not send this message.",
         loadError: "Could not load messages.", olderError: "Could not load earlier messages.",
         chooseMention: "Platform members", noMembers: "No platform members available.", online: "Online", offline: "Offline",
+        react: "React to this message", reactionError: "Could not save your reaction.",
         mentionLimit: "You can tag up to 20 people in one message.",
         privateBlocked: "A private conversation can only mention the person in this conversation.",
         older: "Load earlier messages", name: "Platform member",
@@ -45,6 +46,7 @@
         sent: "Message envoyé.", sendError: "Impossible d'envoyer ce message.",
         loadError: "Impossible de charger les messages.", olderError: "Impossible de charger les anciens messages.",
         chooseMention: "Membres de la plateforme", noMembers: "Aucun membre de la plateforme disponible.", online: "En ligne", offline: "Hors ligne",
+        react: "Réagir à ce message", reactionError: "Impossible d'enregistrer votre réaction.",
         mentionLimit: "Vous pouvez mentionner jusqu'à 20 personnes par message.",
         privateBlocked: "Dans une conversation privée, seule la personne en face peut être mentionnée.",
         older: "Charger les messages précédents", name: "Membre de la plateforme",
@@ -75,6 +77,8 @@
     let mentionMatches = [];
     let mentionIndex = -1;
     let activeMention = null;
+    const pendingReactions = new Set();
+    const reactionEmojis = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🎉", "🔥"];
 
     function memberName(id) {
       const member = members.find((item) => item.id === id);
@@ -227,12 +231,57 @@
         card.append(bubble);
         const actions = document.createElement("div");
         actions.className = "chat-message-actions";
+        const actionRow = document.createElement("div");
+        actionRow.className = "chat-message-action-row";
+        const reactionTools = document.createElement("div");
+        reactionTools.className = "chat-reaction-tools";
+        const reactionList = document.createElement("div");
+        reactionList.className = "chat-reaction-list";
+        (message.reactions || []).forEach((reaction) => {
+          const chip = document.createElement("button");
+          chip.type = "button";
+          chip.className = `chat-reaction-chip${reaction.reacted ? " reacted" : ""}`;
+          chip.textContent = `${reaction.emoji} ${reaction.count}`;
+          chip.title = text("react");
+          chip.setAttribute("aria-label", `${reaction.emoji}, ${reaction.count}`);
+          chip.disabled = pendingReactions.has(message.id);
+          chip.addEventListener("click", () => toggleReaction(message, reaction.emoji));
+          reactionList.append(chip);
+        });
+        const picker = document.createElement("div");
+        picker.className = "chat-reaction-picker hidden";
+        picker.setAttribute("role", "group");
+        picker.setAttribute("aria-label", text("react"));
+        reactionEmojis.forEach((emoji) => {
+          const option = document.createElement("button");
+          option.type = "button";
+          option.className = "chat-reaction-option";
+          option.textContent = emoji;
+          option.setAttribute("aria-label", emoji);
+          option.disabled = pendingReactions.has(message.id);
+          option.addEventListener("click", () => toggleReaction(message, emoji));
+          picker.append(option);
+        });
+        const reactButton = document.createElement("button");
+        reactButton.type = "button";
+        reactButton.className = "chat-react-button";
+        reactButton.textContent = "☺ +";
+        reactButton.title = text("react");
+        reactButton.setAttribute("aria-label", text("react"));
+        reactButton.setAttribute("aria-expanded", "false");
+        reactButton.disabled = pendingReactions.has(message.id);
+        reactButton.addEventListener("click", () => {
+          const open = picker.classList.toggle("hidden") === false;
+          reactButton.setAttribute("aria-expanded", String(open));
+        });
+        reactionTools.append(reactionList, reactButton, picker);
         const replyButton = document.createElement("button");
         replyButton.type = "button";
         replyButton.className = "chat-reply-button";
         replyButton.textContent = text("reply");
         replyButton.addEventListener("click", () => setReply(message));
-        actions.append(replyButton);
+        actionRow.append(reactionTools, replyButton);
+        actions.append(actionRow);
         card.append(actions);
         list.append(card);
       });
@@ -241,6 +290,22 @@
       unreadCount.textContent = unread ? text("unread", unread) : text("allRead");
       if (keepPosition) timeline.scrollTop = timeline.scrollHeight - oldHeight + oldTop;
       else timeline.scrollTop = timeline.scrollHeight;
+    }
+
+    async function toggleReaction(message, emoji) {
+      if (pendingReactions.has(message.id)) return;
+      pendingReactions.add(message.id);
+      const card = list.querySelector(`[data-message-id="${message.id}"]`);
+      card && card.querySelectorAll("button").forEach((button) => { button.disabled = true; });
+      try {
+        const result = await window.KGMessages.react(message.id, emoji);
+        message.reactions = result.reactions || [];
+        renderMessages(true);
+      } catch (error) {
+        status.textContent = error.message || text("reactionError");
+      } finally {
+        pendingReactions.delete(message.id);
+      }
     }
 
     async function markVisibleRead(messages) {

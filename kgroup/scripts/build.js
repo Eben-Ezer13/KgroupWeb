@@ -34,7 +34,7 @@ const REQUIRED = [
   "manifest.webmanifest", "service-worker.js", "offline.html",
   "training-content.js", "training.css", "formation.html",
   "crm.css", "clients.html", "remuneration.html",
-  "db/schema-crm.sql", "server/crm.js", "server/routes/clients.js",
+  "db/schema-crm.sql", "db/schema-messages-reactions.sql", "server/crm.js", "server/routes/clients.js",
   "server/routes/payroll.js", "server/routes/reminders.js",
   "db/schema-preorders.sql", "server/preorders.js", "server/sales.js",
   "server/routes/preorders.js", "exports.js", "orders.html",

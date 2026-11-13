@@ -7,6 +7,7 @@ const { HttpError } = require("../policies");
 
 const router = express.Router();
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const REACTION_EMOJIS = new Set(["👍", "❤️", "😂", "😮", "😢", "🙏", "🎉", "🔥"]);
 
 router.get("/messages", requireUser, async (req, res, next) => {
   try {
@@ -29,7 +30,18 @@ router.get("/messages", requireUser, async (req, res, next) => {
               reply.id as reply_to_id, reply.content as reply_content,
               reply_sender.full_name as reply_sender_name,
               (mr.read_at is not null) as read,
-              (m.sender_id <> $1 and mr.read_at is null) as unread
+              (m.sender_id <> $1 and mr.read_at is null) as unread,
+              coalesce((
+                select json_agg(json_build_object('emoji', grouped.emoji, 'count', grouped.count, 'reacted', grouped.reacted)
+                                order by grouped.first_reaction)
+                  from (
+                    select reaction.emoji, count(*)::int as count,
+                           bool_or(reaction.user_id = $1) as reacted, min(reaction.created_at) as first_reaction
+                      from public.team_message_reactions reaction
+                     where reaction.message_id = m.id
+                     group by reaction.emoji
+                  ) grouped
+              ), '[]'::json) as reactions
          from public.team_messages m
          join public.profiles s on s.id = m.sender_id
          left join public.profiles r on r.id = m.recipient_id
@@ -118,6 +130,55 @@ router.post("/messages", requireUser, async (req, res, next) => {
       return rows[0];
     });
     return res.status(201).json(result);
+  } catch (err) { return next(err); }
+});
+
+router.post("/messages/:messageId/reactions", requireUser, async (req, res, next) => {
+  try {
+    const messageId = String(req.params.messageId || "");
+    const emoji = req.body && req.body.emoji;
+    if (!UUID.test(messageId)) throw new HttpError(400, "Message invalide.");
+    if (!REACTION_EMOJIS.has(emoji)) throw new HttpError(400, "Réaction invalide.");
+
+    const userId = req.user.id;
+    const teamId = req.profile && req.profile.team_id || null;
+    const message = await db.one(
+      `select id from public.team_messages
+        where id = $1 and (
+          (recipient_id is null and (team_id is null or team_id = $2::uuid))
+          or (recipient_id is not null and (sender_id = $3 or recipient_id = $3))
+        )`,
+      [messageId, teamId, userId]
+    );
+    if (!message) throw new HttpError(404, "Message introuvable.");
+
+    const result = await db.tx(async (client) => {
+      const existing = await client.query(
+        `select 1 from public.team_message_reactions where message_id = $1 and user_id = $2 and emoji = $3`,
+        [messageId, userId, emoji]
+      );
+      const active = existing.rowCount === 0;
+      if (active) {
+        await client.query(
+          `insert into public.team_message_reactions (message_id, user_id, emoji)
+           values ($1, $2, $3) on conflict (message_id, user_id, emoji) do nothing`,
+          [messageId, userId, emoji]
+        );
+      } else {
+        await client.query(
+          `delete from public.team_message_reactions where message_id = $1 and user_id = $2 and emoji = $3`,
+          [messageId, userId, emoji]
+        );
+      }
+      const { rows } = await client.query(
+        `select emoji, count(*)::int as count, bool_or(user_id = $2) as reacted
+           from public.team_message_reactions where message_id = $1 group by emoji
+           order by min(created_at)`,
+        [messageId, userId]
+      );
+      return { active, reactions: rows };
+    });
+    return res.json(result);
   } catch (err) { return next(err); }
 });
 

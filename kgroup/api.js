@@ -521,6 +521,12 @@
       if (!(await ready())) throw new Error("La messagerie est indisponible.");
       return request("/messages/read", { method: "POST", body: { ids: ids || [] } });
     },
+    async react(messageId, emoji) {
+      if (!(await ready())) throw new Error("La messagerie est indisponible.");
+      return request("/messages/" + encodeURIComponent(messageId) + "/reactions", {
+        method: "POST", body: { emoji },
+      });
+    },
   };
 
   const KGPayroll = {
