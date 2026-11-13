@@ -15,6 +15,7 @@
     const status = document.getElementById("messageStatus");
     const unreadCount = document.getElementById("unreadCount");
     const content = document.getElementById("messageContent");
+    const highlight = document.getElementById("messageHighlight");
     const picker = document.getElementById("mentionPicker");
     const replyPreview = document.getElementById("replyPreview");
     const replyPreviewText = document.getElementById("replyPreviewText");
@@ -87,6 +88,57 @@
       return member && member.full_name ? member.full_name : text("name");
     }
 
+    function setTeamAvatar(element) {
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 24 24");
+      svg.setAttribute("fill", "none");
+      svg.setAttribute("stroke", "currentColor");
+      svg.setAttribute("stroke-width", "1.7");
+      svg.setAttribute("stroke-linecap", "round");
+      svg.setAttribute("stroke-linejoin", "round");
+      svg.setAttribute("aria-hidden", "true");
+      svg.innerHTML = '<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>';
+      element.replaceChildren(svg);
+    }
+
+    function renderComposerHighlights() {
+      if (!highlight) return;
+      const value = content.value;
+      const tags = Array.from(taggedIds)
+        .map((id) => `@${memberName(id)}`)
+        .filter((tag) => tag.length > 1)
+        .sort((a, b) => b.length - a.length);
+      highlight.replaceChildren();
+      let cursor = 0;
+      while (cursor < value.length) {
+        let best = null;
+        for (const tag of tags) {
+          let index = value.indexOf(tag, cursor);
+          while (index >= 0) {
+            const next = value[index + tag.length] || "";
+            if (!next || /[\s.,!?;:)]/.test(next)) break;
+            index = value.indexOf(tag, index + 1);
+          }
+          if (index >= 0 && (!best || index < best.index || (index === best.index && tag.length > best.tag.length))) {
+            best = { index, tag };
+          }
+        }
+        if (!best) {
+          highlight.append(document.createTextNode(value.slice(cursor)));
+          break;
+        }
+        if (best.index > cursor) highlight.append(document.createTextNode(value.slice(cursor, best.index)));
+        const token = document.createElement("span");
+        token.className = "chat-mention-token";
+        token.textContent = best.tag;
+        highlight.append(token);
+        cursor = best.index + best.tag.length;
+      }
+      if (!value.length) highlight.textContent = "";
+      highlight.scrollTop = content.scrollTop;
+      highlight.scrollLeft = content.scrollLeft;
+    }
+
     function addConversationButton(label, peerId, kind, isOnline) {
       const button = document.createElement("button");
       button.type = "button";
@@ -95,7 +147,8 @@
       button.setAttribute("role", "listitem");
       const avatar = document.createElement("span");
       avatar.className = "chat-conversation-avatar";
-      avatar.textContent = kind === "team" ? "É" : label.trim().charAt(0).toUpperCase();
+      if (kind === "team") setTeamAvatar(avatar);
+      else avatar.textContent = label.trim().charAt(0).toUpperCase();
       const details = document.createElement("span");
       details.className = "chat-conversation-details";
       const name = document.createElement("strong");
@@ -161,7 +214,8 @@
       const title = isTeam ? text("team") : memberName(activeConversation);
       conversationTitle.textContent = title;
       conversationSubtitle.textContent = isTeam ? text("teamHint") : text("privateHint");
-      conversationAvatar.textContent = isTeam ? "É" : title.trim().charAt(0).toUpperCase();
+      if (isTeam) setTeamAvatar(conversationAvatar);
+      else conversationAvatar.textContent = title.trim().charAt(0).toUpperCase();
       conversationAvatar.classList.toggle("team", isTeam);
     }
 
@@ -225,9 +279,14 @@
 
         const tagged = (message.mention_ids || []).map((id) => memberName(id));
         if (tagged.length) {
-          const mentions = document.createElement("small");
+          const mentions = document.createElement("div");
           mentions.className = "chat-message-mentions";
-          mentions.textContent = `@ ${tagged.join(", @ ")}`;
+          tagged.forEach((name) => {
+            const badge = document.createElement("span");
+            badge.className = "chat-mention-pill";
+            badge.textContent = `@ ${name}`;
+            mentions.append(badge);
+          });
           bubble.append(mentions);
         }
         card.append(bubble);
@@ -417,6 +476,7 @@
       content.setSelectionRange(caret, caret);
       content.focus();
       taggedIds.add(member.id);
+      renderComposerHighlights();
       picker.classList.add("hidden");
       activeMention = null;
       mentionMatches = [];
@@ -484,6 +544,7 @@
     document.getElementById("cancelReply").addEventListener("click", () => setReply(null));
 
     function refreshMentionPicker() {
+      renderComposerHighlights();
       const caret = content.selectionStart;
       const before = content.value.slice(0, caret);
       const match = /(^|[^A-Za-z0-9._%+-])@([^\n]*)$/.exec(before);
@@ -511,6 +572,7 @@
     }
 
     content.addEventListener("input", refreshMentionPicker);
+    content.addEventListener("scroll", renderComposerHighlights);
     content.addEventListener("click", refreshMentionPicker);
     content.addEventListener("keyup", (event) => {
       if (["ArrowUp", "ArrowDown", "Escape", "Enter"].includes(event.key)) return;
@@ -531,6 +593,7 @@
       try {
         const sent = await window.KGMessages.send(message, recipientId, mentionIds, quotedMessage && quotedMessage.id);
         content.value = "";
+        renderComposerHighlights();
         taggedIds.clear();
         setReply(null);
         if (activeConversation === sentConversation && sent && sent.id) {

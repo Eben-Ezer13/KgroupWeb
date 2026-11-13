@@ -29,7 +29,7 @@
     </aside>
     <section class="chat-main" aria-label="Discussion">
       <header class="chat-header">
-        <div class="chat-avatar" id="conversationAvatar" aria-hidden="true">É</div>
+        <div class="chat-avatar team" id="conversationAvatar" aria-hidden="true"></div>
         <div class="grow">
           <h3 id="conversationTitle" data-i18n="messages.team">Groupe de l'entreprise</h3>
           <p id="conversationSubtitle" class="muted" data-i18n="messages.teamHint">Toutes les personnes de l'entreprise peuvent lire ces messages.</p>
@@ -56,9 +56,12 @@
             <span class="muted chat-compose-hint" data-i18n="messages.composeHint">Tapez @ pour mentionner quelqu'un · Entrée pour envoyer · Maj + Entrée pour aller à la ligne</span>
           </div>
           <div class="chat-compose-row">
-            <textarea id="messageContent" class="input" rows="2" maxlength="2000" required
-              placeholder="Écrivez un message…" data-i18n-ph="messages.placeholder"
-              aria-label="Message"></textarea>
+            <div class="chat-composer-field">
+              <div class="chat-composer-highlight" id="messageHighlight" aria-hidden="true"></div>
+              <textarea id="messageContent" class="input" rows="2" maxlength="2000" required
+                placeholder="Écrivez un message…" data-i18n-ph="messages.placeholder"
+                aria-label="Message"></textarea>
+            </div>
             <button class="btn btn-primary chat-send" type="button" id="sendMessage" data-i18n="messages.send">Envoyer</button>
           </div>
           <div class="chat-mention-picker hidden" id="mentionPicker" role="listbox" aria-label="Choisir un membre à mentionner"></div>

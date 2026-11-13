@@ -1005,6 +1005,9 @@ table.table th.num, table.table td.num { text-align: right; }
 .dropdown-head { padding: 16px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
 .dropdown-list { max-height: 360px; overflow-y: auto; padding: 8px; }
 .dropdown-foot { padding: 12px; border-top: 1px solid var(--line); text-align: center; }
+#langList .lang-option { color: var(--ink); border-radius: 10px; }
+#langList .lang-option:hover { color: var(--brand); background: var(--brand-50); }
+#langList .lang-option.selected { color: var(--brand); background: var(--brand-50); }
 
 /* -------------------------------------------------------------------------
    13. REPORTS
@@ -1082,7 +1085,8 @@ table.table th.num, table.table td.num { text-align: right; }
 }
 .chat-conversation.active .chat-conversation-avatar { background: rgba(255,255,255,.2); color: #fff; }
 .chat-avatar { flex-basis: 44px; width: 44px; height: 44px; }
-.chat-avatar.team { color: #fff; background: var(--brand); }
+.chat-avatar.team { color: #ead9a5; background: var(--brand); }
+.chat-avatar svg, .chat-conversation-avatar svg { width: 20px; height: 20px; }
 .chat-conversation-details { display: flex; flex-direction: column; min-width: 0; gap: 3px; }
 .chat-conversation-details strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .chat-conversation-details small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .76; font-size: 11px; }
@@ -1117,7 +1121,13 @@ table.table th.num, table.table td.num { text-align: right; }
 .chat-message-heading strong { color: var(--brand); font-size: 12px; }
 .chat-message-heading time { color: var(--muted); font-size: 10px; }
 .chat-message-content { margin: 6px 0 0; color: var(--ink); font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
-.chat-message-mentions { display: block; margin-top: 7px; color: var(--brand); font-size: 11px; font-weight: 700; }
+.chat-message-mentions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+.chat-mention-pill {
+  display: inline-flex; align-items: center; max-width: 100%; padding: 3px 9px;
+  overflow-wrap: anywhere; border: 1px solid rgba(197, 166, 93, .32); border-radius: 999px;
+  background: linear-gradient(135deg, rgba(231, 212, 156, .32), rgba(231, 212, 156, .12));
+  color: var(--brand); font-size: 10.5px; font-weight: 700;
+}
 .chat-message-quote {
   display: flex; flex-direction: column; gap: 3px; max-width: 100%; margin-bottom: 5px;
   padding: 7px 10px; border-left: 3px solid var(--brand); border-radius: 7px;
@@ -1171,7 +1181,22 @@ table.table th.num, table.table td.num { text-align: right; }
 .chat-compose-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .chat-compose-hint { font-size: 10px; }
 .chat-compose-row { display: flex; align-items: flex-end; gap: 9px; }
-.chat-compose-row textarea { min-height: 54px; max-height: 140px; resize: vertical; padding: 12px; }
+.chat-composer-field { position: relative; flex: 1 1 auto; min-width: 0; }
+.chat-composer-highlight {
+  position: absolute; z-index: 0; inset: 1px; overflow: hidden; padding: 12px;
+  color: var(--ink); font: inherit; font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.chat-mention-token {
+  border-radius: 5px; background: rgba(231, 212, 156, .48); color: var(--brand);
+  font-weight: 700; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+}
+.chat-composer-field textarea {
+  position: relative; z-index: 1; width: 100%; min-height: 54px; max-height: 140px; resize: vertical;
+  padding: 12px; background: transparent; color: transparent; caret-color: var(--ink);
+  -webkit-text-fill-color: transparent; line-height: 1.5;
+}
+.chat-composer-field textarea::placeholder { color: var(--muted); -webkit-text-fill-color: var(--muted); opacity: 1; }
 .chat-send { flex: 0 0 auto; min-height: 45px; }
 .chat-private-note { margin: 7px 0 0; color: var(--muted); text-align: center; font-size: 10px; }
 .chat-mention-picker {
@@ -1311,7 +1336,7 @@ table.table th.num, table.table td.num { text-align: right; }
   .chat-message { max-width: 92%; }
   .chat-compose-area { padding: 10px 11px 8px; }
   .chat-compose-row { align-items: stretch; }
-  .chat-compose-row textarea { min-width: 0; }
+  .chat-composer-field { min-width: 0; }
   .chat-send { padding: 0 12px; }
   .chat-compose-hint { display: none; }
 }

@@ -993,7 +993,7 @@
     function renderLangs() {
       if (!langList) return;
       langList.innerHTML = KGI18N.langs.map(l => `
-        <button class="nav-item" data-lang="${l.code}" style="width:100%;text-align:left">
+        <button class="nav-item lang-option${l.code === KGI18N.lang ? " selected" : ""}" data-lang="${l.code}" style="width:100%;text-align:left">
           <b style="width:26px">${l.code.toUpperCase()}</b><span>${l.label}</span>
           ${l.code === KGI18N.lang ? '<span class="grow"></span>' + icon("check") : ""}
         </button>`).join("");
