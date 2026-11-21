@@ -182,6 +182,7 @@ const DEFAULT_SETTINGS = {
 };
 
 const PRODUCT_COMPENSATION = {
+  "Parfum 15 ml": { unit_price: 15, commission: 2 },
   "Parfum 30 ml": { unit_price: 50, commission: 5 },
   "Parfum 50 ml": { unit_price: 80, commission: 8 },
   "Parfum 100 ml": { unit_price: 150, commission: 15 },

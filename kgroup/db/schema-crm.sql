@@ -5,7 +5,7 @@
 -- PRINCIPE DE CONCEPTION — on réutilise le contrat KGroup déjà encodé dans
 -- data.js, on n'invente aucune règle métier :
 --   * Art. 3 — la commission est un MONTANT PAR UNITÉ dépendant du produit
---     (30 ml → 5, 50 ml → 8, 100 ml → 15 DHS). Ce n'est pas un pourcentage.
+--     (15 ml → 2, 30 ml → 5, 50 ml → 8, 100 ml → 15 DHS). Ce n'est pas un pourcentage.
 --     Elle est déjà calculée à la vente et stockée dans sales.commission.
 --   * Art. 4 — le bonus est un PALIER MENSUEL sur le nombre de ventes validées
 --     DANS LE MOIS. Les paliers vivent dans compensation_settings, jamais en

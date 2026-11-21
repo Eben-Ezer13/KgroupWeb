@@ -21,6 +21,7 @@
   // Contract-defined catalogue (KGroup Parfumery — Art. 2 & 3).
   // Price is the "Prix de Vente"; commission is what the Commercial earns per sale.
   const products = [
+    { id: "P15",  name: "Parfum 15 ml",  price: 15,  commission: 2,  cat: "15 ml" },
     { id: "P30",  name: "Parfum 30 ml",  price: 50,  commission: 5,  cat: "30 ml" },
     { id: "P50",  name: "Parfum 50 ml",  price: 80,  commission: 8,  cat: "50 ml" },
     { id: "P100", name: "Parfum 100 ml", price: 150, commission: 15, cat: "100 ml" },
