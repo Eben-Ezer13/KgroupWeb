@@ -272,7 +272,11 @@
 
       let inviteReload = false;
       function buildInviteLink(code) {
-        return location.href.replace(/[^/]*(\?.*)?$/, "") + "register.html?invite=" + encodeURIComponent(code);
+        // Invitees must register against the same production API/database as
+        // the regular login. Building this from location.href can bind an
+        // invitation to a one-off Vercel preview deployment instead.
+        const productionUrl = "https://kgroup-gilt.vercel.app/";
+        return new URL("register.html", productionUrl).href + "?invite=" + encodeURIComponent(code);
       }
       function showInvite(name, code, reloadAfter) {
         inviteReload = !!reloadAfter;
@@ -379,3 +383,4 @@
   </script>
 </body>
 </html>
+
