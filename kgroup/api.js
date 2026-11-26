@@ -1,4 +1,3 @@
-Warning: fs was declared with const; use let for reassignable variables.
 /* =========================================================================
    KGROUP SALES PERFORMANCE PLATFORM — API client  (Neon PostgreSQL)
    -------------------------------------------------------------------------
