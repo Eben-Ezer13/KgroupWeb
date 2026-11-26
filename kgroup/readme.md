@@ -140,9 +140,11 @@ sample accounts when the API is unavailable.
 three roles:
 
 - **Admins** self-register on `login.html` and own a team.
-- **Salespersons** join through a single-use **invite link** an admin generates in
-  the Salespersons page (`register.html?invite=CODE`); their login is bound to that
-  team. They see only their own dashboard, and admin-only pages are hidden + blocked.
+- **Salespersons** can self-register through the reusable **team access link** an
+  admin copies from the Salespersons page (`register.html?join=SIGNED_CODE`). The
+  account and salesperson record are linked to the shared company team automatically.
+  Existing accounts can sign in through the same link to reconnect. Personal,
+  single-use invitations remain available when an admin adds an individual row.
 - **Client-relations staff** (`relation_client`) see the team's client portfolio
   without access to payroll or administration.
 

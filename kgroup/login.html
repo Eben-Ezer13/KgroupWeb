@@ -143,6 +143,7 @@
 
     const $ = (id) => document.getElementById(id);
     const A = window.KGAuth;
+    const joinCode = new URLSearchParams(location.search).get("join");
     let mode = "signin"; // 'signin' | 'signup'
 
     // Send an authenticated user to the right home for their role
@@ -160,7 +161,13 @@
         $("password").value = "kgroup2026";
       }
       const u = await A.user();
-      if (u) { await goHome(); return; }
+      if (u) {
+        if (joinCode) {
+          try { await A.joinTeam(joinCode); }
+          catch (err) { showMsg("error", err.message || "Could not connect this account to the team."); }
+        }
+        if (!joinCode || !document.getElementById("formMsg").textContent) { await goHome(); return; }
+      }
       document.querySelector(".preloader")?.classList.add("done");
     })();
 
@@ -184,7 +191,7 @@
       $("signinRow").classList.toggle("hidden", signup);
       $("formEyebrow").textContent = signup ? "CREATE YOUR WORKSPACE" : "MEMBER ACCESS";
       $("formTitle").textContent = signup ? "Create your account ✨" : "Welcome back 👋";
-      $("formSub").textContent = signup ? "Create an admin workspace. Salespersons join via an invite link." : "Sign in to your KGROUP performance workspace.";
+      $("formSub").textContent = signup ? "Create an admin workspace. Salespersons can join through the shared team access link." : "Sign in to your KGROUP performance workspace.";
       $("submitBtn").textContent = signup ? "Create account" : "Sign in to dashboard";
       $("switchPrompt").textContent = signup ? "Already have an account?" : "New to KGROUP?";
       $("switchMode").textContent = signup ? "Sign in" : "Create an account";
@@ -233,6 +240,7 @@
         } else {
           const res = await A.signIn(email, password);
           if (res && res.demo) { await goHome(); return; }
+          if (joinCode) await A.joinTeam(joinCode);
           window.toast("success", "Welcome back", "Loading your dashboard…");
           setTimeout(goHome, 700);
         }

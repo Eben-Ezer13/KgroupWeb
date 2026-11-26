@@ -1,3 +1,4 @@
+Warning: fs was declared with const; use let for reassignable variables.
 /* =========================================================================
    KGROUP SALES PERFORMANCE PLATFORM — API client  (Neon PostgreSQL)
    -------------------------------------------------------------------------
@@ -131,7 +132,7 @@
         window.KG_API_CONFIGURED at parse time should await this first. */
     ready,
 
-    /* opts: { role: 'admin'|'salesperson', inviteCode: string } */
+    /* opts: { role: 'admin'|'salesperson', inviteCode?: string, joinCode?: string } */
     async signUp(email, password, fullName, opts) {
       opts = opts || {};
       if (!(await ready())) {
@@ -146,12 +147,31 @@
           full_name: fullName,
           role: opts.role,
           invite_code: opts.inviteCode,
+          join_code: opts.joinCode,
         },
       });
       if (data.session) token.set(data.session.access_token);
       this._user = data.user || null;
       this._profile = null;
       return data; // { user, session } — callers test `user && !session`
+    },
+
+    async getTeamJoinLink() {
+      if (!(await ready())) throw new Error("Le service est indisponible. Réessayez quand la plateforme sera en ligne.");
+      return request("/auth/join-link");
+    },
+
+    async teamJoinInfo(code) {
+      if (!(await ready())) return null;
+      const data = await request("/auth/join-info?code=" + encodeURIComponent(code));
+      return data && data.join || null;
+    },
+
+    async joinTeam(code) {
+      if (!(await ready())) throw new Error("Le service est indisponible.");
+      const data = await request("/auth/join", { method: "POST", body: { join_code: code } });
+      this._profile = null;
+      return data;
     },
 
     async signIn(email, password) {

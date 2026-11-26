@@ -79,7 +79,7 @@ router.get("/salespersons", requireUser, async (req, res, next) => {
       `select s.*, coalesce(p.role, 'salesperson') as role
          from public.salespersons s
          left join public.profiles p on p.salesperson_id = s.id
-        where s.team_id = $1
+        where s.team_id = $1 and coalesce(s.status, 'Active') <> 'Archived'
         order by s.revenue desc`,
       [teamScope(req)]
     );
@@ -180,12 +180,28 @@ router.patch("/salespersons/:id", requireUser, async (req, res, next) => {
 router.delete("/salespersons/:id", requireUser, async (req, res, next) => {
   try {
     requireAdmin(req);
-    const { rowCount } = await db.query(
-      `delete from public.salespersons where id = $1 and team_id = $2`,
-      [req.params.id, teamScope(req)]
-    );
-    if (!rowCount) throw new HttpError(404, "That salesperson is not on your team.");
-    return res.json({ ok: true });
+    const result = await db.tx(async (client) => {
+      const { rows } = await client.query(
+        `update public.salespersons
+            set status = 'Archived', invite_code = null
+          where id = $1 and team_id = $2 and coalesce(status, 'Active') <> 'Archived'
+          returning id, auth_id`,
+        [req.params.id, teamScope(req)]
+      );
+      if (!rows.length) return null;
+      if (rows[0].auth_id) {
+        // Detach access while retaining the salesperson row, sales links, and
+        // payroll snapshots. A later self-join with the same account restores
+        // this exact row and its full history.
+        await client.query(
+          `update public.profiles set team_id = null where id = $1 and salesperson_id = $2`,
+          [rows[0].auth_id, rows[0].id]
+        );
+      }
+      return { ok: true };
+    });
+    if (!result) throw new HttpError(404, "That salesperson is not on your active team.");
+    return res.json(result);
   } catch (err) {
     return next(err);
   }

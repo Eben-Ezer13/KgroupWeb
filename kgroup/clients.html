@@ -419,7 +419,7 @@
         if (!members) return;
         $("#rolesCard").classList.remove("hidden");
         if (!members.length) {
-          $("#rolesBody").innerHTML = '<tr><td colspan="4" class="muted" style="padding:18px">Aucun commercial inscrit. Créez un commercial puis partagez son lien d’invitation.</td></tr>';
+          $("#rolesBody").innerHTML = '<tr><td colspan="4" class="muted" style="padding:18px">Aucun commercial inscrit. Partagez le lien d’accès équipe depuis la page Vendeurs.</td></tr>';
           return;
         }
         $("#rolesBody").innerHTML = members.map(m => {

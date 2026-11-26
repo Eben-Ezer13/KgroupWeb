@@ -127,8 +127,14 @@ async function linesFor(teamId, period, repFilter, executor = db) {
   const reps = await many(executor,
     repFilter
       ? `select id, name from public.salespersons where team_id = $1 and id = $2`
-      : `select id, name from public.salespersons where team_id = $1 order by name`,
-    repFilter ? [teamId, repFilter] : [teamId]
+      : `select s.id, s.name from public.salespersons s
+          where s.team_id = $1
+            and (coalesce(s.status, 'Active') <> 'Archived'
+              or exists (select 1 from public.payroll_periods p where p.rep_id = s.id and p.period = $2)
+              or exists (select 1 from public.sales x where x.rep_id = s.id and x.team_id = $1
+                and date_trunc('month', (x.created_at at time zone 'Africa/Casablanca')) = $2::date))
+          order by s.name`,
+    repFilter ? [teamId, repFilter] : [teamId, period]
   );
   const totals = await monthlyTotals(teamId, period, executor);
   const byRep = Object.fromEntries(totals.map((t) => [t.rep_id, t]));
@@ -283,7 +289,8 @@ router.get("/payroll/history", requireUser, async (req, res, next) => {
     let salaryBase = Number(settings.salary_base) || 0;
     if (!perRep && salaryBase) {
       const roster = await db.one(
-        `select count(*)::int as n from public.salespersons where team_id = $1`, [teamId]
+        `select count(*)::int as n from public.salespersons
+          where team_id = $1 and coalesce(status, 'Active') <> 'Archived'`, [teamId]
       );
       salaryBase *= (roster && roster.n) || 0;
     }

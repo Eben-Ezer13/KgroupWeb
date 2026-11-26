@@ -22,7 +22,10 @@
       <h2 data-i18n="head.salespersons.t">Salespersons</h2>
       <p><span data-i18n="head.salespersons.sub">Manage your luxury fragrance sales team</span> — <span id="repCount">0</span></p>
     </div>
-    <button class="btn btn-primary" data-modal-open="#addModal"><span data-ic="plus"></span> <span data-i18n="btn.addSalesperson">Add Salesperson</span></button>
+    <div class="row gap-2" style="flex-wrap:wrap">
+      <button class="btn btn-ghost" id="shareJoinLink"><span data-ic="link"></span> <span data-i18n="btn.teamJoinLink">Share team access link</span></button>
+      <button class="btn btn-primary" data-modal-open="#addModal"><span data-ic="plus"></span> <span data-i18n="btn.addSalesperson">Add Salesperson</span></button>
+    </div>
   </div>
 
   <!-- Edit modal -->
@@ -122,14 +125,13 @@
   <!-- Delete confirmation modal -->
   <div class="modal-overlay" id="deleteModal">
     <div class="modal" style="max-width:420px">
-      <div class="modal-head"><h3>Remove salesperson?</h3><button class="icon-btn" data-modal-close><span data-ic="x"></span></button></div>
+      <div class="modal-head"><h3>Archive salesperson?</h3><button class="icon-btn" data-modal-close><span data-ic="x"></span></button></div>
       <div class="modal-body">
-        <p class="muted">You're about to permanently remove <b id="delName">this salesperson</b> from your team.
-        Their recorded sales stay in the history but are unlinked. This can't be undone.</p>
+        <p class="muted">Archive <b id="delName">this salesperson</b> from the active team? Their sales and payroll history will be preserved. If they sign in through the shared team link later, their existing history will be restored.</p>
       </div>
       <div class="modal-foot">
         <button class="btn btn-ghost" data-modal-close>Cancel</button>
-        <button class="btn btn-danger" id="confirmDelete"><span data-ic="trash"></span> Remove</button>
+        <button class="btn btn-danger" id="confirmDelete"><span data-ic="file"></span> <span data-i18n="btn.archiveSalesperson">Archive</span></button>
       </div>
     </div>
   </div>
@@ -153,6 +155,24 @@
         </div>
       </div>
       <div class="modal-foot"><button class="btn btn-primary" id="inviteDone">Done</button></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="teamJoinModal">
+    <div class="modal">
+      <div class="modal-head"><h3>Shared team access link</h3><button class="icon-btn" data-modal-close><span data-ic="x"></span></button></div>
+      <div class="modal-body">
+        <p class="muted" style="font-size:13.5px;margin-bottom:16px">Share this reusable link with your sales team. Each person can create their own account and join the company workspace. Existing accounts can sign in through the same link.</p>
+        <div class="field">
+          <label>Team registration link</label>
+          <div class="row gap-2">
+            <input class="input" id="teamJoinLink" readonly style="font-size:13px">
+            <button class="btn btn-primary" id="copyTeamJoinLink" type="button" style="flex-shrink:0"><span data-ic="check"></span> Copy</button>
+          </div>
+          <div class="hint">Anyone with this link can join as a salesperson. Share it only with your team.</div>
+        </div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-primary" data-modal-close>Done</button></div>
     </div>
   </div>
 
@@ -197,7 +217,7 @@
             <a class="icon-btn" href="remuneration.html?rep=${encodeURIComponent(s.id)}" title="Rémunération">${icon("dollar")}</a>
             <button class="icon-btn" data-view="${s.id}" title="View">${icon("eye")}</button>
             <button class="icon-btn" data-edit="${s.id}" title="Edit">${icon("edit")}</button>
-            <button class="icon-btn" data-del="${s.id}" title="Remove">${icon("trash")}</button>
+            <button class="icon-btn" data-del="${s.id}" title="Archive salesperson">${icon("file")}</button>
           </div></td>
         </tr>`;
 
@@ -299,6 +319,26 @@
       document.getElementById("inviteDone").addEventListener("click", closeInvite);
       document.getElementById("inviteX").addEventListener("click", closeInvite);
 
+      document.getElementById("shareJoinLink").addEventListener("click", async (e) => {
+        try {
+          e.currentTarget.disabled = true;
+          const result = await window.KGAuth.getTeamJoinLink();
+          document.getElementById("teamJoinLink").value = result.url;
+          window.kgModal.open("#teamJoinModal");
+        } catch (err) {
+          toast("error", "Could not create link", err.message || "Please try again.");
+        } finally {
+          e.currentTarget.disabled = false;
+        }
+      });
+      document.getElementById("copyTeamJoinLink").addEventListener("click", async () => {
+        const input = document.getElementById("teamJoinLink");
+        try { await navigator.clipboard.writeText(input.value); } catch (_) {
+          input.select(); document.execCommand("copy");
+        }
+        toast("success", "Copied", "Shared team link copied to clipboard.");
+      });
+
       // Delete flow (confirmation → real DB delete → refresh)
       let pendingDel = null;
       function askDelete(s) {
@@ -312,11 +352,11 @@
         try {
           if (window.KGDB) { e.target.disabled = true; await window.KGDB.deleteSalesperson(s.id); }
         } catch (err) {
-          e.target.disabled = false; toast("error", "Could not remove", err.message || "Please try again."); return;
+          e.target.disabled = false; toast("error", "Could not archive", err.message || "Please try again."); return;
         }
         e.target.disabled = false;
         window.kgModal.close(document.getElementById("deleteModal"));
-        toast("success", "Removed", `${s.name} has been removed from your team.`);
+        toast("success", "Archived", `${s.name}'s sales and payroll history have been preserved.`);
         if (window.KG_API_CONFIGURED) {
           setTimeout(() => location.reload(), 700); // refresh roster from the DB
         } else {
@@ -383,4 +423,3 @@
   </script>
 </body>
 </html>
-

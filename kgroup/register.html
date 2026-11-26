@@ -73,6 +73,13 @@
 
         <form id="regForm" novalidate>
           <div class="field" style="margin-bottom:18px">
+            <label for="fullName">Full name</label>
+            <div class="input-icon">
+              <span id="userIco"></span>
+              <input class="input" type="text" id="fullName" placeholder="Your full name" autocomplete="name" required />
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:18px">
             <label for="email">Email address</label>
             <div class="input-icon">
               <span id="mailIco"></span>
@@ -94,7 +101,7 @@
           <button type="submit" class="btn btn-primary btn-block" id="submitBtn" style="margin-top:20px">Create my account</button>
 
           <p style="text-align:center;margin-top:20px;font-size:13.5px" class="muted">
-            Already have an account? <a href="login.html" class="link">Sign in</a>
+            Already have an account? <a href="login.html" class="link" id="existingLoginLink">Sign in</a>
           </p>
         </form>
       </div>
@@ -107,13 +114,19 @@
   <script>
     document.getElementById("mailIco").innerHTML = window.icon("mail");
     document.getElementById("lockIco").innerHTML = window.icon("lock");
+    document.getElementById("userIco").innerHTML = window.icon("users");
     document.getElementById("togglePass").innerHTML = window.icon("eye");
 
     const $ = (id) => document.getElementById(id);
     const A = window.KGAuth;
     const params = new URLSearchParams(location.search);
     const code = params.get("invite");
+    const joinCode = params.get("join");
     let inviteName = "";
+
+    $("existingLoginLink").href = joinCode
+      ? "login.html?join=" + encodeURIComponent(joinCode)
+      : "login.html";
 
     function showMsg(type, text) {
       const m = $("formMsg"); m.classList.remove("hidden");
@@ -132,8 +145,8 @@
     (async function init() {
       document.querySelector(".preloader")?.classList.add("done");
 
-      if (!code) {
-        showMsg("error", "This invite link is missing its code. Ask your manager for a new one.");
+      if ((!code && !joinCode) || (code && joinCode)) {
+        showMsg("error", "This access link is invalid. Ask your manager for a new one.");
         $("submitBtn").disabled = true;
         $("sub").textContent = "Invalid invite link.";
         return;
@@ -142,38 +155,55 @@
       if (!(await A.ready())) {
         // Demo mode — let it proceed for preview purposes
         $("inviteBanner").classList.remove("hidden");
-        $("inviteName").textContent = "Demo Salesperson";
+        $("inviteName").textContent = joinCode ? "Join the KGROUP team" : "Demo Salesperson";
         $("inviteTeam").textContent = "Demo Team";
         $("inviteAv").textContent = "DS";
         return;
       }
 
-      // Look up who this invite belongs to
-      const info = await A.inviteInfo(code);
-      if (!info) {
-        showMsg("error", "This invite is invalid or has already been used.");
+      // A personal invite identifies its named roster record. The shared link
+      // identifies the company workspace and lets the person choose their name.
+      let info = null;
+      try {
+        info = joinCode ? await A.teamJoinInfo(joinCode) : await A.inviteInfo(code);
+      } catch (err) {
+        showMsg("error", err.message || "The access link could not be checked. Please try again.");
         $("submitBtn").disabled = true;
-        $("sub").textContent = "Invite unavailable.";
+        $("sub").textContent = "Access link unavailable.";
+        return;
+      }
+      if (!info) {
+        showMsg("error", "This link is invalid or unavailable. Ask your manager for a new one.");
+        $("submitBtn").disabled = true;
+        $("sub").textContent = "Access link unavailable.";
         return;
       }
       inviteName = info.name || "";
       $("inviteBanner").classList.remove("hidden");
-      $("inviteName").textContent = info.name || "Salesperson";
+      $("inviteName").textContent = joinCode ? "Join the KGROUP team" : (info.name || "Salesperson");
       $("inviteTeam").textContent = info.team_name ? ("Joining " + info.team_name) : "Joining your team";
-      $("inviteAv").textContent = (info.name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+      $("inviteAv").textContent = joinCode ? "KG" : (info.name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+      if (joinCode) {
+        $("title").textContent = "Join the team ✨";
+        $("sub").textContent = "Create your account or sign in to join the KGROUP workspace.";
+      } else {
+        $("fullName").value = info.name || "";
+      }
       if (info.email) $("email").value = info.email;
     })();
 
     // Submit → sign up with the salesperson role + invite code (trigger claims the roster row)
     $("regForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      const name = $("fullName").value.trim();
       const email = $("email").value.trim(), password = pass.value;
+      if (!name) { showMsg("error", "Enter your full name."); return; }
       if (!email || password.length < 6) { showMsg("error", "Enter your email and a password of at least 6 characters."); return; }
 
       const btn = $("submitBtn"); btn.disabled = true;
       btn.innerHTML = '<span class="loader-ring" style="width:18px;height:18px;border-width:2.5px"></span> Creating…';
       try {
-        const res = await A.signUp(email, password, inviteName || email.split("@")[0], { role: "salesperson", inviteCode: code });
+        const res = await A.signUp(email, password, name || inviteName || email.split("@")[0], { role: "salesperson", inviteCode: code, joinCode });
         if (res && res.demo) { window.location.href = "salesperson.html"; return; }
         if (res && res.user && !res.session) {
           showMsg("info", "Account created! Check your inbox to confirm, then sign in.");
@@ -184,7 +214,9 @@
         setTimeout(() => window.location.href = "salesperson.html", 700);
       } catch (err) {
         btn.disabled = false; btn.innerHTML = "Create my account";
-        showMsg("error", err.message || "Could not create your account.");
+        showMsg(err.status === 409 ? "info" : "error", err.status === 409
+          ? "This email already has an account. Sign in below using this same team link to connect it."
+          : (err.message || "Could not create your account."));
       }
     });
   </script>

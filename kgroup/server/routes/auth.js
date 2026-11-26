@@ -23,7 +23,7 @@ const jwt = require("jsonwebtoken");
 const db = require("../db");
 const auth = require("../auth");
 const mailer = require("../mailer");
-const { HttpError } = require("../policies");
+const { HttpError, teamScope, requireAdmin } = require("../policies");
 
 const router = express.Router();
 
@@ -31,11 +31,41 @@ const REQUIRE_CONFIRMATION = String(process.env.REQUIRE_EMAIL_CONFIRMATION || ""
 const MIN_PASSWORD = 6; // matches the client-side checks in login.html / register.html
 
 const normalizeEmail = (e) => String(e || "").trim().toLowerCase();
+const TEAM_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function teamJoinSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new HttpError(503, "Le lien commun est indisponible : la clé sécurisée du serveur n'est pas configurée.");
+  }
+  return secret;
+}
+
+function makeTeamJoinCode(teamId) {
+  const normalizedTeamId = String(teamId || "").toLowerCase();
+  if (!TEAM_ID_RE.test(normalizedTeamId)) throw new HttpError(400, "Équipe invalide.");
+  const signature = crypto.createHmac("sha256", teamJoinSecret())
+    .update(`kgroup:team-join:v1:${normalizedTeamId}`)
+    .digest("hex");
+  return `v1.${normalizedTeamId}.${signature}`;
+}
+
+function teamIdFromJoinCode(code) {
+  const match = /^v1\.([0-9a-f-]{36})\.([0-9a-f]{64})$/i.exec(String(code || ""));
+  if (!match || !TEAM_ID_RE.test(match[1])) return null;
+  const teamId = match[1].toLowerCase();
+  const expected = crypto.createHmac("sha256", teamJoinSecret())
+    .update(`kgroup:team-join:v1:${teamId}`)
+    .digest();
+  const supplied = Buffer.from(match[2], "hex");
+  return supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected) ? teamId : null;
+}
 
 /** The public URL of the static site, used to build links in emails/redirects. */
 function appUrl(req) {
   const configured = process.env.APP_URL;
-  const base = configured || `${req.protocol}://${req.get("host")}`;
+  const productionBase = "https://kgroup-gilt.vercel.app/";
+  const base = process.env.VERCEL ? productionBase : (configured || `${req.protocol}://${req.get("host")}`);
   return base.endsWith("/") ? base : base + "/";
 }
 
@@ -55,6 +85,77 @@ function sessionPayload(user, token) {
 /* ------------------------------------------------------------------ *
  * SIGN UP                                                             *
  * ------------------------------------------------------------------ */
+router.get("/join-link", auth.requireUser, async (req, res, next) => {
+  try {
+    requireAdmin(req);
+    const teamId = teamScope(req);
+    const code = makeTeamJoinCode(teamId);
+    const link = new URL("register.html", appUrl(req));
+    link.searchParams.set("join", code);
+    return res.json({ url: link.toString() });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get("/join-info", async (req, res, next) => {
+  try {
+    const teamId = teamIdFromJoinCode(req.query.code);
+    if (!teamId) return res.json({ join: null });
+    const team = await db.one(`select id, name from public.teams where id = $1`, [teamId]);
+    return res.json({ join: team ? { team_name: team.name || "KGROUP Parfumery" } : null });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post("/join", auth.requireUser, async (req, res, next) => {
+  try {
+    const teamId = teamIdFromJoinCode(req.body && req.body.join_code);
+    if (!teamId) throw new HttpError(400, "Ce lien d’accès est invalide.");
+    if (!req.profile || req.profile.role !== "salesperson") {
+      throw new HttpError(403, "Ce lien est réservé aux comptes commerciaux.");
+    }
+
+    const result = await db.tx(async (client) => {
+      const team = await client.query(`select id, owner from public.teams where id = $1 for share`, [teamId]);
+      if (!team.rows.length) throw new HttpError(400, "L’espace de l’entreprise est introuvable.");
+
+      const existing = await client.query(
+        `select id, team_id, status from public.salespersons where auth_id = $1 for update`,
+        [req.user.id]
+      );
+      let salespersonId;
+      if (existing.rows.length) {
+        const row = existing.rows[0];
+        if (row.team_id && row.team_id !== teamId) throw new HttpError(409, "Ce compte est déjà rattaché à une autre équipe.");
+        salespersonId = row.id;
+        await client.query(
+          `update public.salespersons set team_id = $2, status = 'Active', claimed = true where id = $1`,
+          [salespersonId, teamId]
+        );
+      } else {
+        const { rows } = await client.query(
+          `insert into public.salespersons (owner, team_id, auth_id, claimed, name, email, status)
+           values (coalesce($1, $2), $3, $2, true, $4, $5, 'Active') returning id`,
+          [team.rows[0].owner, req.user.id, teamId,
+            (req.profile.full_name || req.user.email.split("@")[0]).trim(), req.user.email]
+        );
+        salespersonId = rows[0].id;
+      }
+      await client.query(
+        `update public.profiles set role = 'salesperson', team_id = $2, salesperson_id = $3 where id = $1`,
+        [req.user.id, teamId, salespersonId]
+      );
+      return { salesperson_id: salespersonId };
+    });
+
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 router.post("/signup", async (req, res, next) => {
   try {
     const email = normalizeEmail(req.body.email);
@@ -62,6 +163,7 @@ router.post("/signup", async (req, res, next) => {
     const fullName = (req.body.full_name || "").trim() || email.split("@")[0];
     const role = req.body.role === "salesperson" ? "salesperson" : "admin";
     const inviteCode = req.body.invite_code ? String(req.body.invite_code) : null;
+    const joinCode = req.body.join_code ? String(req.body.join_code) : null;
 
     if (!email || !email.includes("@")) throw new HttpError(400, "Please enter a valid email address.");
     if (password.length < MIN_PASSWORD) {
@@ -71,17 +173,70 @@ router.post("/signup", async (req, res, next) => {
     const existing = await db.one(`select id from public.users where lower(email) = $1`, [email]);
     if (existing) throw new HttpError(409, "An account with this email already exists.");
 
-    // raw_user_meta_data is what handle_new_user() reads to decide between the
-    // admin path (create a team) and the salesperson path (claim a roster row).
-    const meta = { full_name: fullName, role };
-    if (inviteCode) meta.invite_code = inviteCode;
+    if (role === "salesperson" && inviteCode && joinCode) {
+      throw new HttpError(400, "Utilisez un seul lien d’inscription à la fois.");
+    }
+    if (role === "salesperson" && !inviteCode && !joinCode) {
+      throw new HttpError(400, "Un lien d’accès commercial valide est nécessaire pour créer ce compte.");
+    }
+    if (role !== "salesperson" && (inviteCode || joinCode)) {
+      throw new HttpError(400, "Ce lien d’accès est réservé aux comptes commerciaux.");
+    }
 
-    const user = await db.one(
-      `insert into public.users (email, encrypted_password, raw_user_meta_data, email_confirmed_at)
-       values ($1, $2, $3::jsonb, $4)
-       returning id, email, raw_user_meta_data, created_at, email_confirmed_at`,
-      [email, await auth.hashPassword(password), JSON.stringify(meta), REQUIRE_CONFIRMATION ? null : new Date()]
-    );
+    const passwordHash = await auth.hashPassword(password);
+    const confirmedAt = REQUIRE_CONFIRMATION ? null : new Date();
+    const user = role === "salesperson"
+      ? await db.tx(async (client) => {
+          const duplicate = await client.query(`select id from public.users where lower(email) = $1`, [email]);
+          if (duplicate.rows.length) throw new HttpError(409, "An account with this email already exists. Sign in with that account.");
+
+          let joinTeamId = null;
+          if (inviteCode) {
+            const invite = await client.query(
+              `select id from public.salespersons
+                where invite_code = $1 and coalesce(claimed, false) = false
+                for update`, [inviteCode]
+            );
+            if (!invite.rows.length) throw new HttpError(400, "Cette invitation est invalide ou a déjà été utilisée.");
+          } else {
+            joinTeamId = teamIdFromJoinCode(joinCode);
+            if (!joinTeamId) throw new HttpError(400, "Ce lien d’accès commercial est invalide.");
+            const team = await client.query(`select id, owner from public.teams where id = $1 for share`, [joinTeamId]);
+            if (!team.rows.length) throw new HttpError(400, "L’espace de l’entreprise est introuvable.");
+          }
+
+          const meta = { full_name: fullName, role };
+          if (inviteCode) meta.invite_code = inviteCode;
+          const created = await client.query(
+            `insert into public.users (email, encrypted_password, raw_user_meta_data, email_confirmed_at)
+             values ($1, $2, $3::jsonb, $4)
+             returning id, email, raw_user_meta_data, created_at, email_confirmed_at`,
+            [email, passwordHash, JSON.stringify(meta), confirmedAt]
+          );
+          const newUser = created.rows[0];
+
+          // The existing invite trigger handles its claimed roster row. The
+          // reusable company link instead creates the salesperson record here.
+          if (joinTeamId) {
+            const team = await client.query(`select owner from public.teams where id = $1`, [joinTeamId]);
+            const reps = await client.query(
+              `insert into public.salespersons (owner, team_id, auth_id, claimed, name, email, status)
+               values (coalesce($1, $2), $3, $2, true, $4, $5, 'Active') returning id`,
+              [team.rows[0].owner, newUser.id, joinTeamId, fullName, email]
+            );
+            await client.query(
+              `update public.profiles set full_name = $2, email = $3, role = 'salesperson', team_id = $4, salesperson_id = $5 where id = $1`,
+              [newUser.id, fullName, email, joinTeamId, reps.rows[0].id]
+            );
+          }
+          return newUser;
+        })
+      : await db.one(
+          `insert into public.users (email, encrypted_password, raw_user_meta_data, email_confirmed_at)
+           values ($1, $2, $3::jsonb, $4)
+           returning id, email, raw_user_meta_data, created_at, email_confirmed_at`,
+          [email, passwordHash, JSON.stringify({ full_name: fullName, role }), confirmedAt]
+        );
 
     // With confirmation required there is no session yet — exactly the
     // `res.user && !res.session` branch login.html and register.html handle.
