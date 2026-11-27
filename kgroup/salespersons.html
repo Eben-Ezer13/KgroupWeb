@@ -247,6 +247,7 @@
           const input = document.getElementById("adminResetLinkValue");
           input.value = result.url;
           panel.style.display = "block";
+          panel.scrollIntoView({ behavior: "smooth", block: "center" });
           toast("success", "Lien prêt", "Copiez-le et transmettez-le en privé. Il expire après 30 minutes et ne peut servir qu’une fois.");
         } catch (err) {
           toast("error", "Lien indisponible", err.message || "Impossible de générer le lien de récupération.");
