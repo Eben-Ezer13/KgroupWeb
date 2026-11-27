@@ -206,6 +206,14 @@
       return request("/auth/reset", { method: "POST", body: { email } });
     },
 
+    async createAdminResetLink(salespersonId) {
+      if (!(await ready())) throw new Error("Le service est indisponible. Réessayez plus tard.");
+      return request("/auth/admin-reset-link", {
+        method: "POST",
+        body: { salesperson_id: salespersonId },
+      });
+    },
+
     /* Completes a reset started from the emailed link (reset-password.html). */
     async confirmPasswordReset(resetToken, newPassword) {
       if (!(await ready())) return { demo: true };
@@ -858,3 +866,4 @@
 
   ready(); // start probing immediately so pages rarely have to wait
 })();
+
