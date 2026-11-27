@@ -116,6 +116,7 @@
       <div class="modal-body" id="viewBody"></div>
       <div class="modal-foot" style="flex-wrap:wrap">
         <button class="btn btn-ghost" data-modal-close>Close</button>
+        <button class="btn btn-ghost" id="makeAdminResetLink" type="button"><span data-ic="lock"></span> Générer lien de récupération</button>
         <a href="remuneration.html" class="btn btn-ghost" id="viewPay"><span data-ic="dollar"></span> Rémunération</a>
         <a href="orders.html" class="btn btn-primary" id="viewOrders"><span data-ic="clipboard"></span> Ventes &amp; commandes</a>
       </div>
@@ -234,6 +235,35 @@
 
       // Combined filter state
       let statusFilter = "all", cityVal = "", searchQ = "";
+      let viewedSalespersonId = null;
+
+      document.getElementById("makeAdminResetLink").addEventListener("click", async (e) => {
+        if (!viewedSalespersonId) return;
+        const button = e.currentTarget;
+        button.disabled = true;
+        try {
+          const result = await window.KGAuth.createAdminResetLink(viewedSalespersonId);
+          const panel = document.getElementById("adminResetLinkPanel");
+          const input = document.getElementById("adminResetLinkValue");
+          input.value = result.url;
+          panel.style.display = "block";
+          toast("success", "Lien prêt", "Copiez-le et transmettez-le en privé. Il expire après 30 minutes et ne peut servir qu’une fois.");
+        } catch (err) {
+          toast("error", "Lien indisponible", err.message || "Impossible de générer le lien de récupération.");
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      document.getElementById("viewBody").addEventListener("click", async (e) => {
+        const button = e.target.closest("#copyAdminResetLink");
+        if (!button) return;
+        const input = document.getElementById("adminResetLinkValue");
+        try { await navigator.clipboard.writeText(input.value); }
+        catch (_) { input.select(); document.execCommand("copy"); }
+        toast("success", "Lien copié", "Transmettez ce lien uniquement à la commerciale concernée.");
+      });
+
       function applyFilters() {
         table.setFilter(s =>
           (statusFilter === "all" || s.status === statusFilter) &&
@@ -256,6 +286,7 @@
         }));
         document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => {
           const s = KG.salespersons.find(x=>x.id===b.dataset.view);
+          viewedSalespersonId = s && s.id;
           document.getElementById("viewBody").innerHTML = `
             <div class="row gap-4" style="margin-bottom:18px">${avatar(s,64)}
               <div><h3 style="font-size:20px">${s.name}</h3><div class="muted">${s.email}</div>
@@ -266,6 +297,11 @@
               <div class="card card-pad"><div class="muted" style="font-size:12px">City</div><b>${s.city}</b></div>
               <div class="card card-pad"><div class="muted" style="font-size:12px">Phone</div><b>${s.phone}</b></div>
               <div class="card card-pad"><div class="muted" style="font-size:12px">Commission cumulée</div><b>${KG.fmt.money(s.commission || 0)}</b></div>
+            </div>
+            <div class="card card-pad" id="adminResetLinkPanel" style="display:none;margin-top:14px">
+              <b>Lien de récupération du compte</b>
+              <p class="muted" style="font-size:13px;margin:8px 0">À transmettre en privé à cette commerciale. Le lien expire après 30 minutes et ne peut être utilisé qu’une fois.</p>
+              <div class="row gap-2"><input class="input" id="adminResetLinkValue" readonly aria-label="Lien de récupération"><button class="btn btn-ghost" id="copyAdminResetLink" type="button">Copier</button></div>
             </div>`;
           document.getElementById("viewOrders").href = "orders.html?rep=" + encodeURIComponent(s.id);
           document.getElementById("viewPay").href = "remuneration.html?rep=" + encodeURIComponent(s.id);
@@ -423,3 +459,4 @@
   </script>
 </body>
 </html>
+
