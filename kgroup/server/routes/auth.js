@@ -431,6 +431,78 @@ router.post("/reset", async (req, res, next) => {
   }
 });
 
+/* ------------------------------------------------------------------ *
+ * ADMIN-ISSUED PASSWORD RESET LINK                                    *
+ * ------------------------------------------------------------------ */
+router.post("/admin-reset-link", auth.requireUser, async (req, res, next) => {
+  try {
+    requireAdmin(req);
+    const salespersonId = String(req.body.salesperson_id || "");
+    if (!salespersonId) throw new HttpError(400, "Choisissez une fiche commerciale.");
+
+    const linkedUser = await db.tx(async (client) => {
+      const repResult = await client.query(
+        `select id, auth_id, email from public.salespersons
+          where id = $1 and team_id = $2
+          for update`,
+        [salespersonId, teamScope(req)]
+      );
+      if (!repResult.rows.length) throw new HttpError(404, "Cette fiche commerciale est introuvable dans votre équipe.");
+      const rep = repResult.rows[0];
+
+      const userResult = rep.auth_id
+        ? await client.query(`select id, email from public.users where id = $1 for update`, [rep.auth_id])
+        : await client.query(`select id, email from public.users where lower(email) = $1 for update`, [normalizeEmail(rep.email)]);
+      if (!userResult.rows.length) {
+        throw new HttpError(404, "Aucun compte de connexion ne correspond à cette fiche. Créez le compte avec la même adresse e-mail depuis le lien de l’équipe.");
+      }
+      const user = userResult.rows[0];
+
+      const otherLink = await client.query(
+        `select id from public.salespersons where auth_id = $1 and id <> $2 limit 1`,
+        [user.id, rep.id]
+      );
+      if (otherLink.rows.length) {
+        throw new HttpError(409, "Ce compte est déjà lié à une autre fiche commerciale. Contactez l’assistance.");
+      }
+
+      const profile = await client.query(`select role from public.profiles where id = $1 for update`, [user.id]);
+      if (profile.rows.length && profile.rows[0].role === "admin") {
+        throw new HttpError(409, "Cette adresse appartient à un administrateur; la réinitialisation commerciale est bloquée.");
+      }
+
+      await client.query(
+        `update public.salespersons
+            set auth_id = $2, claimed = true, invite_code = null
+          where id = $1`,
+        [rep.id, user.id]
+      );
+      await client.query(
+        `update public.profiles
+            set role = 'salesperson', team_id = $2, salesperson_id = $3
+          where id = $1`,
+        [user.id, teamScope(req), rep.id]
+      );
+      await client.query(
+        `update public.password_reset_tokens set used_at = now()
+          where user_id = $1 and used_at is null`,
+        [user.id]
+      );
+      return { id: user.id, email: user.email };
+    });
+
+    const token = await auth.issueResetToken(linkedUser.id, 30);
+    const link = `${appUrl(req)}reset-password.html?token=${encodeURIComponent(token)}`;
+    console.info("[auth] admin issued a one-time password reset link", {
+      adminId: req.user.id,
+      salespersonId,
+    });
+    return res.json({ url: link, expires_in_minutes: 30 });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 router.post("/reset/confirm", async (req, res, next) => {
   try {
     const token = String(req.body.token || "");
