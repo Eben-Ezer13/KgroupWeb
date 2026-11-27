@@ -151,10 +151,10 @@ router.post("/join", auth.requireUser, async (req, res, next) => {
           salespersonId = rosterMatch.rows[0].id;
           await client.query(
             `update public.salespersons
-                set owner = coalesce($2, owner), team_id = $3, auth_id = $4,
-                    claimed = true, invite_code = null, email = $5, status = 'Active'
+                set team_id = $2, auth_id = $3,
+                    claimed = true, invite_code = null, email = $4, status = 'Active'
               where id = $1`,
-            [salespersonId, team.rows[0].owner, teamId, req.user.id, normalizeEmail(req.user.email)]
+            [salespersonId, teamId, req.user.id, normalizeEmail(req.user.email)]
           );
         } else {
           const { rows } = await client.query(
@@ -259,10 +259,10 @@ router.post("/signup", async (req, res, next) => {
               salespersonId = rosterMatch.rows[0].id;
               await client.query(
                 `update public.salespersons
-                    set owner = coalesce($2, owner), team_id = $3, auth_id = $4,
-                        claimed = true, invite_code = null, email = $5, status = 'Active'
+                    set team_id = $2, auth_id = $3,
+                        claimed = true, invite_code = null, email = $4, status = 'Active'
                   where id = $1`,
-                [salespersonId, team.rows[0].owner, joinTeamId, newUser.id, email]
+                [salespersonId, joinTeamId, newUser.id, email]
               );
             } else {
               const reps = await client.query(
