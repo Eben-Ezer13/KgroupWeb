@@ -135,13 +135,36 @@ router.post("/join", auth.requireUser, async (req, res, next) => {
           [salespersonId, teamId]
         );
       } else {
-        const { rows } = await client.query(
-          `insert into public.salespersons (owner, team_id, auth_id, claimed, name, email, status)
-           values (coalesce($1, $2), $3, $2, true, $4, $5, 'Active') returning id`,
-          [team.rows[0].owner, req.user.id, teamId,
-            (req.profile.full_name || req.user.email.split("@")[0]).trim(), req.user.email]
+        const rosterMatch = await client.query(
+          `select id, auth_id from public.salespersons
+            where lower(email) = $1 and (team_id = $2 or team_id is null)
+            order by (auth_id is null) desc,
+                     (status = 'Archived') asc, created_at asc, id asc
+            limit 1 for update`,
+          [normalizeEmail(req.user.email), teamId]
         );
-        salespersonId = rows[0].id;
+        if (rosterMatch.rows.length && rosterMatch.rows[0].auth_id && rosterMatch.rows[0].auth_id !== req.user.id) {
+          throw new HttpError(409, "Cette fiche commerciale est déjà rattachée à un autre compte. Contactez l’administrateur.");
+        }
+
+        if (rosterMatch.rows.length) {
+          salespersonId = rosterMatch.rows[0].id;
+          await client.query(
+            `update public.salespersons
+                set owner = coalesce($2, owner), team_id = $3, auth_id = $4,
+                    claimed = true, invite_code = null, email = $5, status = 'Active'
+              where id = $1`,
+            [salespersonId, team.rows[0].owner, teamId, req.user.id, normalizeEmail(req.user.email)]
+          );
+        } else {
+          const { rows } = await client.query(
+            `insert into public.salespersons (owner, team_id, auth_id, claimed, name, email, status)
+             values (coalesce($1, $2), $3, $2, true, $4, $5, 'Active') returning id`,
+            [team.rows[0].owner, req.user.id, teamId,
+              (req.profile.full_name || req.user.email.split("@")[0]).trim(), normalizeEmail(req.user.email)]
+          );
+          salespersonId = rows[0].id;
+        }
       }
       await client.query(
         `update public.profiles set role = 'salesperson', team_id = $2, salesperson_id = $3 where id = $1`,
@@ -215,18 +238,43 @@ router.post("/signup", async (req, res, next) => {
           );
           const newUser = created.rows[0];
 
-          // The existing invite trigger handles its claimed roster row. The
-          // reusable company link instead creates the salesperson record here.
+          // Individual invites are claimed by the database trigger. With the
+          // reusable company link, reuse an unclaimed roster row with the same
+          // email so sales history and payroll stay attached to its original ID.
           if (joinTeamId) {
             const team = await client.query(`select owner from public.teams where id = $1`, [joinTeamId]);
-            const reps = await client.query(
-              `insert into public.salespersons (owner, team_id, auth_id, claimed, name, email, status)
-               values (coalesce($1, $2), $3, $2, true, $4, $5, 'Active') returning id`,
-              [team.rows[0].owner, newUser.id, joinTeamId, fullName, email]
+            const rosterMatch = await client.query(
+              `select id, auth_id from public.salespersons
+                where lower(email) = $1 and (team_id = $2 or team_id is null)
+                order by (auth_id is null) desc,
+                         (status = 'Archived') asc, created_at asc, id asc
+                limit 1 for update`,
+              [email, joinTeamId]
             );
+            let salespersonId;
+            if (rosterMatch.rows.length && rosterMatch.rows[0].auth_id) {
+              throw new HttpError(409, "Cette fiche commerciale est déjà rattachée à un autre compte. Contactez l’administrateur.");
+            }
+            if (rosterMatch.rows.length) {
+              salespersonId = rosterMatch.rows[0].id;
+              await client.query(
+                `update public.salespersons
+                    set owner = coalesce($2, owner), team_id = $3, auth_id = $4,
+                        claimed = true, invite_code = null, email = $5, status = 'Active'
+                  where id = $1`,
+                [salespersonId, team.rows[0].owner, joinTeamId, newUser.id, email]
+              );
+            } else {
+              const reps = await client.query(
+                `insert into public.salespersons (owner, team_id, auth_id, claimed, name, email, status)
+                 values (coalesce($1, $2), $3, $2, true, $4, $5, 'Active') returning id`,
+                [team.rows[0].owner, newUser.id, joinTeamId, fullName, email]
+              );
+              salespersonId = reps.rows[0].id;
+            }
             await client.query(
               `update public.profiles set full_name = $2, email = $3, role = 'salesperson', team_id = $4, salesperson_id = $5 where id = $1`,
-              [newUser.id, fullName, email, joinTeamId, reps.rows[0].id]
+              [newUser.id, fullName, email, joinTeamId, salespersonId]
             );
           }
           return newUser;
@@ -497,3 +545,4 @@ router.get("/google/callback", async (req, res, next) => {
 router.get("/google/status", (_req, res) => res.json({ configured: googleConfigured() }));
 
 module.exports = router;
+
