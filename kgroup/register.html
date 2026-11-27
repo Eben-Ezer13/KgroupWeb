@@ -214,11 +214,12 @@
         setTimeout(() => window.location.href = "salesperson.html", 700);
       } catch (err) {
         btn.disabled = false; btn.innerHTML = "Create my account";
-        showMsg(err.status === 409 ? "info" : "error", err.status === 409
+        showMsg(err.status === 409 ? "info" : "error", err.message || (err.status === 409
           ? "This email already has an account. Sign in below using this same team link to connect it."
-          : (err.message || "Could not create your account."));
+          : "Could not create your account."));
       }
     });
   </script>
 </body>
 </html>
+
