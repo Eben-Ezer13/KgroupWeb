@@ -159,7 +159,7 @@ router.post("/join", auth.requireUser, async (req, res, next) => {
         } else {
           const { rows } = await client.query(
             `insert into public.salespersons (owner, team_id, auth_id, claimed, name, email, status)
-             values (coalesce($1, $2), $3, $2, true, $4, $5, 'Active') returning id`,
+             values ($1, $2, $3, true, $4, $5, 'Active') returning id`,
             [team.rows[0].owner, req.user.id, teamId,
               (req.profile.full_name || req.user.email.split("@")[0]).trim(), normalizeEmail(req.user.email)]
           );
@@ -267,7 +267,7 @@ router.post("/signup", async (req, res, next) => {
             } else {
               const reps = await client.query(
                 `insert into public.salespersons (owner, team_id, auth_id, claimed, name, email, status)
-                 values (coalesce($1, $2), $3, $2, true, $4, $5, 'Active') returning id`,
+                 values ($1, $2, $3, true, $4, $5, 'Active') returning id`,
                 [team.rows[0].owner, newUser.id, joinTeamId, fullName, email]
               );
               salespersonId = reps.rows[0].id;
