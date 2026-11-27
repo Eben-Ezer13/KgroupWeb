@@ -31,6 +31,16 @@ const REQUIRE_CONFIRMATION = String(process.env.REQUIRE_EMAIL_CONFIRMATION || ""
 const MIN_PASSWORD = 6; // matches the client-side checks in login.html / register.html
 
 const normalizeEmail = (e) => String(e || "").trim().toLowerCase();
+const normalizePersonName = (name) => String(name || "")
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .replace(/[^\p{L}\p{N}]+/gu, " ")
+  .trim()
+  .split(/\s+/)
+  .filter(Boolean)
+  .sort()
+  .join(" ");
 const TEAM_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function teamJoinSecret() {
@@ -157,6 +167,16 @@ router.post("/join", auth.requireUser, async (req, res, next) => {
             [salespersonId, teamId, req.user.id, normalizeEmail(req.user.email)]
           );
         } else {
+          const sameName = await client.query(
+            `select name from public.salespersons
+              where team_id = $1
+              order by created_at asc, id asc
+              for update`,
+            [teamId]
+          );
+          if (sameName.rows.some((row) => normalizePersonName(row.name) === normalizePersonName(req.profile.full_name))) {
+            throw new HttpError(409, "Cette fiche commerciale existe déjà avec une autre adresse e-mail. Vérifiez l’adresse de la fiche avec l’administrateur avant de continuer.");
+          }
           const { rows } = await client.query(
             `insert into public.salespersons (owner, team_id, auth_id, claimed, name, email, status)
              values ($1, $2, $3, true, $4, $5, 'Active') returning id`,
@@ -265,6 +285,16 @@ router.post("/signup", async (req, res, next) => {
                 [salespersonId, joinTeamId, newUser.id, email]
               );
             } else {
+              const sameName = await client.query(
+                `select id, name from public.salespersons
+                  where team_id = $1
+                  order by created_at asc, id asc
+                  for update`,
+                [joinTeamId]
+              );
+              if (sameName.rows.some((row) => normalizePersonName(row.name) === normalizePersonName(fullName))) {
+                throw new HttpError(409, "Cette fiche commerciale existe déjà avec une autre adresse e-mail. Vérifiez l’adresse de la fiche avec l’administrateur avant de créer le compte.");
+              }
               const reps = await client.query(
                 `insert into public.salespersons (owner, team_id, auth_id, claimed, name, email, status)
                  values ($1, $2, $3, true, $4, $5, 'Active') returning id`,
